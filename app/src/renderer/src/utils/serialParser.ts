@@ -5,16 +5,61 @@ export class SerialMessageParser {
     // Remove any trailing/leading whitespace
     const cleanLine = line.trim()
 
-    // Spanish message: "Cambio de estado:STATE1->STATE2"
-    if (cleanLine.startsWith('Cambio de estado:')) {
-      const match = cleanLine.match(/Cambio de estado:.*->(.+)/)
-      if (match) {
-        const newState = match[1].trim()
-        return { state: newState }
+    // ESTADO: State change
+    if (cleanLine.startsWith('ESTADO:') && cleanLine.includes(':')) {
+      const newState = cleanLine.substring(7).trim()
+      // Validate state format (should be like "0_INICIO", "1_ASCENSOR", etc.)
+      if (/^\d+_[A-Z]+$/.test(newState)) {
+        // Validate it's a known state
+        const validStates = [
+          '0_INICIO', '1_ASCENSOR', '2_DOSIFICACION', '3_PESAJE',
+          '4_TRASPASO', '5_MOLIENDA', '6_DESCARGA', '7_CIERRE', '8_RETIRO'
+        ]
+        if (validStates.includes(newState)) {
+          return { state: newState }
+        }
       }
     }
 
-    // Progress message: "PROGRESO:STATE,duration"
+    // PASTILLAS: Pill counter
+    if (cleanLine.startsWith('PASTILLAS:')) {
+      const match = cleanLine.match(/^PASTILLAS:(\d+)\/(\d+)$/)
+      if (match) {
+        const count = parseInt(match[1])
+        const target = parseInt(match[2])
+        // Validate reasonable values
+        if (!isNaN(count) && !isNaN(target) && count >= 0 && target > 0) {
+          return {
+            pillCount: count,
+            targetPills: target,
+          }
+        }
+      }
+    }
+
+    // PESO: Weight reading
+    if (cleanLine.startsWith('PESO:')) {
+      const weight = parseFloat(cleanLine.substring(5))
+      if (!isNaN(weight)) {
+        return { weight }
+      }
+    }
+
+    // ELEVADOR: Elevator position
+    if (cleanLine.startsWith('ELEVADOR:')) {
+      const position = cleanLine.substring(9).trim()
+      const sensors = { ...currentStatus.sensors }
+      if (position === 'ARRIBA') {
+        sensors.posAlta = true
+        sensors.posBaja = false
+      } else if (position === 'ABAJO') {
+        sensors.posAlta = false
+        sensors.posBaja = true
+      }
+      return { sensors }
+    }
+
+    // PROGRESO: Progress indicator
     if (cleanLine.startsWith('PROGRESO:')) {
       const match = cleanLine.match(/PROGRESO:([^,]+),(\d+)/)
       if (match) {
@@ -28,78 +73,109 @@ export class SerialMessageParser {
       }
     }
 
-    // Spanish message: "Peso:XX.XX g"
-    if (cleanLine.startsWith('Peso:')) {
-      const match = cleanLine.match(/Peso:([\d.]+)\s*g/)
-      if (match) {
-        const weight = parseFloat(match[1])
-        return { weight }
-      }
-    }
-
-    // Spanish message: "Contador de pastillas:X/Y"
-    if (cleanLine.startsWith('Contador de pastillas:')) {
-      const match = cleanLine.match(/Contador de pastillas:(\d+)\/(\d+)/)
-      if (match) {
-        return {
-          pillCount: parseInt(match[1]),
-          targetPills: parseInt(match[2]),
+    // HB: Simple heartbeat
+    if (cleanLine.startsWith('HB:')) {
+      const parts = cleanLine.split(',')
+      if (parts.length >= 2) {
+        const state = parts[0].substring(3)
+        // Validate state format and it's a known state
+        const validStates = [
+          '0_INICIO', '1_ASCENSOR', '2_DOSIFICACION', '3_PESAJE',
+          '4_TRASPASO', '5_MOLIENDA', '6_DESCARGA', '7_CIERRE', '8_RETIRO'
+        ]
+        if (/^\d+_[A-Z]+$/.test(state) && validStates.includes(state)) {
+          return { state }
         }
       }
     }
 
-    // Heartbeat message: "HB:STATE,timestamp"
-    if (cleanLine.startsWith('HB:')) {
-      const parts = cleanLine.split(',')
-      const state = parts[0].substring(3)
-      return { state }
-    }
-
-    // Button messages
-    if (cleanLine === 'BTN:START:PRESSED' || cleanLine === 'BTN:RESET:PRESSED') {
-      // Just log these, they're confirmations
+    // BTN: Button confirmations
+    if (cleanLine.startsWith('BTN:')) {
+      // These are just confirmations, no state change needed
       return null
     }
 
-    // Simulation sensor messages
-    if (cleanLine.startsWith('SIM:')) {
+    // SENSORES: Sensor updates (both real and simulation modes)
+    if (cleanLine.startsWith('SENSORES:')) {
       const sensors = { ...currentStatus.sensors }
+      const parts = cleanLine.split(':')
 
-      if (cleanLine === 'SIM:POS_ALTA:ON') sensors.posAlta = true
-      else if (cleanLine === 'SIM:POS_ALTA:OFF') sensors.posAlta = false
-      else if (cleanLine === 'SIM:POS_BAJA:ON') sensors.posBaja = true
-      else if (cleanLine === 'SIM:POS_BAJA:OFF') sensors.posBaja = false
-      else if (cleanLine === 'SIM:WEIGHT_STABLE:ON') sensors.weightStable = true
-      else if (cleanLine === 'SIM:WEIGHT_STABLE:OFF') sensors.weightStable = false
-      else if (cleanLine === 'SIM:FRASCO_VACIO:ON') sensors.frascoVacio = true
-      else if (cleanLine === 'SIM:FRASCO_VACIO:OFF') sensors.frascoVacio = false
-      else if (cleanLine === 'SIM:PASTILLAS_CARGADAS:ON') sensors.pastillasCargadas = true
-      else if (cleanLine === 'SIM:PASTILLAS_CARGADAS:OFF') sensors.pastillasCargadas = false
+      if (parts[1] === 'FRASCO_VACIO') {
+        sensors.frascoVacio = parts[2] === '1'
+      } else if (parts[1] === 'PASTILLAS_CARGADAS') {
+        sensors.pastillasCargadas = parts[2] === '1'
+      }
 
       return { sensors }
     }
 
-    // Delays response: "DELAYS:SETTLE:1500,WEIGHT:2000,..."
+    // SIM: Simulation sensor changes
+    if (cleanLine.startsWith('SIM:')) {
+      const sensors = { ...currentStatus.sensors }
+      const parts = cleanLine.split(':')
+
+      if (parts[1] === 'POS_ALTA') {
+        sensors.posAlta = parts[2] === 'ON'
+      } else if (parts[1] === 'POS_BAJA') {
+        sensors.posBaja = parts[2] === 'ON'
+      } else if (parts[1] === 'WEIGHT_STABLE') {
+        sensors.weightStable = parts[2] === 'ON'
+      } else if (parts[1] === 'FRASCO_VACIO') {
+        sensors.frascoVacio = parts[2] === 'ON'
+      } else if (parts[1] === 'PASTILLAS_CARGADAS') {
+        sensors.pastillasCargadas = parts[2] === 'ON'
+      }
+
+      return { sensors }
+    }
+
+    // DELAYS: Configuration response
     if (cleanLine.startsWith('DELAYS:')) {
-      // This is a response message, not a status update
-      // It will be handled separately by the settings component
+      // Handled separately by parseDelays
       return null
     }
 
-    // Legacy English message support (STATUS:)
+    // STATUS: Full status response
     if (cleanLine.startsWith('STATUS:')) {
-      return parseEnglishStatus(cleanLine, currentStatus)
+      const parts = cleanLine.substring(7).split(',')
+      const status: Partial<SystemStatus> = {}
+      const sensors = { ...currentStatus.sensors }
+
+      parts.forEach((part) => {
+        const [key, value] = part.split(':')
+        if (key === 'PASTILLAS') {
+          const [count, target] = value.split('/')
+          status.pillCount = parseInt(count)
+          status.targetPills = parseInt(target)
+        } else if (key === 'PESO') {
+          status.weight = parseFloat(value)
+        } else if (key === 'ESTADO') {
+          status.state = value
+        } else if (key === 'FRASCO_VACIO') {
+          sensors.frascoVacio = value === '1'
+        } else if (key === 'PASTILLAS_CARGADAS') {
+          sensors.pastillasCargadas = value === '1'
+        }
+      })
+
+      if (Object.keys(sensors).length > 0) {
+        status.sensors = sensors
+      }
+
+      return status
     }
 
     return null
   }
 
   static getMessageType(line: string): 'info' | 'warning' | 'error' | 'success' | 'debug' {
-    if (line.includes('ERROR')) return 'error'
-    if (line.includes('Cambio de estado')) return 'warning'
-    if (line.includes('BTN:')) return 'success'
-    if (line.includes('HB:')) return 'debug'
-    if (line.includes('Peso:') || line.includes('Contador')) return 'info'
+    // Only check for complete message patterns
+    if (line.startsWith('ERROR:')) return 'error'
+    if (line.startsWith('ESTADO:')) return 'warning'
+    if (line.startsWith('BTN:')) return 'success'
+    if (line.startsWith('HB:')) return 'debug'
+    if (line.startsWith('ACCION:')) return 'info'
+    if (line.startsWith('PESO:') || line.startsWith('PASTILLAS:')) return 'info'
     return 'info'
   }
 
@@ -118,46 +194,20 @@ export class SerialMessageParser {
 
     return result
   }
-}
 
-// Keep backward compatibility with English messages
-function parseEnglishStatus(line: string, currentStatus: SystemStatus): Partial<SystemStatus> {
-  const parts = line.substring(7).split(',')
-  const status: Partial<SystemStatus> = {}
+  static parseDosing(line: string): Record<string, number> | null {
+    if (!line.startsWith('DOSING:')) return null
 
-  parts.forEach((part) => {
-    const [key, value] = part.split(':')
-    if (key === 'PILLS') {
-      const [count, target] = value.split('/')
-      status.pillCount = parseInt(count)
-      status.targetPills = parseInt(target)
-    } else if (
-      key === 'POS_ALTA' ||
-      key === 'POS_BAJA' ||
-      key === 'WEIGHT' ||
-      key === 'FRASCO' ||
-      key === 'CARGADAS'
-    ) {
-      if (!status.sensors) status.sensors = currentStatus.sensors
-      switch (key) {
-        case 'POS_ALTA':
-          status.sensors.posAlta = value === '1'
-          break
-        case 'POS_BAJA':
-          status.sensors.posBaja = value === '1'
-          break
-        case 'WEIGHT':
-          status.sensors.weightStable = value === '1'
-          break
-        case 'FRASCO':
-          status.sensors.frascoVacio = value === '1'
-          break
-        case 'CARGADAS':
-          status.sensors.pastillasCargadas = value === '1'
-          break
+    const result: Record<string, number> = {}
+    const parts = line.substring(7).split(',')
+
+    parts.forEach((part) => {
+      const [key, value] = part.split(':')
+      if (key && value) {
+        result[key.toLowerCase()] = parseInt(value)
       }
-    }
-  })
+    })
 
-  return status
+    return result
+  }
 }

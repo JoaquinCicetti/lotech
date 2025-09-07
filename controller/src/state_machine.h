@@ -28,6 +28,10 @@ extern unsigned long t_cap_push;
 extern unsigned long t_elev_up;
 extern unsigned long t_elev_down;
 
+// Global dosing parameters (extern declarations)
+extern int wheel_divisions;
+extern int lot_size;
+
 // State machine class
 class StateMachine {
 private:

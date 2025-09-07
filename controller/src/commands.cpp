@@ -37,6 +37,33 @@ void CommandProcessor::processCommand(String command) {
   } else if (command == "BTN:RESET") {
     inputs.simulateReset(true);
     Serial.println("BTN:RESET:PRESSED");
+  } else if (command == "RESET:ALL") {
+    // Force complete reset
+    stateMachine.resetPillCount();
+    stateMachine.changeState(ESTADO0_INICIO);
+    
+    // Reset all hardware to default positions
+    elevator.stop();
+    elevator.simulatePosition(false, true);  // Bottom position
+    grinder.stop();
+    transferSolenoid.deactivate();
+    capSolenoid.deactivate();
+    dosingWheel.stop();
+    
+    // Reset sensors to defaults
+    loadCell.simulateWeight(false);
+    inputs.simulateFrasco(true);
+    inputs.simulatePastillas(true);
+    inputs.clearButtons();
+    
+    Serial.println("SISTEMA:REINICIADO");
+    Serial.println("ESTADO:0_INICIO");
+    Serial.print("PASTILLAS:0/");
+    Serial.println(lot_size);
+    Serial.println("SIM:WEIGHT_STABLE:OFF");
+    Serial.println("SIM:FRASCO_VACIO:ON");
+    Serial.println("SIM:PASTILLAS_CARGADAS:ON");
+    Serial.println("ELEVADOR:ABAJO");
   }
   
   // Elevator position simulation
@@ -56,8 +83,9 @@ void CommandProcessor::processCommand(String command) {
   
   // Weight simulation
   else if (command == "SIM:WEIGHT_STABLE:1") {
-    loadCell.simulateWeight(true);
-    Serial.println("SIM:WEIGHT_STABLE:ON");
+      loadCell.simulateWeight(true);
+      Serial.println("SIM:WEIGHT_STABLE:ON");
+
   } else if (command == "SIM:WEIGHT_STABLE:0") {
     loadCell.simulateWeight(false);
     Serial.println("SIM:WEIGHT_STABLE:OFF");
@@ -66,16 +94,16 @@ void CommandProcessor::processCommand(String command) {
   // Condition simulation
   else if (command == "SIM:FRASCO_VACIO:1") {
     inputs.simulateFrasco(true);
-    Serial.println("SIM:FRASCO_VACIO:TRUE");
+    Serial.println("SIM:FRASCO_VACIO:ON");
   } else if (command == "SIM:FRASCO_VACIO:0") {
     inputs.simulateFrasco(false);
-    Serial.println("SIM:FRASCO_VACIO:FALSE");
+    Serial.println("SIM:FRASCO_VACIO:OFF");
   } else if (command == "SIM:PASTILLAS_CARGADAS:1") {
     inputs.simulatePastillas(true);
-    Serial.println("SIM:PASTILLAS_CARGADAS:TRUE");
+    Serial.println("SIM:PASTILLAS_CARGADAS:ON");
   } else if (command == "SIM:PASTILLAS_CARGADAS:0") {
     inputs.simulatePastillas(false);
-    Serial.println("SIM:PASTILLAS_CARGADAS:FALSE");
+    Serial.println("SIM:PASTILLAS_CARGADAS:OFF");
   }
   
   // Load cell commands
@@ -108,6 +136,32 @@ void CommandProcessor::processCommand(String command) {
     stateMachine.setTargetPills(target);
     Serial.print("SET:TARGET:");
     Serial.println(target);
+  }
+  else if (command.startsWith("SET:DIVISIONS:")) {
+    int divisions = command.substring(14).toInt();
+    if (divisions > 0 && divisions <= 50) {  // Reasonable limits
+      wheel_divisions = divisions;
+      Serial.print("SET:DIVISIONS:");
+      Serial.println(wheel_divisions);
+    }
+  }
+  else if (command.startsWith("SET:LOT_SIZE:")) {
+    int size = command.substring(13).toInt();
+    if (size > 0 && size <= wheel_divisions) {  // Must be <= divisions
+      lot_size = size;
+      stateMachine.setTargetPills(lot_size);
+      // If we're at the start, reset the counter too
+      if (stateMachine.getCurrentState() == ESTADO0_INICIO) {
+        stateMachine.resetPillCount();
+      }
+      Serial.print("SET:LOT_SIZE:");
+      Serial.println(lot_size);
+      // Send updated pill count
+      Serial.print("PASTILLAS:");
+      Serial.print(stateMachine.getPillCount());
+      Serial.print("/");
+      Serial.println(lot_size);
+    }
   }
   
   // Delay configuration commands
@@ -146,6 +200,12 @@ void CommandProcessor::processCommand(String command) {
     Serial.print("SET:DELAY:DOWN:");
     Serial.println(t_elev_down);
   }
+  else if (command == "GET:DOSING") {
+    Serial.print("DOSING:DIVISIONS:");
+    Serial.print(wheel_divisions);
+    Serial.print(",LOT_SIZE:");
+    Serial.println(lot_size);
+  }
   else if (command == "GET:DELAYS") {
     Serial.print("DELAYS:");
     Serial.print("SETTLE:");
@@ -180,23 +240,21 @@ void CommandProcessor::processCommand(String command) {
 
 void CommandProcessor::printStatus() {
   Serial.print("STATUS:");
+  Serial.print("ESTADO:");
   Serial.print(stateMachine.getStateName());
-  Serial.print(",PILLS:");
+  Serial.print(",PASTILLAS:");
   Serial.print(stateMachine.getPillCount());
   Serial.print("/");
   Serial.print(stateMachine.getTargetPills());
-  Serial.print(",MODE:");
+  Serial.print(",MODO:");
   Serial.print(globalMode == MODE_REAL ? "REAL" : "SIM");
-  Serial.print(",ELEV_TOP:");
-  Serial.print(elevator.isAtTop());
-  Serial.print(",ELEV_BOT:");
-  Serial.print(elevator.isAtBottom());
-  Serial.print(",WEIGHT_OK:");
-  Serial.print(loadCell.isWeightStable());
-  Serial.print(",FRASCO:");
-  Serial.print(inputs.isFrascoVacio());
-  Serial.print(",PASTILLAS:");
-  Serial.println(inputs.isPastillasCargadas());
+  Serial.print(",PESO:");
+  Serial.print(loadCell.readWeight());
+  Serial.print(",FRASCO_VACIO:");
+  Serial.print(inputs.isFrascoVacio() ? "1" : "0");
+  Serial.print(",PASTILLAS_CARGADAS:");
+  Serial.print(inputs.isPastillasCargadas() ? "1" : "0");
+  Serial.println();
 }
 
 void CommandProcessor::printHelp() {

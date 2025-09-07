@@ -4,7 +4,7 @@ import { Console } from './components/Console'
 import { ControlPanel } from './components/ControlPanel'
 import { Header } from './components/Header'
 import { ProcessStepper } from './components/ProcessStepper'
-import { DelaySettings, Settings } from './components/Settings'
+import { DelaySettings, DosingSettings, Settings } from './components/Settings'
 import { SerialPortInfo, SystemStatus } from './types'
 import { SerialMessageParser } from './utils/serialParser'
 
@@ -32,10 +32,22 @@ function App(): React.JSX.Element {
   const [simulationMode, setSimulationMode] = useState<boolean>(true)
   const [systemStatus, setSystemStatus] = useState<SystemStatus>(INITIAL_STATUS)
   const [currentDelays, setCurrentDelays] = useState<DelaySettings | undefined>()
+  const [currentDosing, setCurrentDosing] = useState<DosingSettings | undefined>()
 
   useEffect(() => {
     // Load available serial ports
     window.serial.list().then(setPorts)
+
+    // Load settings from localStorage
+    const savedDelays = localStorage.getItem('delaySettings')
+    if (savedDelays) {
+      setCurrentDelays(JSON.parse(savedDelays))
+    }
+    
+    const savedDosing = localStorage.getItem('dosingSettings')
+    if (savedDosing) {
+      setCurrentDosing(JSON.parse(savedDosing))
+    }
 
     // Set up serial data listener
     window.serial.onData(({ path, line }) => {
@@ -50,7 +62,7 @@ function App(): React.JSX.Element {
       // Check if it's a delays response
       const delays = SerialMessageParser.parseDelays(line)
       if (delays) {
-        setCurrentDelays({
+        const newDelays = {
           settle: delays.settle || 1500,
           weight: delays.weight || 2000,
           transfer: delays.transfer || 1200,
@@ -58,7 +70,23 @@ function App(): React.JSX.Element {
           cap: delays.cap || 2500,
           elevUp: delays.up || 4000,
           elevDown: delays.down || 4000,
-        })
+        }
+        setCurrentDelays(newDelays)
+        // Save to localStorage
+        localStorage.setItem('delaySettings', JSON.stringify(newDelays))
+        return
+      }
+
+      // Check if it's a dosing response
+      const dosing = SerialMessageParser.parseDosing(line)
+      if (dosing) {
+        const newDosing = {
+          wheelDivisions: dosing.divisions || 20,
+          lotSize: dosing.lot_size || 10,
+        }
+        setCurrentDosing(newDosing)
+        // Save to localStorage
+        localStorage.setItem('dosingSettings', JSON.stringify(newDosing))
         return
       }
 
@@ -78,6 +106,15 @@ function App(): React.JSX.Element {
     const success = await window.serial.open({ path: selected, baudRate: 9600 })
     setIsConnected(success)
     if (success) {
+      // Send saved settings to controller if they exist
+      const savedDosing = localStorage.getItem('dosingSettings')
+      if (savedDosing) {
+        const dosing = JSON.parse(savedDosing)
+        await sendCommand(`SET:DIVISIONS:${dosing.wheelDivisions}`)
+        await sendCommand(`SET:LOT_SIZE:${dosing.lotSize}`)
+      }
+      
+      // Request current state from controller
       await sendCommand('STATUS')
     }
   }
@@ -110,26 +147,42 @@ function App(): React.JSX.Element {
     await window.serial.write({ path: selected, data: 'GET:DELAYS\r\n' })
   }, [selected])
 
-  const saveDelays = useCallback(
-    async (settings: DelaySettings): Promise<void> => {
+  const fetchDosing = useCallback(async (): Promise<void> => {
+    if (!selected) return
+    await window.serial.write({ path: selected, data: 'GET:DOSING\r\n' })
+  }, [selected])
+
+  const saveSettings = useCallback(
+    async (delays: DelaySettings, dosing: DosingSettings): Promise<void> => {
       if (!selected) return
-      // Send all delay configuration commands
-      const commands = [
-        `SET:DELAY:SETTLE:${settings.settle}`,
-        `SET:DELAY:WEIGHT:${settings.weight}`,
-        `SET:DELAY:TRANSFER:${settings.transfer}`,
-        `SET:DELAY:GRIND:${settings.grind}`,
-        `SET:DELAY:CAP:${settings.cap}`,
-        `SET:DELAY:UP:${settings.elevUp}`,
-        `SET:DELAY:DOWN:${settings.elevDown}`,
+      
+      // Send delay configuration commands
+      const delayCommands = [
+        `SET:DELAY:SETTLE:${delays.settle}`,
+        `SET:DELAY:WEIGHT:${delays.weight}`,
+        `SET:DELAY:TRANSFER:${delays.transfer}`,
+        `SET:DELAY:GRIND:${delays.grind}`,
+        `SET:DELAY:CAP:${delays.cap}`,
+        `SET:DELAY:UP:${delays.elevUp}`,
+        `SET:DELAY:DOWN:${delays.elevDown}`,
       ]
       
-      for (const cmd of commands) {
+      // Send dosing configuration commands
+      const dosingCommands = [
+        `SET:DIVISIONS:${dosing.wheelDivisions}`,
+        `SET:LOT_SIZE:${dosing.lotSize}`,
+      ]
+      
+      // Send all commands
+      for (const cmd of [...delayCommands, ...dosingCommands]) {
         await window.serial.write({ path: selected, data: `${cmd}\r\n` })
       }
       
-      // Update local state
-      setCurrentDelays(settings)
+      // Update local state and save to localStorage
+      setCurrentDelays(delays)
+      setCurrentDosing(dosing)
+      localStorage.setItem('delaySettings', JSON.stringify(delays))
+      localStorage.setItem('dosingSettings', JSON.stringify(dosing))
     },
     [selected]
   )
@@ -188,9 +241,11 @@ function App(): React.JSX.Element {
         <Settings
           isOpen={showSettings}
           onClose={() => setShowSettings(false)}
-          onSave={saveDelays}
+          onSave={saveSettings}
           onFetchDelays={fetchDelays}
+          onFetchDosing={fetchDosing}
           currentDelays={currentDelays}
+          currentDosing={currentDosing}
         />
       </div>
     </div>

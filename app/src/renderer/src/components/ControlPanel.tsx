@@ -78,6 +78,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               flex: 1,
               padding: '12px',
               background: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
+              filter: isStartEnabled ? undefined : 'grayscale(.65)',
               color: 'white',
               border: 'none',
               borderRadius: 8,
@@ -90,7 +91,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             }}
           >
             <Play size={16} />
-            START
+            INICIO
           </button>
           <button
             onClick={() => onSendCommand('BTN:RESET')}
@@ -113,6 +114,29 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             RESET
           </button>
         </div>
+        {simulationMode && (
+          <button
+            onClick={() => onSendCommand('RESET:ALL')}
+            style={{
+              width: '100%',
+              marginTop: 12,
+              padding: '12px',
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            <RotateCcw size={16} />
+            REINICIAR TODO
+          </button>
+        )}
       </div>
 
       {/* Sensors */}
@@ -183,10 +207,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           background: '#1a1a1a',
           borderRadius: 12,
           padding: 24,
+          opacity: simulationMode ? 1 : 0.5,
+          pointerEvents: simulationMode ? 'auto' : 'none',
         }}
       >
         <h3 style={{ margin: '0 0 20px', fontSize: 14, fontWeight: 500, color: '#718096' }}>
-          CONDICIONES
+          CONDICIONES {!simulationMode && '(Modo Real)'}
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {[

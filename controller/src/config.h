@@ -55,6 +55,14 @@
 #define T_ELEV_DOWN t_elev_down
 
 // =====================================================
+// DOSING PARAMETERS
+// =====================================================
+
+#define WHEEL_DIVISIONS_DEFAULT 20      // Number of divisions in dosing wheel
+#define LOT_SIZE_DEFAULT 10             // Default number of pills to process
+#define DEGREES_PER_DIVISION (360.0 / wheel_divisions)  // Calculated at runtime
+
+// =====================================================
 // LOAD CELL PARAMETERS
 // =====================================================
 
@@ -79,7 +87,7 @@
 // SYSTEM PARAMETERS
 // =====================================================
 
-#define HEARTBEAT_INTERVAL 1000
+#define HEARTBEAT_INTERVAL 5000  // 5 seconds to reduce traffic
 #define WEIGHT_PRINT_THRESHOLD 0.1  // Only print weight changes larger than this
 #define WEIGHT_STABLE_TIME 1000       // Time weight must be stable (ms)
 

@@ -52,7 +52,7 @@ void loop() {
   // Check for state transitions
   stateMachine.processTransitions();
   
-  // Send heartbeat
+  // Send simple heartbeat
   if (millis() - lastHeartbeat >= HEARTBEAT_INTERVAL) {
     Serial.print("HB:");
     Serial.print(stateMachine.getStateName());

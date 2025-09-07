@@ -11,12 +11,19 @@ export interface DelaySettings {
   elevDown: number
 }
 
+export interface DosingSettings {
+  wheelDivisions: number
+  lotSize: number
+}
+
 interface SettingsProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (settings: DelaySettings) => void
+  onSave: (settings: DelaySettings, dosing: DosingSettings) => void
   onFetchDelays: () => void
+  onFetchDosing: () => void
   currentDelays?: DelaySettings
+  currentDosing?: DosingSettings
 }
 
 const DEFAULT_DELAYS: DelaySettings = {
@@ -29,20 +36,29 @@ const DEFAULT_DELAYS: DelaySettings = {
   elevDown: 4000,
 }
 
+const DEFAULT_DOSING: DosingSettings = {
+  wheelDivisions: 20,
+  lotSize: 10,
+}
+
 export const Settings: React.FC<SettingsProps> = ({
   isOpen,
   onClose,
   onSave,
   onFetchDelays,
+  onFetchDosing,
   currentDelays,
+  currentDosing,
 }) => {
   const [delays, setDelays] = useState<DelaySettings>(currentDelays || DEFAULT_DELAYS)
+  const [dosing, setDosing] = useState<DosingSettings>(currentDosing || DEFAULT_DOSING)
 
   useEffect(() => {
     if (isOpen) {
       onFetchDelays()
+      onFetchDosing()
     }
-  }, [isOpen, onFetchDelays])
+  }, [isOpen, onFetchDelays, onFetchDosing])
 
   useEffect(() => {
     if (currentDelays) {
@@ -50,8 +66,14 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   }, [currentDelays])
 
+  useEffect(() => {
+    if (currentDosing) {
+      setDosing(currentDosing)
+    }
+  }, [currentDosing])
+
   const handleSave = (): void => {
-    onSave(delays)
+    onSave(delays, dosing)
     onClose()
   }
 
@@ -181,6 +203,83 @@ export const Settings: React.FC<SettingsProps> = ({
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Dosing Parameters */}
+        <h3 style={{ marginTop: 32, marginBottom: 20, fontSize: 16, fontWeight: 600 }}>
+          Parámetros de Dosificación
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div>
+            <label
+              style={{
+                display: 'block',
+                marginBottom: 8,
+                fontSize: 14,
+                color: '#e2e8f0',
+              }}
+            >
+              Divisiones de la Rueda
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="50"
+              value={dosing.wheelDivisions}
+              onChange={(e) =>
+                setDosing({ ...dosing, wheelDivisions: parseInt(e.target.value) || 1 })
+              }
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                background: '#0f0f0f',
+                border: '1px solid #2d3748',
+                borderRadius: 6,
+                color: '#e2e8f0',
+                fontSize: 14,
+              }}
+            />
+            <small style={{ color: '#718096', fontSize: 12 }}>
+              Número de posiciones en la rueda dosificadora
+            </small>
+          </div>
+          <div>
+            <label
+              style={{
+                display: 'block',
+                marginBottom: 8,
+                fontSize: 14,
+                color: '#e2e8f0',
+              }}
+            >
+              Tamaño del Lote
+            </label>
+            <input
+              type="number"
+              min="1"
+              max={dosing.wheelDivisions}
+              value={dosing.lotSize}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 1
+                setDosing({ 
+                  ...dosing, 
+                  lotSize: Math.min(value, dosing.wheelDivisions) 
+                })
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                background: '#0f0f0f',
+                border: '1px solid #2d3748',
+                borderRadius: 6,
+                color: '#e2e8f0',
+                fontSize: 14,
+              }}
+            />
+            <small style={{ color: '#718096', fontSize: 12 }}>
+              Cantidad de pastillas a procesar (máx: {dosing.wheelDivisions})
+            </small>
+          </div>
         </div>
 
         <div

@@ -53,14 +53,15 @@ class DosingWheel {
 private:
   AccelStepper motor;
   bool dosingInProgress;
-  int stepsPerPosition;
   
 public:
   DosingWheel();
   void init();
   void dispenseOne();
+  void stop();
   void run();  // Call in loop
   bool isDispensing() const { return dosingInProgress; }
+  void updateStepsPerDivision();  // Recalculate steps based on wheel_divisions
 };
 
 // =====================================================
@@ -117,10 +118,11 @@ public:
 class Solenoid {
 private:
   uint8_t pin;
+  const char* name;
   bool active;
   
 public:
-  Solenoid(uint8_t p) : pin(p), active(false) {}
+  Solenoid(uint8_t p, const char* n) : pin(p), name(n), active(false) {}
   void init();
   void activate();
   void deactivate();

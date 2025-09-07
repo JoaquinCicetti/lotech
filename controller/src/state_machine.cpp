@@ -14,13 +14,17 @@ unsigned long t_cap_push = T_CAP_PUSH_DEFAULT;
 unsigned long t_elev_up = T_ELEV_UP_DEFAULT;
 unsigned long t_elev_down = T_ELEV_DOWN_DEFAULT;
 
+// Global dosing parameters
+int wheel_divisions = WHEEL_DIVISIONS_DEFAULT;
+int lot_size = LOT_SIZE_DEFAULT;
+
 StateMachine::StateMachine() {
   currentState = ESTADO0_INICIO;
   previousState = ESTADO0_INICIO;
   stateJustChanged = false;
   stateTimer = 0;
   pastillasCount = 0;
-  targetPastillas = 20;
+  targetPastillas = lot_size;
 }
 
 void StateMachine::changeState(State newState) {
@@ -30,18 +34,27 @@ void StateMachine::changeState(State newState) {
     stateTimer = millis();
     stateJustChanged = true;
     
-    Serial.print("Cambio de estado:");
-    Serial.print(getStateName(previousState));
-    Serial.print("->");
+    Serial.print("ESTADO:");
     Serial.println(getStateName(newState));
+    Serial.flush();  // Ensure complete transmission
     
-    // Report expected delay for new state
+    // Send pill count for relevant states
+    if (newState == ESTADO2_DOSIFICACION || newState == ESTADO4_TRASPASO || newState == ESTADO3_PESAJE) {
+      Serial.print("PASTILLAS:");
+      Serial.print(pastillasCount);
+      Serial.print("/");
+      Serial.println(targetPastillas);
+      Serial.flush();
+    }
+    
+    // Report expected delay for new state (for loading animation)
     unsigned long expectedDelay = getExpectedStateDelay(newState);
     if (expectedDelay > 0) {
       Serial.print("PROGRESO:");
       Serial.print(getStateName(newState));
       Serial.print(",");
       Serial.println(expectedDelay);
+      Serial.flush();
     }
   }
 }
@@ -91,6 +104,14 @@ void StateMachine::executeStateEntry() {
       grinder.stop();
       transferSolenoid.deactivate();
       capSolenoid.deactivate();
+      
+      // Only reset if coming from ESTADO8_RETIRO (completed cycle)
+      if (previousState == ESTADO8_RETIRO) {
+        inputs.simulateFrasco(true);  // Container empty for new cycle
+        inputs.simulatePastillas(true);  // Pills loaded for new cycle
+        Serial.println("SENSORES:FRASCO_VACIO:1");
+        Serial.println("SENSORES:PASTILLAS_CARGADAS:1");
+      }
       break;
       
     case ESTADO1_ASCENSOR:
@@ -113,10 +134,13 @@ void StateMachine::executeStateEntry() {
     case ESTADO4_TRASPASO:
       // Only activate transfer solenoid if elevator is up
       if (!elevator.isAtTop()) {
-        Serial.println("ERROR: Elevator debe estar arriba para traspasar!");
+        Serial.println("ERROR:ELEVADOR_DEBE_ESTAR_ARRIBA");
         changeState(ESTADO1_ASCENSOR);  // Go back to elevating
       } else {
         transferSolenoid.activate();
+        // Clear weight stable since pill is being removed
+        loadCell.simulateWeight(false);
+        Serial.println("SIM:WEIGHT_STABLE:OFF");
       }
       break;
       
@@ -166,9 +190,8 @@ void StateMachine::executeStateContinuous() {
         // Print significant weight changes
         static float lastPrintedWeight = 0;
         if (abs(weight - lastPrintedWeight) > WEIGHT_PRINT_THRESHOLD) {
-          Serial.print("Peso:");
-          Serial.print(weight, 2);
-          Serial.println(" g");
+          Serial.print("PESO:");
+          Serial.println(weight, 2);
           lastPrintedWeight = weight;
         }
       }
@@ -224,7 +247,7 @@ void StateMachine::processTransitions() {
         transferSolenoid.deactivate();
         pastillasCount++;
         
-        Serial.print("Contador de pastillas:");
+        Serial.print("PASTILLAS:");
         Serial.print(pastillasCount);
         Serial.print("/");
         Serial.println(targetPastillas);
@@ -266,7 +289,7 @@ void StateMachine::processTransitions() {
       // Wait for RESET button
       if (inputs.isResetPressed()) {
         pastillasCount = 0;
-        Serial.println("Contador de pastillas:0/0");
+        Serial.println("PASTILLAS:0/0");
         changeState(ESTADO0_INICIO);
       }
       break;

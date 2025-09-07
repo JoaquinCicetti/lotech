@@ -6,8 +6,8 @@ Elevator elevator;
 DosingWheel dosingWheel;
 LoadCell loadCell;
 Grinder grinder;
-Solenoid transferSolenoid(SOLENOID1_PIN);
-Solenoid capSolenoid(SOLENOID2_PIN);
+Solenoid transferSolenoid(SOLENOID1_PIN, "TRASPASO");
+Solenoid capSolenoid(SOLENOID2_PIN, "TAPA");
 InputSystem inputs;
 ControlMode globalMode = MODE_SIMULATION;
 
@@ -40,7 +40,7 @@ void Elevator::moveUp() {
   movingDown = false;
   motor.setSpeed(ELEVATOR_SPEED);
   moveStartTime = millis();
-  Serial.println("ACCION:SUBIR_ELEVADOR");
+  Serial.println("ACCION:ELEVADOR_SUBIENDO");
 }
 
 void Elevator::moveDown() {
@@ -48,14 +48,14 @@ void Elevator::moveDown() {
   movingDown = true;
   motor.setSpeed(-ELEVATOR_SPEED);
   moveStartTime = millis();
-  Serial.println("ACCION:BAJAR_ELEVADOR");
+  Serial.println("ACCION:ELEVADOR_BAJANDO");
 }
 
 void Elevator::stop() {
   movingUp = false;
   movingDown = false;
   motor.setSpeed(0);
-  Serial.println("ACCION:DETENER_ELEVADOR");
+  Serial.println("ACCION:ELEVADOR_DETENIDO");
 }
 
 void Elevator::run() {
@@ -88,7 +88,7 @@ void Elevator::run() {
         atTop = true;
         atBottom = false;
         stop();
-        Serial.println("ESTADO:ELEVADOR_ARRIBA");
+        Serial.println("ELEVADOR:ARRIBA");
       }
     } else if (movingDown) {
       motor.runSpeed();
@@ -96,7 +96,7 @@ void Elevator::run() {
         atTop = false;
         atBottom = true;
         stop();
-        Serial.println("ESTADO:ELEVADOR_ABAJO");
+        Serial.println("ELEVADOR:ABAJO");
       }
     }
   }
@@ -134,7 +134,6 @@ void Elevator::simulatePosition(bool top, bool bottom) {
 
 DosingWheel::DosingWheel() : motor(AccelStepper::DRIVER, MOTOR2_STEP_PIN, MOTOR2_DIR_PIN) {
   dosingInProgress = false;
-  stepsPerPosition = (STEPS_PER_REVOLUTION * MICROSTEPS) / 21;  // 21 positions
 }
 
 void DosingWheel::init() {
@@ -149,9 +148,19 @@ void DosingWheel::init() {
 }
 
 void DosingWheel::dispenseOne() {
-  motor.move(stepsPerPosition);
-  dosingInProgress = true;
-  Serial.println("ACCION:DOSIFICAR_PASO");
+  // Only dispense if not already dispensing
+  if (!dosingInProgress) {
+    // Calculate steps based on current wheel divisions
+    int stepsPerDivision = (STEPS_PER_REVOLUTION * MICROSTEPS) / wheel_divisions;
+    motor.move(stepsPerDivision);
+    dosingInProgress = true;
+    Serial.println("ACCION:DOSIFICANDO");
+  }
+}
+
+void DosingWheel::stop() {
+  motor.stop();
+  dosingInProgress = false;
 }
 
 void DosingWheel::run() {
@@ -159,6 +168,11 @@ void DosingWheel::run() {
   if (motor.distanceToGo() == 0) {
     dosingInProgress = false;
   }
+}
+
+void DosingWheel::updateStepsPerDivision() {
+  // This can be called when wheel_divisions changes
+  // No need to store it, we calculate on demand in dispenseOne()
 }
 
 // =====================================================
@@ -251,13 +265,13 @@ void Grinder::init() {
 void Grinder::start() {
   digitalWrite(MOTOR3_RELAY_PIN, HIGH);
   running = true;
-  Serial.println("ACCION:ENCENDER_MOLINILLO");
+  Serial.println("ACCION:MOLIENDO");
 }
 
 void Grinder::stop() {
   digitalWrite(MOTOR3_RELAY_PIN, LOW);
   running = false;
-  Serial.println("ACCION:APAGAR_MOLINILLO");
+  Serial.println("ACCION:MOLEDOR_DETENIDO");
 }
 
 // =====================================================
@@ -273,15 +287,17 @@ void Solenoid::init() {
 void Solenoid::activate() {
   digitalWrite(pin, HIGH);
   active = true;
-  Serial.print("ACCION:ENCENDER_SOLENOIDE_");
-  Serial.println(pin);
+  Serial.print("ACCION:");
+  Serial.print(name);
+  Serial.println("_ACTIVADO");
 }
 
 void Solenoid::deactivate() {
   digitalWrite(pin, LOW);
   active = false;
-  Serial.print("ACCION:APAGAR_SOLENOIDE_");
-  Serial.println(pin);
+  Serial.print("ACCION:");
+  Serial.print(name);
+  Serial.println("_DESACTIVADO");
 }
 
 // =====================================================
