@@ -1,0 +1,228 @@
+#include "commands.h"
+#include "hardware.h"
+#include "state_machine.h"
+#include "config.h"
+
+CommandProcessor commands;
+
+void CommandProcessor::processSerialInput() {
+  if (Serial.available() > 0) {
+    char incomingChar = Serial.read();
+    
+    if (incomingChar == '\n' || incomingChar == '\r') {
+      if (inputBuffer.length() > 0) {
+        processCommand(inputBuffer);
+        inputBuffer = "";
+      }
+    } else {
+      inputBuffer += incomingChar;
+    }
+  }
+}
+
+void CommandProcessor::processCommand(String command) {
+  command.trim();
+  
+  // Mode commands
+  if (command == "MODE:REAL") {
+    setGlobalMode(MODE_REAL);
+  } else if (command == "MODE:SIM") {
+    setGlobalMode(MODE_SIMULATION);
+  }
+  
+  // Button simulation commands
+  else if (command == "BTN:START") {
+    inputs.simulateStart(true);
+    Serial.println("BTN:START:PRESSED");
+  } else if (command == "BTN:RESET") {
+    inputs.simulateReset(true);
+    Serial.println("BTN:RESET:PRESSED");
+  }
+  
+  // Elevator position simulation
+  else if (command == "SIM:POS_ALTA:1") {
+    elevator.simulatePosition(true, false);
+    Serial.println("SIM:POS_ALTA:ON");
+  } else if (command == "SIM:POS_ALTA:0") {
+    elevator.simulatePosition(false, elevator.isAtBottom());
+    Serial.println("SIM:POS_ALTA:OFF");
+  } else if (command == "SIM:POS_BAJA:1") {
+    elevator.simulatePosition(false, true);
+    Serial.println("SIM:POS_BAJA:ON");
+  } else if (command == "SIM:POS_BAJA:0") {
+    elevator.simulatePosition(elevator.isAtTop(), false);
+    Serial.println("SIM:POS_BAJA:OFF");
+  }
+  
+  // Weight simulation
+  else if (command == "SIM:WEIGHT_STABLE:1") {
+    loadCell.simulateWeight(true);
+    Serial.println("SIM:WEIGHT_STABLE:ON");
+  } else if (command == "SIM:WEIGHT_STABLE:0") {
+    loadCell.simulateWeight(false);
+    Serial.println("SIM:WEIGHT_STABLE:OFF");
+  }
+  
+  // Condition simulation
+  else if (command == "SIM:FRASCO_VACIO:1") {
+    inputs.simulateFrasco(true);
+    Serial.println("SIM:FRASCO_VACIO:TRUE");
+  } else if (command == "SIM:FRASCO_VACIO:0") {
+    inputs.simulateFrasco(false);
+    Serial.println("SIM:FRASCO_VACIO:FALSE");
+  } else if (command == "SIM:PASTILLAS_CARGADAS:1") {
+    inputs.simulatePastillas(true);
+    Serial.println("SIM:PASTILLAS_CARGADAS:TRUE");
+  } else if (command == "SIM:PASTILLAS_CARGADAS:0") {
+    inputs.simulatePastillas(false);
+    Serial.println("SIM:PASTILLAS_CARGADAS:FALSE");
+  }
+  
+  // Load cell commands
+  else if (command == "SCALE:TARE") {
+    loadCell.tare();
+  } else if (command.startsWith("SCALE:CAL:")) {
+    float knownWeight = command.substring(10).toFloat();
+    loadCell.calibrate(knownWeight);
+  } else if (command == "SCALE:READ") {
+    float weight = loadCell.readWeight();
+    Serial.print("WEIGHT:");
+    Serial.print(weight, 2);
+    Serial.println(" g");
+  } else if (command == "SCALE:ENABLE") {
+    loadCell.setMode(MODE_REAL);
+    Serial.println("SCALE:ENABLED");
+  } else if (command == "SCALE:DISABLE") {
+    loadCell.setMode(MODE_SIMULATION);
+    Serial.println("SCALE:DISABLED");
+  } else if (command.startsWith("SET:WEIGHT_THRESHOLD:")) {
+    float threshold = command.substring(21).toFloat();
+    loadCell.setThreshold(threshold);
+    Serial.print("SET:WEIGHT_THRESHOLD:");
+    Serial.println(threshold);
+  }
+  
+  // Parameter commands
+  else if (command.startsWith("SET:TARGET:")) {
+    int target = command.substring(11).toInt();
+    stateMachine.setTargetPills(target);
+    Serial.print("SET:TARGET:");
+    Serial.println(target);
+  }
+  
+  // Delay configuration commands
+  else if (command.startsWith("SET:DELAY:SETTLE:")) {
+    t_step_settle = command.substring(17).toInt();
+    Serial.print("SET:DELAY:SETTLE:");
+    Serial.println(t_step_settle);
+  }
+  else if (command.startsWith("SET:DELAY:WEIGHT:")) {
+    t_weight_settle = command.substring(17).toInt();
+    Serial.print("SET:DELAY:WEIGHT:");
+    Serial.println(t_weight_settle);
+  }
+  else if (command.startsWith("SET:DELAY:TRANSFER:")) {
+    t_transfer = command.substring(19).toInt();
+    Serial.print("SET:DELAY:TRANSFER:");
+    Serial.println(t_transfer);
+  }
+  else if (command.startsWith("SET:DELAY:GRIND:")) {
+    t_grind = command.substring(16).toInt();
+    Serial.print("SET:DELAY:GRIND:");
+    Serial.println(t_grind);
+  }
+  else if (command.startsWith("SET:DELAY:CAP:")) {
+    t_cap_push = command.substring(14).toInt();
+    Serial.print("SET:DELAY:CAP:");
+    Serial.println(t_cap_push);
+  }
+  else if (command.startsWith("SET:DELAY:UP:")) {
+    t_elev_up = command.substring(13).toInt();
+    Serial.print("SET:DELAY:UP:");
+    Serial.println(t_elev_up);
+  }
+  else if (command.startsWith("SET:DELAY:DOWN:")) {
+    t_elev_down = command.substring(15).toInt();
+    Serial.print("SET:DELAY:DOWN:");
+    Serial.println(t_elev_down);
+  }
+  else if (command == "GET:DELAYS") {
+    Serial.print("DELAYS:");
+    Serial.print("SETTLE:");
+    Serial.print(t_step_settle);
+    Serial.print(",WEIGHT:");
+    Serial.print(t_weight_settle);
+    Serial.print(",TRANSFER:");
+    Serial.print(t_transfer);
+    Serial.print(",GRIND:");
+    Serial.print(t_grind);
+    Serial.print(",CAP:");
+    Serial.print(t_cap_push);
+    Serial.print(",UP:");
+    Serial.print(t_elev_up);
+    Serial.print(",DOWN:");
+    Serial.println(t_elev_down);
+  }
+  
+  // Status and help
+  else if (command == "STATUS") {
+    printStatus();
+  } else if (command == "HELP") {
+    printHelp();
+  }
+  
+  // Unknown command
+  else {
+    Serial.print("UNKNOWN:");
+    Serial.println(command);
+  }
+}
+
+void CommandProcessor::printStatus() {
+  Serial.print("STATUS:");
+  Serial.print(stateMachine.getStateName());
+  Serial.print(",PILLS:");
+  Serial.print(stateMachine.getPillCount());
+  Serial.print("/");
+  Serial.print(stateMachine.getTargetPills());
+  Serial.print(",MODE:");
+  Serial.print(globalMode == MODE_REAL ? "REAL" : "SIM");
+  Serial.print(",ELEV_TOP:");
+  Serial.print(elevator.isAtTop());
+  Serial.print(",ELEV_BOT:");
+  Serial.print(elevator.isAtBottom());
+  Serial.print(",WEIGHT_OK:");
+  Serial.print(loadCell.isWeightStable());
+  Serial.print(",FRASCO:");
+  Serial.print(inputs.isFrascoVacio());
+  Serial.print(",PASTILLAS:");
+  Serial.println(inputs.isPastillasCargadas());
+}
+
+void CommandProcessor::printHelp() {
+  Serial.println("=== COMANDOS DE MODO ===");
+  Serial.println("MODE:REAL - Usar sensores/temporizadores reales");
+  Serial.println("MODE:SIM - Usar simulacion (por defecto)");
+  Serial.println("");
+  Serial.println("=== COMANDOS DE CONTROL ===");
+  Serial.println("BTN:START - Pulsar boton de inicio");
+  Serial.println("BTN:RESET - Pulsar boton de reinicio");
+  Serial.println("");
+  Serial.println("=== COMANDOS DE SIMULACION ===");
+  Serial.println("SIM:POS_ALTA:1/0 - Establecer elevador en posicion alta");
+  Serial.println("SIM:POS_BAJA:1/0 - Establecer elevador en posicion baja");
+  Serial.println("SIM:WEIGHT_STABLE:1/0 - Establecer peso estable");
+  Serial.println("SIM:FRASCO_VACIO:1/0 - Establecer frasco vacio");
+  Serial.println("SIM:PASTILLAS_CARGADAS:1/0 - Establecer pastillas cargadas");
+  Serial.println("");
+  Serial.println("=== COMANDOS DE CELDA DE CARGA ===");
+  Serial.println("SCALE:ENABLE/DISABLE - Usar celda de carga real/simulada");
+  Serial.println("SCALE:TARE - Poner a cero la balanza");
+  Serial.println("SCALE:CAL:peso - Calibrar con peso conocido");
+  Serial.println("SCALE:READ - Leer peso actual");
+  Serial.println("SET:WEIGHT_THRESHOLD:n - Establecer umbral de deteccion de peso");
+  Serial.println("");
+  Serial.println("=== COMANDOS DE PARAMETROS ===");
+  Serial.println("SET:TARGET:n - Establecer cantidad objetivo de pastillas");
+  Serial.println("STATUS - Obtener estado actual");
+}

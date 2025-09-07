@@ -1,0 +1,58 @@
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Arduino build files
+arduino/build/
+arduino/libraries/*/examples/
+*.hex
+*.elf
+*.o
+
+# Desktop application build files
+desktop-app/build/
+desktop-app/dist/
+desktop-app/node_modules/
+desktop-app/*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.bak
+*.backup
+
+# Configuration files (may contain sensitive data)
+config.local.*
+.env.local
+.env.development.local
+.env.production.local
+
+# Database files (if using local database)
+*.db
+*.sqlite
+*.sqlite3
+
+# Documentation build files
+docs/_build/
+docs/site/
+
+# Test coverage reports
+coverage/
+*.coverage
+
+# Hardware-specific files
+hardware/datasheets/*.pdf
+hardware/temp/
