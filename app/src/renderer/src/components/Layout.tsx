@@ -1,7 +1,7 @@
-import React from 'react'
 import { Settings2, Terminal } from 'lucide-react'
-import { Button } from './ui/button'
+import React from 'react'
 import { cn } from '../lib/utils'
+import { Button } from './ui/button'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -25,70 +25,58 @@ export const Layout: React.FC<LayoutProps> = (props) => {
   } = props
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden relative">
+    <div className="bg-background relative flex h-screen overflow-hidden">
       {/* Left Sidebar */}
       <div
         className={cn(
-          "transition-all duration-300 border-r border-border bg-card",
-          showLeftSidebar ? "w-80" : "w-0"
+          'border-border bg-card border-r transition-all duration-300',
+          showLeftSidebar ? 'w-80' : 'w-0'
         )}
       >
-        {showLeftSidebar && (
-          <div className="h-full overflow-y-auto">
-            {leftSidebar}
-          </div>
-        )}
+        {showLeftSidebar && <div className="h-full overflow-y-auto">{leftSidebar}</div>}
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-auto relative">
+      <div className="relative flex-1 overflow-auto">
         {children}
-        
+
         {/* Left Sidebar Toggle - Inside main content */}
         <Button
           onClick={onToggleLeftSidebar}
-          variant={showLeftSidebar ? "ghost" : "secondary"}
+          variant={showLeftSidebar ? 'ghost' : 'secondary'}
           size="sm"
           className={cn(
-            "absolute top-4 z-40 shadow-lg gap-1 transition-all",
-            showLeftSidebar ? "left-2" : "left-4"
+            'absolute top-4 z-40 gap-1 shadow-lg transition-all',
+            showLeftSidebar ? 'left-2' : 'left-4'
           )}
         >
           <Settings2 className="h-4 w-4" />
-          <span className="hidden sm:inline">
-            {showLeftSidebar ? "◀" : "Control"}
-          </span>
+          <span className="hidden sm:inline">{showLeftSidebar ? '◀' : 'Control'}</span>
         </Button>
-        
+
         {/* Right Sidebar Toggle - Inside main content */}
         <Button
           onClick={onToggleRightSidebar}
-          variant={showRightSidebar ? "ghost" : "secondary"}
+          variant={showRightSidebar ? 'ghost' : 'secondary'}
           size="sm"
           className={cn(
-            "absolute top-4 z-40 shadow-lg gap-1 transition-all",
-            showRightSidebar ? "right-2" : "right-4"
+            'absolute top-4 z-40 gap-1 shadow-lg transition-all',
+            showRightSidebar ? 'right-2' : 'right-4'
           )}
         >
           <Terminal className="h-4 w-4" />
-          <span className="hidden sm:inline">
-            {showRightSidebar ? "▶" : "Consola"}
-          </span>
+          <span className="hidden sm:inline">{showRightSidebar ? '▶' : 'Consola'}</span>
         </Button>
       </div>
 
       {/* Right Sidebar */}
       <div
         className={cn(
-          "transition-all duration-300 border-l border-border bg-card",
-          showRightSidebar ? "w-96" : "w-0"
+          'border-border bg-card border-l transition-all duration-300',
+          showRightSidebar ? 'w-96' : 'w-0'
         )}
       >
-        {showRightSidebar && (
-          <div className="h-full overflow-y-auto">
-            {rightSidebar}
-          </div>
-        )}
+        {showRightSidebar && <div className="h-full overflow-y-auto">{rightSidebar}</div>}
       </div>
     </div>
   )

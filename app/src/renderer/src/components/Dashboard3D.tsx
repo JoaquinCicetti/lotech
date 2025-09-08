@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { useAppStore } from '../store/appStore'
-import { SystemStatus } from '../types'
+import { MachineState, SystemStatus } from '../types'
 import { Scene3D } from './3d/Scene3D'
 import { StatusCard } from './StatusCard'
 
@@ -15,16 +15,19 @@ export const Dashboard3D: React.FC<Dashboard3DProps> = (props) => {
 
   // Sync with app state
   useEffect(() => {
-    const isConnected = systemStatus.state !== '0_INICIO'
+    const isConnected = systemStatus.state !== MachineState.INICIO
     if (store.isConnected !== isConnected) {
       store.setConnected(isConnected)
     }
+
     if (store.machineState !== systemStatus.state) {
       store.setMachineState(systemStatus.state)
     }
+
     // Simulate some load cell readings based on weight
     if (systemStatus?.weight ?? 0 > 0) {
       const baseWeight = (systemStatus?.weight ?? 0) / 9
+
       for (let i = 0; i < 9; i++) {
         store.setLoadCellReading(i, Math.random() * baseWeight * 2)
       }

@@ -17,9 +17,9 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = (props) => {
 
   return (
     <Html
-      position={[0, 4, 0]}
-      center
+      position={[2, 5, 0]}
       distanceFactor={10}
+      center
       style={{
         width: '300px',
         pointerEvents: 'none',

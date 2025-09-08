@@ -1,8 +1,9 @@
+import { MachineState } from '@renderer/types'
 import { create } from 'zustand'
 
-interface MachineState {
+interface SystemState {
   isConnected: boolean
-  machineState: string
+  machineState: MachineState
   loadCellReadings: number[]
   motorsStatus: {
     motor1: boolean
@@ -14,15 +15,15 @@ interface MachineState {
     solenoid3: boolean
   }
   setConnected: (connected: boolean) => void
-  setMachineState: (state: string) => void
+  setMachineState: (state: MachineState) => void
   setLoadCellReading: (index: number, weight: number) => void
   setMotorStatus: (motor: 'motor1' | 'motor2', status: boolean) => void
   setSolenoidStatus: (solenoid: 'solenoid1' | 'solenoid2' | 'solenoid3', status: boolean) => void
 }
 
-export const useAppStore = create<MachineState>((set) => ({
+export const useAppStore = create<SystemState>((set) => ({
   isConnected: false,
-  machineState: 'IDLE',
+  machineState: MachineState.INICIO,
   loadCellReadings: Array(9).fill(0),
   motorsStatus: {
     motor1: false,
@@ -35,12 +36,14 @@ export const useAppStore = create<MachineState>((set) => ({
   },
   setConnected: (connected) => set({ isConnected: connected }),
   setMachineState: (state) => set({ machineState: state }),
-  setLoadCellReading: (index, weight) =>
-    set((state) => {
+  setLoadCellReading: (index, weight) => {
+    console.log('loadcell', index, weight)
+    return set((state) => {
       const newReadings = [...state.loadCellReadings]
       newReadings[index] = weight
       return { loadCellReadings: newReadings }
-    }),
+    })
+  },
   setMotorStatus: (motor, status) =>
     set((state) => ({
       motorsStatus: { ...state.motorsStatus, [motor]: status },

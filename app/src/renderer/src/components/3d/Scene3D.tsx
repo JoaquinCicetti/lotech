@@ -5,6 +5,7 @@ import { SystemStatus } from '../../types'
 import { CameraController } from './CameraController'
 import { Lighting } from './Lighting'
 import { MachineModel } from './MachineModel'
+import { StatusDisplay } from './StatusDisplay'
 
 interface Scene3DProps {
   systemStatus: SystemStatus
@@ -16,7 +17,7 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
 
   return (
     <div className="from-background to-muted/20 relative h-[100vh] w-full overflow-hidden rounded-lg bg-gradient-to-b">
-      <Canvas shadows camera={{ position: [0, 0, 0], fov: 50 }}>
+      <Canvas shadows camera={{ fov: 80 }}>
         <Suspense fallback={null}>
           <CameraController autoRotate={false} />
           <Lighting />
@@ -35,6 +36,12 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
             infiniteGrid
           />
 
+          <StatusDisplay
+            state={systemStatus.state}
+            pillCount={systemStatus.pillCount}
+            targetPills={systemStatus.targetPills}
+            weight={systemStatus.weight}
+          />
           {/* Use SimpleMachine instead of MachineModel for now */}
           {/* <SimpleMachine systemStatus={systemStatus} /> */}
           <MachineModel systemStatus={systemStatus} />

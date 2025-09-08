@@ -30,6 +30,7 @@ export default tseslint.config(
       'react/no-unknown-property': [
         'error',
         {
+          // R3F props
           ignore: [
             'position',
             'args',
@@ -45,6 +46,10 @@ export default tseslint.config(
             'metalness',
             'roughness',
             'transparent',
+            'object',
+            'attach',
+            'args',
+            'dispose',
           ],
         },
       ],

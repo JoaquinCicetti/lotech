@@ -75,6 +75,7 @@ function App(): React.JSX.Element {
           elevDown: delays.down || 4000,
         }
         setCurrentDelays(newDelays)
+
         // Save to localStorage
         localStorage.setItem('delaySettings', JSON.stringify(newDelays))
         return
@@ -107,6 +108,7 @@ function App(): React.JSX.Element {
   const connect = async (): Promise<void> => {
     if (!selected) return
     const success = await window.serial.open({ path: selected, baudRate: 9600 })
+
     setIsConnected(success)
     if (success) {
       // Send saved settings to controller if they exist
@@ -184,6 +186,7 @@ function App(): React.JSX.Element {
       // Update local state and save to localStorage
       setCurrentDelays(delays)
       setCurrentDosing(dosing)
+
       localStorage.setItem('delaySettings', JSON.stringify(delays))
       localStorage.setItem('dosingSettings', JSON.stringify(dosing))
     },
@@ -237,7 +240,7 @@ function App(): React.JSX.Element {
         {currentView === '3d' ? (
           <Dashboard3D systemStatus={systemStatus} onSendCommand={sendCommand} />
         ) : (
-          <div className="mx-auto max-w-6xl space-y-6">
+          <div className="mx-auto max-w-6xl space-y-6 py-10">
             <ProcessStepper
               currentState={systemStatus.state}
               pillCount={systemStatus.pillCount}
