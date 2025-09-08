@@ -21,10 +21,13 @@
     "build:linux": "electron-vite build && electron-builder --linux"
   },
   "build": {
+    "productName": "Lotech",
+    "appId": "com.joaquincicetti.lotech",
     "win": {
       "target": [
         "nsis"
       ],
+      "icon": "build/icon.ico",
       "artifactName": "${productName}-${version}-setup-${arch}.${ext}"
     }
   },
