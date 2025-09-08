@@ -4,3 +4,10 @@ pnpm-lock.yaml
 LICENSE.md
 tsconfig.json
 tsconfig.*.json
+node_modules
+.next
+build
+coverage
+.git
+*.min.js
+*.min.css

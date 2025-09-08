@@ -58,7 +58,7 @@
 // DOSING PARAMETERS
 // =====================================================
 
-#define WHEEL_DIVISIONS_DEFAULT 20      // Number of divisions in dosing wheel
+#define WHEEL_DIVISIONS_DEFAULT 21      // Number of divisions in dosing wheel
 #define LOT_SIZE_DEFAULT 10             // Default number of pills to process
 #define DEGREES_PER_DIVISION (360.0 / wheel_divisions)  // Calculated at runtime
 

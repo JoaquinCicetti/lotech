@@ -11,13 +11,9 @@ void setup() {
   while (!Serial) {
     ;
   }
-  
-  Serial.println("=====================================");
-  Serial.println("LOTECH CONTROLLER - ADR-003 MEF");
-  Serial.println("=====================================");
-  
+
   // Initialize all hardware modules
-  Serial.println("Inicializando hardware...");
+  Serial.println("Inicializando");
   
   elevator.init();
   dosingWheel.init();
@@ -29,11 +25,10 @@ void setup() {
   // Set default mode
   setGlobalMode(MODE_SIMULATION);
   
-  Serial.println("Sistema listo!");
   Serial.println("Escribe HELP para listar los comandos");
+
   Serial.print("Estado actual: ");
   Serial.println(stateMachine.getStateName());
-  Serial.println("Modo: SIM (MODE:REAL para utilizar hardware)");
 }
 
 void loop() {

@@ -1,5 +1,5 @@
 import { Wifi } from 'lucide-react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { SerialPortInfo } from '../types'
 
 interface ConnectionScreenProps {
@@ -9,12 +9,41 @@ interface ConnectionScreenProps {
   onConnect: () => void
 }
 
+const COMMON_PORT_PATTERNS = [
+  'usbserial',
+  'usbmodem',
+  'COM3',
+  'COM4',
+  'COM5',
+  'ttyUSB',
+  'ttyACM',
+  'Arduino',
+  'MEGA'
+]
+
 export const ConnectionScreen: React.FC<ConnectionScreenProps> = ({
   ports,
   selected,
   onSelectPort,
   onConnect,
 }) => {
+  // Auto-select common Arduino port on mount
+  useEffect(() => {
+    if (!selected && ports.length > 0) {
+      // Try to find an Arduino Mega or common USB serial port
+      const arduinoPort = ports.find(p => {
+        const portStr = (p.friendlyName || p.path).toLowerCase()
+        return COMMON_PORT_PATTERNS.some(pattern => portStr.includes(pattern.toLowerCase()))
+      })
+      
+      if (arduinoPort) {
+        onSelectPort(arduinoPort.path)
+      } else if (ports.length === 1) {
+        // If only one port available, auto-select it
+        onSelectPort(ports[0].path)
+      }
+    }
+  }, [ports, selected, onSelectPort])
   return (
     <div
       style={{

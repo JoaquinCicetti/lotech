@@ -140,14 +140,7 @@ export const ProcessStepper: React.FC<ProcessStepperProps> = ({
                       transform: 'rotate(-90deg)',
                     }}
                   >
-                    <circle
-                      cx="30"
-                      cy="30"
-                      r="27"
-                      fill="none"
-                      stroke="#2d3748"
-                      strokeWidth="2"
-                    />
+                    <circle cx="30" cy="30" r="27" fill="none" stroke="#2d3748" strokeWidth="2" />
                     <circle
                       cx="30"
                       cy="30"

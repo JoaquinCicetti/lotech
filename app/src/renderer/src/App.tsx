@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ConnectionScreen } from './components/ConnectionScreen'
-import { Console } from './components/Console'
+import { ConsoleOverlay } from './components/ConsoleOverlay'
 import { ControlPanel } from './components/ControlPanel'
+import { Dashboard3D } from './components/Dashboard3D'
 import { Header } from './components/Header'
 import { ProcessStepper } from './components/ProcessStepper'
-import { DelaySettings, DosingSettings, Settings } from './components/Settings'
+import { DelaySettings, DosingSettings, Settings, ViewSettings } from './components/Settings'
 import { SerialPortInfo, SystemStatus } from './types'
 import { SerialMessageParser } from './utils/serialParser'
 
@@ -33,6 +34,7 @@ function App(): React.JSX.Element {
   const [systemStatus, setSystemStatus] = useState<SystemStatus>(INITIAL_STATUS)
   const [currentDelays, setCurrentDelays] = useState<DelaySettings | undefined>()
   const [currentDosing, setCurrentDosing] = useState<DosingSettings | undefined>()
+  const [currentView, setCurrentView] = useState<ViewSettings>({ viewMode: 'standard' })
 
   useEffect(() => {
     // Load available serial ports
@@ -43,10 +45,15 @@ function App(): React.JSX.Element {
     if (savedDelays) {
       setCurrentDelays(JSON.parse(savedDelays))
     }
-    
+
     const savedDosing = localStorage.getItem('dosingSettings')
     if (savedDosing) {
       setCurrentDosing(JSON.parse(savedDosing))
+    }
+
+    const savedView = localStorage.getItem('viewSettings')
+    if (savedView) {
+      setCurrentView(JSON.parse(savedView))
     }
 
     // Set up serial data listener
@@ -113,7 +120,7 @@ function App(): React.JSX.Element {
         await sendCommand(`SET:DIVISIONS:${dosing.wheelDivisions}`)
         await sendCommand(`SET:LOT_SIZE:${dosing.lotSize}`)
       }
-      
+
       // Request current state from controller
       await sendCommand('STATUS')
     }
@@ -153,9 +160,9 @@ function App(): React.JSX.Element {
   }, [selected])
 
   const saveSettings = useCallback(
-    async (delays: DelaySettings, dosing: DosingSettings): Promise<void> => {
+    async (delays: DelaySettings, dosing: DosingSettings, view: ViewSettings): Promise<void> => {
       if (!selected) return
-      
+
       // Send delay configuration commands
       const delayCommands = [
         `SET:DELAY:SETTLE:${delays.settle}`,
@@ -166,23 +173,25 @@ function App(): React.JSX.Element {
         `SET:DELAY:UP:${delays.elevUp}`,
         `SET:DELAY:DOWN:${delays.elevDown}`,
       ]
-      
+
       // Send dosing configuration commands
       const dosingCommands = [
         `SET:DIVISIONS:${dosing.wheelDivisions}`,
         `SET:LOT_SIZE:${dosing.lotSize}`,
       ]
-      
+
       // Send all commands
       for (const cmd of [...delayCommands, ...dosingCommands]) {
         await window.serial.write({ path: selected, data: `${cmd}\r\n` })
       }
-      
+
       // Update local state and save to localStorage
       setCurrentDelays(delays)
       setCurrentDosing(dosing)
+      setCurrentView(view)
       localStorage.setItem('delaySettings', JSON.stringify(delays))
       localStorage.setItem('dosingSettings', JSON.stringify(dosing))
+      localStorage.setItem('viewSettings', JSON.stringify(view))
     },
     [selected]
   )
@@ -221,23 +230,29 @@ function App(): React.JSX.Element {
           onDisconnect={disconnect}
         />
 
-        <ProcessStepper
-          currentState={systemStatus.state}
-          pillCount={systemStatus.pillCount}
-          targetPills={systemStatus.targetPills}
-          stateProgress={systemStatus.stateProgress}
-        />
+        {currentView.viewMode === '3d' ? (
+          <Dashboard3D systemStatus={systemStatus} onSendCommand={sendCommand} />
+        ) : (
+          <>
+            <ProcessStepper
+              currentState={systemStatus.state}
+              pillCount={systemStatus.pillCount}
+              targetPills={systemStatus.targetPills}
+              stateProgress={systemStatus.stateProgress}
+            />
 
-        <ControlPanel
-          systemStatus={systemStatus}
-          simulationMode={simulationMode}
-          onSendCommand={sendCommand}
-          onToggleSensor={toggleSensor}
-          onUpdateStatus={(update) => setSystemStatus((prev) => ({ ...prev, ...update }))}
-        />
+            <ControlPanel
+              systemStatus={systemStatus}
+              simulationMode={simulationMode}
+              onSendCommand={sendCommand}
+              onToggleSensor={toggleSensor}
+              onUpdateStatus={(update) => setSystemStatus((prev) => ({ ...prev, ...update }))}
+            />
+          </>
+        )}
 
-        {showConsole && <Console serialData={serialData} />}
-        
+        <ConsoleOverlay serialData={serialData} isVisible={showConsole} />
+
         <Settings
           isOpen={showSettings}
           onClose={() => setShowSettings(false)}
@@ -246,6 +261,7 @@ function App(): React.JSX.Element {
           onFetchDosing={fetchDosing}
           currentDelays={currentDelays}
           currentDosing={currentDosing}
+          currentView={currentView}
         />
       </div>
     </div>

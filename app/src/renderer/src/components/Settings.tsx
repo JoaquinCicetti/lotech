@@ -16,14 +16,19 @@ export interface DosingSettings {
   lotSize: number
 }
 
+export interface ViewSettings {
+  viewMode: 'standard' | '3d'
+}
+
 interface SettingsProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (settings: DelaySettings, dosing: DosingSettings) => void
+  onSave: (settings: DelaySettings, dosing: DosingSettings, view: ViewSettings) => void
   onFetchDelays: () => void
   onFetchDosing: () => void
   currentDelays?: DelaySettings
   currentDosing?: DosingSettings
+  currentView?: ViewSettings
 }
 
 const DEFAULT_DELAYS: DelaySettings = {
@@ -41,6 +46,10 @@ const DEFAULT_DOSING: DosingSettings = {
   lotSize: 10,
 }
 
+const DEFAULT_VIEW: ViewSettings = {
+  viewMode: 'standard',
+}
+
 export const Settings: React.FC<SettingsProps> = ({
   isOpen,
   onClose,
@@ -49,9 +58,11 @@ export const Settings: React.FC<SettingsProps> = ({
   onFetchDosing,
   currentDelays,
   currentDosing,
+  currentView,
 }) => {
   const [delays, setDelays] = useState<DelaySettings>(currentDelays || DEFAULT_DELAYS)
   const [dosing, setDosing] = useState<DosingSettings>(currentDosing || DEFAULT_DOSING)
+  const [view, setView] = useState<ViewSettings>(currentView || DEFAULT_VIEW)
 
   useEffect(() => {
     if (isOpen) {
@@ -72,8 +83,14 @@ export const Settings: React.FC<SettingsProps> = ({
     }
   }, [currentDosing])
 
+  useEffect(() => {
+    if (currentView) {
+      setView(currentView)
+    }
+  }, [currentView])
+
   const handleSave = (): void => {
-    onSave(delays, dosing)
+    onSave(delays, dosing, view)
     onClose()
   }
 
@@ -168,9 +185,7 @@ export const Settings: React.FC<SettingsProps> = ({
                   max="10000"
                   step="100"
                   value={delays[key as keyof DelaySettings]}
-                  onChange={(e) =>
-                    setDelays({ ...delays, [key]: parseInt(e.target.value) })
-                  }
+                  onChange={(e) => setDelays({ ...delays, [key]: parseInt(e.target.value) })}
                   style={{
                     flex: 1,
                     height: 6,
@@ -186,9 +201,7 @@ export const Settings: React.FC<SettingsProps> = ({
                   max="10000"
                   step="100"
                   value={delays[key as keyof DelaySettings]}
-                  onChange={(e) =>
-                    setDelays({ ...delays, [key]: parseInt(e.target.value) || 0 })
-                  }
+                  onChange={(e) => setDelays({ ...delays, [key]: parseInt(e.target.value) || 0 })}
                   style={{
                     width: 100,
                     padding: '8px 12px',
@@ -261,9 +274,9 @@ export const Settings: React.FC<SettingsProps> = ({
               value={dosing.lotSize}
               onChange={(e) => {
                 const value = parseInt(e.target.value) || 1
-                setDosing({ 
-                  ...dosing, 
-                  lotSize: Math.min(value, dosing.wheelDivisions) 
+                setDosing({
+                  ...dosing,
+                  lotSize: Math.min(value, dosing.wheelDivisions),
                 })
               }}
               style={{
@@ -280,6 +293,66 @@ export const Settings: React.FC<SettingsProps> = ({
               Cantidad de pastillas a procesar (máx: {dosing.wheelDivisions})
             </small>
           </div>
+        </div>
+
+        {/* View Settings */}
+        <h3 style={{ marginTop: 32, marginBottom: 20, fontSize: 16, fontWeight: 600 }}>
+          Configuración de Vista
+        </h3>
+        <div style={{ marginBottom: 20 }}>
+          <label
+            style={{
+              display: 'block',
+              marginBottom: 8,
+              fontSize: 14,
+              color: '#e2e8f0',
+            }}
+          >
+            Modo de Vista del Dashboard
+          </label>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              onClick={() => setView({ ...view, viewMode: 'standard' })}
+              style={{
+                padding: '10px 24px',
+                background:
+                  view.viewMode === 'standard'
+                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    : '#2d3748',
+                color: '#e2e8f0',
+                border: 'none',
+                borderRadius: 8,
+                cursor: 'pointer',
+                fontWeight: 500,
+                flex: 1,
+              }}
+            >
+              Vista Estándar
+            </button>
+            <button
+              onClick={() => setView({ ...view, viewMode: '3d' })}
+              style={{
+                padding: '10px 24px',
+                background:
+                  view.viewMode === '3d'
+                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    : '#2d3748',
+                color: '#e2e8f0',
+                border: 'none',
+                borderRadius: 8,
+                cursor: 'pointer',
+                fontWeight: 500,
+                flex: 1,
+              }}
+            >
+              Vista 3D
+            </button>
+          </div>
+          <small style={{ color: '#718096', fontSize: 12, display: 'block', marginTop: 8 }}>
+            {view.viewMode === '3d'
+              ? 'Vista 3D interactiva de la máquina'
+              : 'Vista tradicional con controles estándar'}
+          </small>
         </div>
 
         <div
