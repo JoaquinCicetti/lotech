@@ -1,0 +1,44 @@
+name: build-windows
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: PNPM config (match lockfile)
+        working-directory: app
+        run: pnpm config set only-built-dependencies false
+
+      - name: Install deps
+        working-directory: app
+        run: pnpm install --frozen-lockfile
+
+      - name: Rebuild native modules
+        working-directory: app
+        run: pnpm exec electron-rebuild -f
+
+      - name: Build installer (x64)
+        working-directory: app
+        run: pnpm run build:win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-x64-installer
+          path: |
+            app/dist/*.exe
+            app/dist/latest.yml

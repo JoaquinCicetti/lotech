@@ -5,7 +5,9 @@ import * as THREE from 'three'
 import { Group } from 'three'
 import { AnimationController } from './AnimationController'
 
-const MODEL_URL = '/model.glb'
+// const MODEL_URL = '/model.glb'
+const MODEL_URL = new URL('../../assets/model.glb', import.meta.url).href
+
 interface MachineModelProps {
   systemStatus: SystemStatus
 }
