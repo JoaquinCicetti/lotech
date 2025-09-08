@@ -25,6 +25,31 @@ export default tseslint.config(
     rules: {
       ...eslintPluginReactHooks.configs.recommended.rules,
       ...eslintPluginReactRefresh.configs.vite.rules,
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+      'react/no-unknown-property': [
+        'error',
+        {
+          ignore: [
+            'position',
+            'args',
+            'rotation',
+            'intensity',
+            'castShadow',
+            'shadow-mapSize',
+            'angle',
+            'penumbra',
+            'attach',
+            'emissive',
+            'emissiveIntensity',
+            'metalness',
+            'roughness',
+            'transparent',
+          ],
+        },
+      ],
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      'react/prop-types': 'off',
     },
   },
   eslintConfigPrettier

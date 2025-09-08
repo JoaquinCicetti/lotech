@@ -1,6 +1,9 @@
 import { Wifi } from 'lucide-react'
 import React, { useEffect } from 'react'
 import { SerialPortInfo } from '../types'
+import { Button } from './ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 
 interface ConnectionScreenProps {
   ports: SerialPortInfo[]
@@ -18,24 +21,21 @@ const COMMON_PORT_PATTERNS = [
   'ttyUSB',
   'ttyACM',
   'Arduino',
-  'MEGA'
-]
+  'MEGA',
+] as const
 
-export const ConnectionScreen: React.FC<ConnectionScreenProps> = ({
-  ports,
-  selected,
-  onSelectPort,
-  onConnect,
-}) => {
+export const ConnectionScreen: React.FC<ConnectionScreenProps> = (props) => {
+  const { ports, selected, onSelectPort, onConnect } = props
+
   // Auto-select common Arduino port on mount
   useEffect(() => {
     if (!selected && ports.length > 0) {
       // Try to find an Arduino Mega or common USB serial port
-      const arduinoPort = ports.find(p => {
+      const arduinoPort = ports.find((p) => {
         const portStr = (p.friendlyName || p.path).toLowerCase()
-        return COMMON_PORT_PATTERNS.some(pattern => portStr.includes(pattern.toLowerCase()))
+        return COMMON_PORT_PATTERNS.some((pattern) => portStr.includes(pattern.toLowerCase()))
       })
-      
+
       if (arduinoPort) {
         onSelectPort(arduinoPort.path)
       } else if (ports.length === 1) {
@@ -44,77 +44,35 @@ export const ConnectionScreen: React.FC<ConnectionScreenProps> = ({
       }
     }
   }, [ports, selected, onSelectPort])
+
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        width: '100vw',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      }}
-    >
-      <div
-        style={{
-          background: 'white',
-          borderRadius: 20,
-          padding: 40,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-          textAlign: 'center',
-          minWidth: 400,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            marginBottom: 20,
-          }}
-        >
-          <Wifi size={48} strokeWidth={1.5} color="#667eea" />
-        </div>
-        <h1 style={{ margin: '0 0 30px', fontSize: 32, fontWeight: 300 }}>LOTECH</h1>
-        <select
-          onChange={(e) => onSelectPort(e.target.value)}
-          value={selected}
-          style={{
-            width: '100%',
-            padding: '12px 16px',
-            fontSize: 16,
-            borderRadius: 8,
-            border: '1px solid #e2e8f0',
-            marginBottom: 16,
-            background: 'white',
-          }}
-        >
-          <option value="">Seleccionar puerto...</option>
-          {ports.map((p) => (
-            <option key={p.path} value={p.path}>
-              {p.friendlyName ?? p.path}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={onConnect}
-          disabled={!selected}
-          style={{
-            width: '100%',
-            padding: '12px 24px',
-            fontSize: 16,
-            fontWeight: 500,
-            color: 'white',
-            background: selected ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#cbd5e0',
-            border: 'none',
-            borderRadius: 8,
-            cursor: selected ? 'pointer' : 'not-allowed',
-            transition: 'all 0.3s',
-          }}
-        >
-          Conectar
-        </button>
-      </div>
+    <div className="from-background to-muted flex min-h-screen w-screen items-center justify-center bg-gradient-to-br">
+      <Card className="border-border mx-4 w-full max-w-md">
+        <CardHeader className="pb-4 text-center">
+          <div className="mb-4 flex justify-center">
+            <Wifi className="text-primary h-12 w-12" />
+          </div>
+          <CardTitle className="text-3xl font-light">LOTECH</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Select value={selected} onValueChange={onSelectPort}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Seleccionar puerto..." />
+            </SelectTrigger>
+            <SelectContent>
+              {ports.map((port) => (
+                <SelectItem key={port.path} value={port.path}>
+                  {port.friendlyName ?? port.path}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button onClick={onConnect} disabled={!selected} className="w-full" size="lg">
+            Conectar
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   )
 }

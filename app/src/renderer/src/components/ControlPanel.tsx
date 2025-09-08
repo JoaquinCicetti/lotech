@@ -1,6 +1,11 @@
 import { Play, RotateCcw } from 'lucide-react'
 import React from 'react'
 import { SystemStatus } from '../types'
+import { Button } from './ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
+import { Switch } from './ui/switch'
+import { Label } from './ui/label'
+import { Badge } from './ui/badge'
 
 interface ControlPanelProps {
   systemStatus: SystemStatus
@@ -10,13 +15,40 @@ interface ControlPanelProps {
   onUpdateStatus: (status: Partial<SystemStatus>) => void
 }
 
-export const ControlPanel: React.FC<ControlPanelProps> = ({
-  systemStatus,
-  simulationMode,
-  onSendCommand,
-  onToggleSensor,
-  onUpdateStatus,
-}) => {
+interface SensorSwitchProps {
+  label: string
+  checked: boolean
+  onChange: () => void
+  disabled?: boolean
+}
+
+const SensorSwitch: React.FC<SensorSwitchProps> = (props) => {
+  const { label, checked, onChange, disabled = false } = props
+  
+  return (
+    <div className="flex items-center justify-between py-2">
+      <Label htmlFor={label} className="text-sm font-normal">
+        {label}
+      </Label>
+      <Switch
+        id={label}
+        checked={checked}
+        onCheckedChange={onChange}
+        disabled={disabled}
+      />
+    </div>
+  )
+}
+
+export const ControlPanel: React.FC<ControlPanelProps> = (props) => {
+  const {
+    systemStatus,
+    simulationMode,
+    onSendCommand,
+    onToggleSensor,
+    onUpdateStatus,
+  } = props
+
   const handleSensorToggle = (key: keyof SystemStatus['sensors'], sensor: string): void => {
     const newValue = !systemStatus.sensors[key]
 
@@ -50,221 +82,96 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   }
 
   const isStartEnabled = systemStatus.sensors.pastillasCargadas && systemStatus.sensors.frascoVacio
+  
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 20,
-        marginBottom: 32,
-      }}
-    >
+    <div className="grid grid-cols-3 gap-5 mb-8">
       {/* Actions */}
-      <div
-        style={{
-          background: '#1a1a1a',
-          borderRadius: 12,
-          padding: 24,
-        }}
-      >
-        <h3 style={{ margin: '0 0 20px', fontSize: 14, fontWeight: 500, color: '#718096' }}>
-          ACCIONES
-        </h3>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button
-            onClick={() => onSendCommand('BTN:START')}
-            disabled={!isStartEnabled}
-            style={{
-              flex: 1,
-              padding: '12px',
-              background: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
-              filter: isStartEnabled ? undefined : 'grayscale(.65)',
-              color: 'white',
-              border: 'none',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            <Play size={16} />
-            INICIO
-          </button>
-          <button
-            onClick={() => onSendCommand('BTN:RESET')}
-            style={{
-              flex: 1,
-              padding: '12px',
-              background: '#2d3748',
-              color: '#e2e8f0',
-              border: 'none',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            <RotateCcw size={16} />
-            RESET
-          </button>
-        </div>
-        {simulationMode && (
-          <button
-            onClick={() => onSendCommand('RESET:ALL')}
-            style={{
-              width: '100%',
-              marginTop: 12,
-              padding: '12px',
-              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: 8,
-              cursor: 'pointer',
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            <RotateCcw size={16} />
-            REINICIAR TODO
-          </button>
-        )}
-      </div>
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-sm font-medium text-muted-foreground">ACCIONES</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-3">
+            <Button
+              onClick={() => onSendCommand('BTN:START')}
+              disabled={!isStartEnabled}
+              className="flex-1 gap-2"
+              variant={isStartEnabled ? "default" : "secondary"}
+            >
+              <Play className="h-4 w-4" />
+              INICIO
+            </Button>
+            <Button
+              onClick={() => onSendCommand('BTN:RESET')}
+              variant="outline"
+              className="flex-1 gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              RESET
+            </Button>
+          </div>
+          {simulationMode && (
+            <Button
+              onClick={() => onSendCommand('RESET:ALL')}
+              variant="destructive"
+              className="w-full gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              REINICIAR TODO
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Sensors */}
-      <div
-        style={{
-          background: '#1a1a1a',
-          borderRadius: 12,
-          padding: 24,
-          opacity: simulationMode ? 1 : 0.5,
-          pointerEvents: simulationMode ? 'auto' : 'none',
-        }}
-      >
-        <h3 style={{ margin: '0 0 20px', fontSize: 14, fontWeight: 500, color: '#718096' }}>
-          SENSORES {!simulationMode && '(Modo Real)'}
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {[
-            { key: 'posAlta' as const, label: 'Pos. Alta', sensor: 'POS_ALTA' },
-            { key: 'posBaja' as const, label: 'Pos. Baja', sensor: 'POS_BAJA' },
-            { key: 'weightStable' as const, label: 'Peso OK', sensor: 'WEIGHT_STABLE' },
-          ].map(({ key, label, sensor }) => (
-            <label
-              key={key}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ fontSize: 14 }}>{label}</span>
-              <div
-                onClick={() => handleSensorToggle(key, sensor)}
-                style={{
-                  width: 44,
-                  height: 24,
-                  borderRadius: 12,
-                  background: systemStatus.sensors[key]
-                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                    : '#2d3748',
-                  position: 'relative',
-                  cursor: 'pointer',
-                  transition: 'background 0.3s',
-                }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 2,
-                    left: systemStatus.sensors[key] ? 22 : 2,
-                    width: 20,
-                    height: 20,
-                    borderRadius: '50%',
-                    background: 'white',
-                    transition: 'left 0.3s',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                  }}
-                />
-              </div>
-            </label>
-          ))}
-        </div>
-      </div>
+      <Card className={simulationMode ? '' : 'opacity-50 pointer-events-none'}>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-sm font-medium text-muted-foreground">SENSORES</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <SensorSwitch
+            label="Posición Alta"
+            checked={systemStatus.sensors.posAlta}
+            onChange={() => handleSensorToggle('posAlta', 'POS_ALTA')}
+          />
+          <SensorSwitch
+            label="Posición Baja"
+            checked={systemStatus.sensors.posBaja}
+            onChange={() => handleSensorToggle('posBaja', 'POS_BAJA')}
+          />
+          <SensorSwitch
+            label="Peso Estable"
+            checked={systemStatus.sensors.weightStable}
+            onChange={() => handleSensorToggle('weightStable', 'WEIGHT_STABLE')}
+          />
+        </CardContent>
+      </Card>
 
-      {/* Conditions */}
-      <div
-        style={{
-          background: '#1a1a1a',
-          borderRadius: 12,
-          padding: 24,
-          opacity: simulationMode ? 1 : 0.5,
-          pointerEvents: simulationMode ? 'auto' : 'none',
-        }}
-      >
-        <h3 style={{ margin: '0 0 20px', fontSize: 14, fontWeight: 500, color: '#718096' }}>
-          CONDICIONES {!simulationMode && '(Modo Real)'}
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {[
-            { key: 'frascoVacio' as const, label: 'Frasco vacío', sensor: 'FRASCO_VACIO' },
-            {
-              key: 'pastillasCargadas' as const,
-              label: 'Pastillas OK',
-              sensor: 'PASTILLAS_CARGADAS',
-            },
-          ].map(({ key, label, sensor }) => (
-            <label
-              key={key}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ fontSize: 14 }}>{label}</span>
-              <div
-                onClick={() => handleSensorToggle(key, sensor)}
-                style={{
-                  width: 44,
-                  height: 24,
-                  borderRadius: 12,
-                  background: systemStatus.sensors[key]
-                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                    : '#2d3748',
-                  position: 'relative',
-                  cursor: 'pointer',
-                  transition: 'background 0.3s',
-                }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 2,
-                    left: systemStatus.sensors[key] ? 22 : 2,
-                    width: 20,
-                    height: 20,
-                    borderRadius: '50%',
-                    background: 'white',
-                    transition: 'left 0.3s',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                  }}
-                />
-              </div>
-            </label>
-          ))}
-        </div>
-      </div>
+      {/* Pre-conditions */}
+      <Card className={simulationMode ? '' : 'opacity-50 pointer-events-none'}>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            PRE-CONDICIONES
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          <SensorSwitch
+            label="Frasco Vacío"
+            checked={systemStatus.sensors.frascoVacio}
+            onChange={() => handleSensorToggle('frascoVacio', 'FRASCO_VACIO')}
+          />
+          <SensorSwitch
+            label="Pastillas Cargadas"
+            checked={systemStatus.sensors.pastillasCargadas}
+            onChange={() => handleSensorToggle('pastillasCargadas', 'PASTILLAS_CARGADAS')}
+          />
+          {!isStartEnabled && (
+            <Badge variant="secondary" className="mt-2 text-xs">
+              Activar para iniciar
+            </Badge>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

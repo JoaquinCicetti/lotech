@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ConnectionScreen } from './components/ConnectionScreen'
-import { ConsoleOverlay } from './components/ConsoleOverlay'
+import { Console } from './components/Console'
 import { ControlPanel } from './components/ControlPanel'
 import { Dashboard3D } from './components/Dashboard3D'
-import { Header } from './components/Header'
+import { Layout } from './components/Layout'
+import { LeftSidebar } from './components/LeftSidebar'
 import { ProcessStepper } from './components/ProcessStepper'
-import { DelaySettings, DosingSettings, Settings, ViewSettings } from './components/Settings'
+import { DelaySettings, DosingSettings } from './components/Settings'
 import { SerialPortInfo, SystemStatus } from './types'
 import { SerialMessageParser } from './utils/serialParser'
 
@@ -34,7 +35,7 @@ function App(): React.JSX.Element {
   const [systemStatus, setSystemStatus] = useState<SystemStatus>(INITIAL_STATUS)
   const [currentDelays, setCurrentDelays] = useState<DelaySettings | undefined>()
   const [currentDosing, setCurrentDosing] = useState<DosingSettings | undefined>()
-  const [currentView, setCurrentView] = useState<ViewSettings>({ viewMode: 'standard' })
+  const [currentView, setCurrentView] = useState<'3d' | 'dashboard'>('3d')
 
   useEffect(() => {
     // Load available serial ports
@@ -49,11 +50,6 @@ function App(): React.JSX.Element {
     const savedDosing = localStorage.getItem('dosingSettings')
     if (savedDosing) {
       setCurrentDosing(JSON.parse(savedDosing))
-    }
-
-    const savedView = localStorage.getItem('viewSettings')
-    if (savedView) {
-      setCurrentView(JSON.parse(savedView))
     }
 
     // Set up serial data listener
@@ -160,7 +156,7 @@ function App(): React.JSX.Element {
   }, [selected])
 
   const saveSettings = useCallback(
-    async (delays: DelaySettings, dosing: DosingSettings, view: ViewSettings): Promise<void> => {
+    async (delays: DelaySettings, dosing: DosingSettings): Promise<void> => {
       if (!selected) return
 
       // Send delay configuration commands
@@ -188,10 +184,8 @@ function App(): React.JSX.Element {
       // Update local state and save to localStorage
       setCurrentDelays(delays)
       setCurrentDosing(dosing)
-      setCurrentView(view)
       localStorage.setItem('delaySettings', JSON.stringify(delays))
       localStorage.setItem('dosingSettings', JSON.stringify(dosing))
-      localStorage.setItem('viewSettings', JSON.stringify(view))
     },
     [selected]
   )
@@ -210,30 +204,40 @@ function App(): React.JSX.Element {
 
   // Main application UI
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        width: '100vw',
-        background: '#0f0f0f',
-        color: '#e2e8f0',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        padding: '80px 60px',
-      }}
-    >
-      <div style={{ margin: '0 auto' }}>
-        <Header
+    <Layout
+      leftSidebar={
+        <LeftSidebar
+          currentView={currentView}
+          onViewChange={setCurrentView}
           simulationMode={simulationMode}
-          showConsole={showConsole}
-          onToggleSimulation={toggleSimulationMode}
-          onToggleConsole={() => setShowConsole(!showConsole)}
-          onOpenSettings={() => setShowSettings(true)}
+          onSimulationModeChange={setSimulationMode}
           onDisconnect={disconnect}
+          onSendCommand={sendCommand}
+          currentDelays={currentDelays}
+          currentDosing={currentDosing}
+          onSaveSettings={saveSettings}
         />
-
-        {currentView.viewMode === '3d' ? (
+      }
+      rightSidebar={
+        <div className="flex h-full flex-col">
+          <div className="border-border border-b p-4">
+            <h3 className="text-sm font-semibold">Serial Console</h3>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <Console serialData={serialData} />
+          </div>
+        </div>
+      }
+      showLeftSidebar={showSettings}
+      showRightSidebar={showConsole}
+      onToggleLeftSidebar={() => setShowSettings(!showSettings)}
+      onToggleRightSidebar={() => setShowConsole(!showConsole)}
+    >
+      <div className="h-full overflow-auto p-8">
+        {currentView === '3d' ? (
           <Dashboard3D systemStatus={systemStatus} onSendCommand={sendCommand} />
         ) : (
-          <>
+          <div className="mx-auto max-w-6xl space-y-6">
             <ProcessStepper
               currentState={systemStatus.state}
               pillCount={systemStatus.pillCount}
@@ -248,23 +252,10 @@ function App(): React.JSX.Element {
               onToggleSensor={toggleSensor}
               onUpdateStatus={(update) => setSystemStatus((prev) => ({ ...prev, ...update }))}
             />
-          </>
+          </div>
         )}
-
-        <ConsoleOverlay serialData={serialData} isVisible={showConsole} />
-
-        <Settings
-          isOpen={showSettings}
-          onClose={() => setShowSettings(false)}
-          onSave={saveSettings}
-          onFetchDelays={fetchDelays}
-          onFetchDosing={fetchDosing}
-          currentDelays={currentDelays}
-          currentDosing={currentDosing}
-          currentView={currentView}
-        />
       </div>
-    </div>
+    </Layout>
   )
 }
 

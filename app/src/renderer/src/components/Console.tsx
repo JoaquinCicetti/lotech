@@ -1,51 +1,50 @@
 import React from 'react'
 import { SerialMessageParser } from '../utils/serialParser'
+import { ScrollArea } from './ui/scroll-area'
 
 interface ConsoleProps {
   serialData: string[]
 }
 
-export const Console: React.FC<ConsoleProps> = ({ serialData }) => {
+interface ConsoleLineProps {
+  line: string
+  index: number
+}
+
+const ConsoleLine: React.FC<ConsoleLineProps> = (props) => {
+  const { line } = props
+  
   const getMessageColor = (line: string): string => {
     const type = SerialMessageParser.getMessageType(line)
     switch (type) {
       case 'error':
-        return '#ef4444'
+        return 'text-destructive'
       case 'warning':
-        return '#f59e0b'
+        return 'text-yellow-500'
       case 'success':
-        return '#34d399'
+        return 'text-primary'
       case 'debug':
-        return '#4b5563'
+        return 'text-muted-foreground/60'
       default:
-        return '#9ca3af'
+        return 'text-muted-foreground'
     }
   }
-
+  
   return (
-    <div
-      style={{
-        background: '#1a1a1a',
-        borderRadius: 12,
-        padding: 16,
-        height: 300,
-        overflowY: 'auto',
-        fontFamily: 'monospace',
-        fontSize: 11,
-        border: '1px solid #2d3748',
-      }}
-    >
-      {serialData.map((line, i) => (
-        <div
-          key={i}
-          style={{
-            color: getMessageColor(line),
-            padding: '2px 0',
-          }}
-        >
-          {line}
-        </div>
-      ))}
+    <div className={`py-0.5 font-mono text-xs ${getMessageColor(line)}`}>
+      {line}
     </div>
+  )
+}
+
+export const Console: React.FC<ConsoleProps> = (props) => {
+  const { serialData } = props
+  
+  return (
+    <ScrollArea className="h-full p-4">
+      {serialData.map((line, index) => (
+        <ConsoleLine key={index} line={line} index={index} />
+      ))}
+    </ScrollArea>
   )
 }

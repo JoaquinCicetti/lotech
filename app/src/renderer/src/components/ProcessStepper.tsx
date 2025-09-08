@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { PROCESS_STATES } from '../constants/states'
 import { SystemStatus } from '../types'
+import { Card } from './ui/card'
+import { Progress } from './ui/progress'
 
 interface ProcessStepperProps {
   currentState: string
@@ -9,12 +11,8 @@ interface ProcessStepperProps {
   stateProgress?: SystemStatus['stateProgress']
 }
 
-export const ProcessStepper: React.FC<ProcessStepperProps> = ({
-  currentState,
-  pillCount,
-  targetPills,
-  stateProgress,
-}) => {
+export const ProcessStepper: React.FC<ProcessStepperProps> = (props) => {
+  const { currentState, pillCount, targetPills, stateProgress } = props
   const [progressPercent, setProgressPercent] = useState(0)
 
   useEffect(() => {
@@ -42,46 +40,16 @@ export const ProcessStepper: React.FC<ProcessStepperProps> = ({
   const progressPercentage = (currentIndex / (PROCESS_STATES.length - 1)) * 100
 
   return (
-    <div
-      style={{
-        background: '#1a1a1a',
-        borderRadius: 16,
-        padding: 32,
-        marginBottom: 32,
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          position: 'relative',
-          marginBottom: 40,
-        }}
-      >
+    <Card className="p-8 mb-8 bg-card">
+      <div className="flex justify-between relative mb-10">
         {/* Progress Line Background */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 24,
-            left: 40,
-            right: 40,
-            height: 2,
-            background: '#2d3748',
-            zIndex: 0,
-          }}
-        />
+        <div className="absolute top-6 left-10 right-10 h-0.5 bg-muted z-0" />
 
         {/* Progress Line Active */}
         <div
+          className="absolute top-6 left-10 h-0.5 bg-gradient-to-r from-primary to-primary/80 z-0 transition-all duration-500"
           style={{
-            position: 'absolute',
-            top: 24,
-            left: 40,
             width: `${progressPercentage * 0.92}%`,
-            height: 2,
-            background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
-            zIndex: 0,
-            transition: 'width 0.5s ease',
           }}
         />
 
@@ -93,74 +61,51 @@ export const ProcessStepper: React.FC<ProcessStepperProps> = ({
           return (
             <div
               key={state.id}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 8,
-                zIndex: 1,
-              }}
+              className="flex flex-col items-center gap-2 z-10"
             >
-              <div
-                style={{
-                  position: 'relative',
-                  width: 48,
-                  height: 48,
-                }}
-              >
+              <div className="relative w-12 h-12">
                 <div
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: '50%',
-                    background: isActive
-                      ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                      : isPast
-                        ? '#667eea'
-                        : '#2d3748',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.3s',
-                    transform: isActive ? 'scale(1.2)' : 'scale(1)',
-                    boxShadow: isActive ? '0 0 20px rgba(102, 126, 234, 0.5)' : 'none',
-                    color: 'white',
-                  }}
+                  className={`
+                    w-12 h-12 rounded-full flex items-center justify-center
+                    transition-all duration-300 text-white
+                    ${isActive 
+                      ? 'bg-gradient-to-br from-primary to-primary/80 scale-125 shadow-lg shadow-primary/30' 
+                      : isPast 
+                        ? 'bg-primary' 
+                        : 'bg-muted'
+                    }
+                  `}
                 >
                   {state.icon}
                 </div>
                 {isActive && stateProgress && (
                   <svg
+                    className="absolute -top-1.5 -left-1.5 w-15 h-15 -rotate-90"
                     style={{
-                      position: 'absolute',
-                      top: -6,
-                      left: -6,
                       width: 60,
                       height: 60,
-                      transform: 'rotate(-90deg)',
                     }}
                   >
-                    <circle cx="30" cy="30" r="27" fill="none" stroke="#2d3748" strokeWidth="2" />
+                    <circle cx="30" cy="30" r="27" fill="none" stroke="hsl(var(--muted))" strokeWidth="2" />
                     <circle
                       cx="30"
                       cy="30"
                       r="27"
                       fill="none"
-                      stroke="#10b981"
+                      stroke="hsl(var(--primary))"
                       strokeWidth="2"
                       strokeDasharray={`${2 * Math.PI * 27}`}
                       strokeDashoffset={`${2 * Math.PI * 27 * (1 - progressPercent / 100)}`}
-                      style={{ transition: 'stroke-dashoffset 0.1s linear' }}
+                      className="transition-all duration-100"
                     />
                   </svg>
                 )}
               </div>
               <span
-                style={{
-                  fontSize: 11,
-                  color: isActive ? '#e2e8f0' : '#718096',
-                  fontWeight: isActive ? 600 : 400,
-                }}
+                className={`
+                  text-xs
+                  ${isActive ? 'text-foreground font-semibold' : 'text-muted-foreground font-normal'}
+                `}
               >
                 {state.name}
               </span>
@@ -170,36 +115,15 @@ export const ProcessStepper: React.FC<ProcessStepperProps> = ({
       </div>
 
       {/* Pill Counter */}
-      <div
-        style={{
-          textAlign: 'center',
-          padding: '20px 0',
-        }}
-      >
-        <div style={{ fontSize: 14, color: '#718096', marginBottom: 8 }}>Progreso del lote</div>
-        <div style={{ fontSize: 48, fontWeight: 200 }}>
-          {pillCount} <span style={{ color: '#718096' }}>/ {targetPills}</span>
+      <div className="text-center py-5">
+        <div className="text-sm text-muted-foreground mb-2">Progreso del lote</div>
+        <div className="text-5xl font-light">
+          {pillCount} <span className="text-muted-foreground">/ {targetPills}</span>
         </div>
-        <div
-          style={{
-            width: '100%',
-            height: 4,
-            background: '#2d3748',
-            borderRadius: 2,
-            marginTop: 16,
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              width: `${(pillCount / targetPills) * 100}%`,
-              height: '100%',
-              background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)',
-              transition: 'width 0.5s ease',
-            }}
-          />
+        <div className="mt-4">
+          <Progress value={(pillCount / targetPills) * 100} className="h-1" />
         </div>
       </div>
-    </div>
+    </Card>
   )
 }
