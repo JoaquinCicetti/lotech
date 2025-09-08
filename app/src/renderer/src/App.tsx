@@ -1,43 +1,50 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { CommandPanel } from './components/CommandPanel'
 import { ConnectionScreen } from './components/ConnectionScreen'
 import { Console } from './components/Console'
-import { ControlPanel } from './components/ControlPanel'
 import { Dashboard3D } from './components/Dashboard3D'
 import { Layout } from './components/Layout'
 import { LeftSidebar } from './components/LeftSidebar'
 import { ProcessStepper } from './components/ProcessStepper'
-import { DelaySettings, DosingSettings } from './components/Settings'
-import { SerialPortInfo, SystemStatus } from './types'
+import { useAppStore } from './store/appStore'
 import { SerialMessageParser } from './utils/serialParser'
 
-const INITIAL_STATUS: SystemStatus = {
-  state: '0_INICIO',
-  pillCount: 0,
-  targetPills: 20,
-  weight: 0,
-  sensors: {
-    posAlta: false,
-    posBaja: true,
-    weightStable: false,
-    frascoVacio: true,
-    pastillasCargadas: true,
-  },
-}
-
 function App(): React.JSX.Element {
-  const [ports, setPorts] = useState<SerialPortInfo[]>([])
-  const [selected, setSelected] = useState<string>('')
-  const [isConnected, setIsConnected] = useState<boolean>(false)
-  const [serialData, setSerialData] = useState<string[]>([])
-  const [showConsole, setShowConsole] = useState<boolean>(false)
+  const {
+    ports,
+    selectedPort,
+    isConnected,
+    serialData,
+    showConsole,
+    systemStatus,
+    currentView,
+    connectionError,
+    setPorts,
+    setSelectedPort,
+    setConnected,
+    setConnectionError,
+    setLastMessageTime,
+    addSerialData,
+    clearSerialData,
+    updateSystemStatus,
+    setShowConsole,
+    setCurrentDelays,
+    setCurrentDosing,
+  } = useAppStore()
+
   const [showSettings, setShowSettings] = useState<boolean>(false)
-  const [simulationMode, setSimulationMode] = useState<boolean>(true)
-  const [systemStatus, setSystemStatus] = useState<SystemStatus>(INITIAL_STATUS)
-  const [currentDelays, setCurrentDelays] = useState<DelaySettings | undefined>()
-  const [currentDosing, setCurrentDosing] = useState<DosingSettings | undefined>()
-  const [currentView, setCurrentView] = useState<'3d' | 'dashboard'>('3d')
 
   useEffect(() => {
+    // Keyboard shortcut for console (Ctrl/Cmd + `)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '`' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        const store = useAppStore.getState()
+        setShowConsole(!store.showConsole)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+
     // Load available serial ports
     window.serial.list().then(setPorts)
 
@@ -52,15 +59,22 @@ function App(): React.JSX.Element {
       setCurrentDosing(JSON.parse(savedDosing))
     }
 
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [setPorts, setCurrentDelays, setCurrentDosing, setShowConsole])
+
+  useEffect(() => {
     // Set up serial data listener
-    window.serial.onData(({ path, line }) => {
+    const handleData = ({ path, line }: { path: string; line: string }) => {
       console.log(`[${path}] ${line}`)
 
+      // Update last message time
+      setLastMessageTime(Date.now())
+      setConnectionError(null)
+
       // Update serial console
-      setSerialData((prev) => {
-        const newData = [...prev, `[${new Date().toLocaleTimeString()}] ${line}`]
-        return newData.slice(-100) // Keep last 100 lines
-      })
+      addSerialData(line)
 
       // Check if it's a delays response
       const delays = SerialMessageParser.parseDelays(line)
@@ -95,112 +109,103 @@ function App(): React.JSX.Element {
       }
 
       // Parse the message and update system status
-      setSystemStatus((currentStatus) => {
-        const update = SerialMessageParser.parseMessage(line, currentStatus)
+      const store = useAppStore.getState()
+      try {
+        const update = SerialMessageParser.parseMessage(line, store.systemStatus)
         if (update) {
-          return { ...currentStatus, ...update }
+          updateSystemStatus(update)
         }
-        return currentStatus
-      })
-    })
-  }, [])
+      } catch (error) {
+        console.error('Error parsing message:', error, 'Line:', line)
+      }
+    }
+
+    const handleError = ({ path, error }: { path: string; error: string }) => {
+      console.error(`Serial error on ${path}:`, error)
+      setConnectionError(error)
+      addSerialData(`ERROR: ${error}`)
+    }
+
+    window.serial.onData(handleData)
+    window.serial.onError(handleError)
+
+    // Monitor connection health
+    const healthCheckInterval = setInterval(() => {
+      const store = useAppStore.getState()
+      if (store.isConnected) {
+        const timeSinceLastMessage = Date.now() - store.lastMessageTime
+        if (timeSinceLastMessage > 5000) {
+          setConnectionError('No data received for 5 seconds')
+        }
+      }
+    }, 1000)
+
+    return () => {
+      clearInterval(healthCheckInterval)
+    }
+  }, [
+    setLastMessageTime,
+    setConnectionError,
+    addSerialData,
+    setCurrentDelays,
+    setCurrentDosing,
+    updateSystemStatus,
+  ])
 
   const connect = async (): Promise<void> => {
-    if (!selected) return
-    const success = await window.serial.open({ path: selected, baudRate: 9600 })
+    if (!selectedPort) return
+    try {
+      const success = await window.serial.open({ path: selectedPort, baudRate: 9600 })
 
-    setIsConnected(success)
-    if (success) {
-      // Send saved settings to controller if they exist
-      const savedDosing = localStorage.getItem('dosingSettings')
-      if (savedDosing) {
-        const dosing = JSON.parse(savedDosing)
-        await sendCommand(`SET:DIVISIONS:${dosing.wheelDivisions}`)
-        await sendCommand(`SET:LOT_SIZE:${dosing.lotSize}`)
+      setConnected(success)
+      setConnectionError(null)
+      setLastMessageTime(Date.now())
+
+      if (success) {
+        // Send saved settings to controller if they exist
+        const savedDosing = localStorage.getItem('dosingSettings')
+        if (savedDosing) {
+          const dosing = JSON.parse(savedDosing)
+          await sendCommand(`SET:DIVISIONS:${dosing.wheelDivisions}`)
+          await sendCommand(`SET:LOT_SIZE:${dosing.lotSize}`)
+        }
+
+        // Request current state from controller
+        await sendCommand('STATUS')
       }
-
-      // Request current state from controller
-      await sendCommand('STATUS')
+    } catch (error) {
+      console.error('Failed to connect:', error)
+      setConnectionError(error instanceof Error ? error.message : 'Connection failed')
+      setConnected(false)
     }
   }
 
   const disconnect = async (): Promise<void> => {
-    if (!selected) return
-    await window.serial.close(selected)
-    setIsConnected(false)
-    setSerialData([])
-    setSystemStatus(INITIAL_STATUS)
+    if (!selectedPort) return
+    try {
+      await window.serial.close(selectedPort)
+      setConnected(false)
+      clearSerialData()
+      setConnectionError(null)
+    } catch (error) {
+      console.error('Failed to disconnect:', error)
+    }
   }
 
   const sendCommand = async (cmd: string): Promise<void> => {
-    if (!selected || !cmd) return
-    await window.serial.write({ path: selected, data: `${cmd}\r\n` })
+    if (!selectedPort || !cmd) return
+    await window.serial.write({ path: selectedPort, data: `${cmd}\r\n` })
   }
-
-  const toggleSensor = async (sensor: string, value: boolean): Promise<void> => {
-    await sendCommand(`SIM:${sensor}:${value ? '1' : '0'}`)
-  }
-
-  const toggleSimulationMode = async (): Promise<void> => {
-    const newMode = !simulationMode
-    setSimulationMode(newMode)
-    await sendCommand(newMode ? 'MODE:SIM' : 'MODE:REAL')
-  }
-
-  const fetchDelays = useCallback(async (): Promise<void> => {
-    if (!selected) return
-    await window.serial.write({ path: selected, data: 'GET:DELAYS\r\n' })
-  }, [selected])
-
-  const fetchDosing = useCallback(async (): Promise<void> => {
-    if (!selected) return
-    await window.serial.write({ path: selected, data: 'GET:DOSING\r\n' })
-  }, [selected])
-
-  const saveSettings = useCallback(
-    async (delays: DelaySettings, dosing: DosingSettings): Promise<void> => {
-      if (!selected) return
-
-      // Send delay configuration commands
-      const delayCommands = [
-        `SET:DELAY:SETTLE:${delays.settle}`,
-        `SET:DELAY:WEIGHT:${delays.weight}`,
-        `SET:DELAY:TRANSFER:${delays.transfer}`,
-        `SET:DELAY:GRIND:${delays.grind}`,
-        `SET:DELAY:CAP:${delays.cap}`,
-        `SET:DELAY:UP:${delays.elevUp}`,
-        `SET:DELAY:DOWN:${delays.elevDown}`,
-      ]
-
-      // Send dosing configuration commands
-      const dosingCommands = [
-        `SET:DIVISIONS:${dosing.wheelDivisions}`,
-        `SET:LOT_SIZE:${dosing.lotSize}`,
-      ]
-
-      // Send all commands
-      for (const cmd of [...delayCommands, ...dosingCommands]) {
-        await window.serial.write({ path: selected, data: `${cmd}\r\n` })
-      }
-
-      // Update local state and save to localStorage
-      setCurrentDelays(delays)
-      setCurrentDosing(dosing)
-
-      localStorage.setItem('delaySettings', JSON.stringify(delays))
-      localStorage.setItem('dosingSettings', JSON.stringify(dosing))
-    },
-    [selected]
-  )
 
   // Show connection screen if not connected
   if (!isConnected) {
     return (
       <ConnectionScreen
         ports={ports}
-        selected={selected}
-        onSelectPort={setSelected}
+        selected={selectedPort}
+        onSelectPort={setSelectedPort}
         onConnect={connect}
+        error={connectionError}
       />
     )
   }
@@ -208,19 +213,7 @@ function App(): React.JSX.Element {
   // Main application UI
   return (
     <Layout
-      leftSidebar={
-        <LeftSidebar
-          currentView={currentView}
-          onViewChange={setCurrentView}
-          simulationMode={simulationMode}
-          onSimulationModeChange={setSimulationMode}
-          onDisconnect={disconnect}
-          onSendCommand={sendCommand}
-          currentDelays={currentDelays}
-          currentDosing={currentDosing}
-          onSaveSettings={saveSettings}
-        />
-      }
+      leftSidebar={<LeftSidebar onDisconnect={disconnect} onSendCommand={sendCommand} />}
       rightSidebar={
         <div className="flex h-full flex-col">
           <div className="border-border border-b p-4">
@@ -236,25 +229,21 @@ function App(): React.JSX.Element {
       onToggleLeftSidebar={() => setShowSettings(!showSettings)}
       onToggleRightSidebar={() => setShowConsole(!showConsole)}
     >
-      <div className="h-full overflow-auto p-8">
+      <div className="h-full items-center overflow-auto">
         {currentView === '3d' ? (
-          <Dashboard3D systemStatus={systemStatus} onSendCommand={sendCommand} />
+          <>
+            <Dashboard3D systemStatus={systemStatus} onSendCommand={sendCommand} />
+            <CommandPanel onSendCommand={sendCommand} floating />
+          </>
         ) : (
-          <div className="mx-auto max-w-6xl space-y-6 py-10">
+          <div className="flex h-full flex-col items-center justify-center space-y-6">
             <ProcessStepper
               currentState={systemStatus.state}
+              stateProgress={systemStatus.stateProgress}
               pillCount={systemStatus.pillCount}
               targetPills={systemStatus.targetPills}
-              stateProgress={systemStatus.stateProgress}
             />
-
-            <ControlPanel
-              systemStatus={systemStatus}
-              simulationMode={simulationMode}
-              onSendCommand={sendCommand}
-              onToggleSensor={toggleSensor}
-              onUpdateStatus={(update) => setSystemStatus((prev) => ({ ...prev, ...update }))}
-            />
+            <CommandPanel onSendCommand={sendCommand} />
           </div>
         )}
       </div>

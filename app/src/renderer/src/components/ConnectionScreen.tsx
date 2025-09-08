@@ -10,6 +10,7 @@ interface ConnectionScreenProps {
   selected: string
   onSelectPort: (port: string) => void
   onConnect: () => void
+  error?: string | null
 }
 
 const COMMON_PORT_PATTERNS = [
@@ -25,7 +26,7 @@ const COMMON_PORT_PATTERNS = [
 ] as const
 
 export const ConnectionScreen: React.FC<ConnectionScreenProps> = (props) => {
-  const { ports, selected, onSelectPort, onConnect } = props
+  const { ports, selected, onSelectPort, onConnect, error } = props
 
   // Auto-select common Arduino port on mount
   useEffect(() => {
@@ -71,6 +72,8 @@ export const ConnectionScreen: React.FC<ConnectionScreenProps> = (props) => {
           <Button onClick={onConnect} disabled={!selected} className="w-full" size="lg">
             Conectar
           </Button>
+
+          {error && <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</div>}
         </CardContent>
       </Card>
     </div>

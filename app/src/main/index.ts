@@ -1,7 +1,7 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'path'
-import { ReadlineParser, SerialPort } from 'serialport'
+import { SerialPort } from 'serialport'
 import icon from '../../resources/icon.png?asset'
 
 function createWindow(): void {
@@ -20,30 +20,53 @@ function createWindow(): void {
   })
 
   const ports: Record<string, SerialPort> = {}
+  const messageBuffers: Record<string, string> = {}
   ipcMain.handle('serial:list', async () => SerialPort.list())
 
   ipcMain.handle('serial:open', (_e, { path, baudRate }) => {
     const port = new SerialPort({ path, baudRate, lock: false })
-    const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }))
+    messageBuffers[path] = ''
 
     console.log('Opening serial port:', path, 'at', baudRate, 'baud')
 
     port.on('error', (err) => {
       console.error('Serial port error:', err)
+      if (mainWindow) {
+        mainWindow.webContents.send('serial:error', { path, error: err.message })
+      }
     })
 
     port.on('open', () => {
       console.log('Serial port opened successfully')
     })
 
-    parser.on('data', (line) => {
-      if (mainWindow === null) {
+    // Handle raw data instead of using ReadlineParser
+    port.on('data', (data: Buffer) => {
+      if (!mainWindow) {
         console.error('win is null')
         return
       }
 
-      console.log('Serial data received:', line)
-      mainWindow.webContents.send('serial:data', { path, line })
+      // Append to buffer
+      messageBuffers[path] += data.toString()
+
+      // Process complete messages
+      const lines = messageBuffers[path].split('\n')
+      messageBuffers[path] = lines.pop() || '' // Keep incomplete line in buffer
+
+      for (const line of lines) {
+        const trimmedLine = line.trim()
+        if (trimmedLine) {
+          console.log('Serial data received:', trimmedLine)
+          mainWindow.webContents.send('serial:data', { path, line: trimmedLine })
+        }
+      }
+
+      // Prevent buffer overflow - clear if too large
+      if (messageBuffers[path].length > 10000) {
+        console.warn('Clearing oversized message buffer')
+        messageBuffers[path] = ''
+      }
     })
 
     ports[path] = port
@@ -64,6 +87,7 @@ function createWindow(): void {
     if (p) {
       p.close()
       delete ports[path]
+      delete messageBuffers[path]
     }
     return true
   })

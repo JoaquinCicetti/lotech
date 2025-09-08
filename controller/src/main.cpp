@@ -3,6 +3,7 @@
 #include "hardware.h"
 #include "state_machine.h"
 #include "commands.h"
+#include "serial_protocol.h"
 
 unsigned long lastHeartbeat = 0;
 
@@ -49,10 +50,7 @@ void loop() {
   
   // Send simple heartbeat
   if (millis() - lastHeartbeat >= HEARTBEAT_INTERVAL) {
-    Serial.print("HB:");
-    Serial.print(stateMachine.getStateName());
-    Serial.print(",");
-    Serial.println(millis());
+    SerialProtocol::sendHeartbeat(stateMachine.getStateName().c_str(), millis());
     lastHeartbeat = millis();
   }
 }

@@ -40,14 +40,14 @@ export const ProcessStepper: React.FC<ProcessStepperProps> = (props) => {
   const progressPercentage = (currentIndex / (PROCESS_STATES.length - 1)) * 100
 
   return (
-    <Card className="p-8 mb-8 bg-card">
-      <div className="flex justify-between relative mb-10">
+    <Card className="bg-card mb-8 p-8">
+      <div className="relative mb-10 flex justify-between">
         {/* Progress Line Background */}
-        <div className="absolute top-6 left-10 right-10 h-0.5 bg-muted z-0" />
+        <div className="bg-muted absolute top-6 right-10 left-10 z-0 h-0.5" />
 
         {/* Progress Line Active */}
         <div
-          className="absolute top-6 left-10 h-0.5 bg-gradient-to-r from-primary to-primary/80 z-0 transition-all duration-500"
+          className="from-primary to-primary/80 absolute top-6 left-10 z-0 h-0.5 bg-gradient-to-r transition-all duration-500"
           style={{
             width: `${progressPercentage * 0.92}%`,
           }}
@@ -59,34 +59,35 @@ export const ProcessStepper: React.FC<ProcessStepperProps> = (props) => {
           const isPast = index < currentIndex
 
           return (
-            <div
-              key={state.id}
-              className="flex flex-col items-center gap-2 z-10"
-            >
-              <div className="relative w-12 h-12">
+            <div key={state.id} className="z-10 flex flex-col items-center gap-2 px-4">
+              <div className="relative h-12 w-12">
                 <div
-                  className={`
-                    w-12 h-12 rounded-full flex items-center justify-center
-                    transition-all duration-300 text-white
-                    ${isActive 
-                      ? 'bg-gradient-to-br from-primary to-primary/80 scale-125 shadow-lg shadow-primary/30' 
-                      : isPast 
-                        ? 'bg-primary' 
-                        : 'bg-muted'
-                    }
-                  `}
+                  className={`flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300 ${
+                    isActive
+                      ? 'from-primary to-primary/80 shadow-primary/30 scale-125 bg-gradient-to-br text-black shadow-lg'
+                      : isPast
+                        ? 'bg-primary text-black'
+                        : 'bg-muted text-white'
+                  } `}
                 >
                   {state.icon}
                 </div>
                 {isActive && stateProgress && (
                   <svg
-                    className="absolute -top-1.5 -left-1.5 w-15 h-15 -rotate-90"
+                    className="absolute -top-1.5 -left-1.5 h-15 w-15 -rotate-90"
                     style={{
                       width: 60,
                       height: 60,
                     }}
                   >
-                    <circle cx="30" cy="30" r="27" fill="none" stroke="hsl(var(--muted))" strokeWidth="2" />
+                    <circle
+                      cx="30"
+                      cy="30"
+                      r="27"
+                      fill="none"
+                      stroke="hsl(var(--muted))"
+                      strokeWidth="2"
+                    />
                     <circle
                       cx="30"
                       cy="30"
@@ -102,10 +103,7 @@ export const ProcessStepper: React.FC<ProcessStepperProps> = (props) => {
                 )}
               </div>
               <span
-                className={`
-                  text-xs
-                  ${isActive ? 'text-foreground font-semibold' : 'text-muted-foreground font-normal'}
-                `}
+                className={`text-xs ${isActive ? 'text-foreground font-semibold' : 'text-muted-foreground font-normal'} `}
               >
                 {state.name}
               </span>
@@ -115,8 +113,8 @@ export const ProcessStepper: React.FC<ProcessStepperProps> = (props) => {
       </div>
 
       {/* Pill Counter */}
-      <div className="text-center py-5">
-        <div className="text-sm text-muted-foreground mb-2">Progreso del lote</div>
+      <div className="py-5 text-center">
+        <div className="text-muted-foreground mb-2 text-sm">Progreso del lote</div>
         <div className="text-5xl font-light">
           {pillCount} <span className="text-muted-foreground">/ {targetPills}</span>
         </div>

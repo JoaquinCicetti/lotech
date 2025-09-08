@@ -1,5 +1,5 @@
 import { useGLTF } from '@react-three/drei'
-import type { MachineState } from '@renderer/types'
+import type { SystemStatus } from '@renderer/types'
 import React, { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { Group } from 'three'
@@ -7,21 +7,7 @@ import { AnimationController } from './AnimationController'
 
 const MODEL_URL = '/model.glb'
 interface MachineModelProps {
-  systemStatus: {
-    state: MachineState
-    sensors: {
-      posAlta: boolean
-      posBaja: boolean
-    }
-    pillCount: number
-    targetPills: number
-    weight?: number
-    stateProgress?: {
-      state: string
-      expectedDuration: number
-      startTime: number
-    }
-  }
+  systemStatus: SystemStatus
 }
 
 export const MachineModel: React.FC<MachineModelProps> = (props) => {

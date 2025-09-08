@@ -1,46 +1,16 @@
-import {
-  Boxes,
-  ChevronDown,
-  ChevronUp,
-  Pause,
-  Play,
-  Power,
-  RotateCcw,
-  Scale,
-  Square,
-  View,
-} from 'lucide-react'
+import { useAppStore } from '@renderer/store/appStore'
+import { Boxes, ChevronDown, ChevronUp, Pause, Power, Scale, Square, View } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
-import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { ScrollArea } from './ui/scroll-area'
 import { Separator } from './ui/separator'
 import { Slider } from './ui/slider'
-import { Switch } from './ui/switch'
 
 interface LeftSidebarProps {
-  currentView: '3d' | 'dashboard'
-  onViewChange: (view: '3d' | 'dashboard') => void
-  simulationMode: boolean
-  onSimulationModeChange: (mode: boolean) => void
   onDisconnect: () => void
   onSendCommand: (command: string) => void
-  currentDelays?: {
-    settle: number
-    weight: number
-    transfer: number
-    grind: number
-    cap: number
-    elevUp: number
-    elevDown: number
-  }
-  currentDosing?: {
-    wheelDivisions: number
-    lotSize: number
-  }
-  onSaveSettings?: (delays: any, dosing: any) => void
 }
 
 interface DelayControlProps {
@@ -78,102 +48,56 @@ const DelayControl: React.FC<DelayControlProps> = (props) => {
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
+  const { onDisconnect, onSendCommand } = props
+
+  // Get all settings from the store
   const {
-    currentView,
-    onViewChange,
     simulationMode,
-    onSimulationModeChange,
-    onDisconnect,
-    onSendCommand,
     currentDelays,
     currentDosing,
-    onSaveSettings,
-  } = props
+    setSimulationMode,
+    setCurrentDelays,
+    setCurrentDosing,
+  } = useAppStore()
 
-  const [targetPills, setTargetPills] = useState(20)
-  const [wheelDivisions, setWheelDivisions] = useState(currentDosing?.wheelDivisions || 20)
-  const [lotSize, setLotSize] = useState(currentDosing?.lotSize || 10)
+  const [wheelDivisions, setWheelDivisions] = useState(currentDosing.wheelDivisions)
+  const [lotSize, setLotSize] = useState(currentDosing.lotSize)
+  const [delays, setDelays] = useState(currentDelays)
 
-  const [delays, setDelays] = useState({
-    settle: currentDelays?.settle || 1500,
-    weight: currentDelays?.weight || 2000,
-    transfer: currentDelays?.transfer || 1200,
-    grind: currentDelays?.grind || 5000,
-    cap: currentDelays?.cap || 2500,
-    elevUp: currentDelays?.elevUp || 4000,
-    elevDown: currentDelays?.elevDown || 4000,
-  })
-
+  // Sync with store changes
   useEffect(() => {
-    if (currentDelays) {
-      setDelays(currentDelays)
-    }
+    setDelays(currentDelays)
   }, [currentDelays])
 
   useEffect(() => {
-    if (currentDosing) {
-      setWheelDivisions(currentDosing.wheelDivisions)
-      setLotSize(currentDosing.lotSize)
-    }
+    setWheelDivisions(currentDosing.wheelDivisions)
+    setLotSize(currentDosing.lotSize)
   }, [currentDosing])
 
   const handleDelayChange = (key: keyof typeof delays, value: number) => {
     const newDelays = { ...delays, [key]: value }
     setDelays(newDelays)
-    // Auto-save on change
-    onSaveSettings?.(newDelays, { wheelDivisions, lotSize })
+    // Auto-save to store and localStorage
+    setCurrentDelays(newDelays)
+    localStorage.setItem('delaySettings', JSON.stringify(newDelays))
+    // Send to controller
+    const cmd = `SET:DELAYS:SETTLE:${newDelays.settle},WEIGHT:${newDelays.weight},TRANSFER:${newDelays.transfer},GRIND:${newDelays.grind},CAP:${newDelays.cap},UP:${newDelays.elevUp},DOWN:${newDelays.elevDown}`
+    onSendCommand(cmd)
   }
 
-  const handleTargetPillsChange = (value: number) => {
-    setTargetPills(value)
-    onSendCommand(`SET:TARGET:${value}`)
+  const handleDosingChange = (wheelDiv: number, lot: number) => {
+    const newDosing = { wheelDivisions: wheelDiv, lotSize: lot }
+    setCurrentDosing(newDosing)
+    localStorage.setItem('dosingSettings', JSON.stringify(newDosing))
+    onSendCommand(`SET:DIVISIONS:${wheelDiv}`)
+    onSendCommand(`SET:LOT_SIZE:${lot}`)
   }
 
   return (
     <div className="bg-card border-border flex h-full flex-col border-r">
       {/* Header */}
       <div className="border-border space-y-3 border-b p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Control Panel</h2>
-          <Switch
-            id="simulation"
-            checked={simulationMode}
-            onCheckedChange={(checked) => {
-              onSimulationModeChange(checked)
-              onSendCommand(checked ? 'MODE:SIM' : 'MODE:REAL')
-            }}
-          />
-        </div>
-
-        {/* Quick Actions */}
-        <div className="flex gap-2">
-          <Button
-            onClick={() => onSendCommand('BTN:START')}
-            size="sm"
-            variant="default"
-            className="flex-1 gap-1"
-          >
-            <Play className="h-3 w-3" />
-            Start
-          </Button>
-          <Button
-            onClick={() => onSendCommand('BTN:RESET')}
-            variant="outline"
-            size="sm"
-            className="flex-1 gap-1"
-          >
-            <RotateCcw className="h-3 w-3" />
-            Reset
-          </Button>
-        </div>
-        <Button
-          onClick={() => onSendCommand('RESET:ALL')}
-          variant="destructive"
-          className="w-full gap-2"
-        >
-          <RotateCcw className="h-4 w-4" />
-          REINICIAR TODO
-        </Button>
+        <h2 className="text-lg font-semibold">Control Panel</h2>
       </div>
 
       {/* Scrollable Settings */}
@@ -240,31 +164,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
             </div>
           </Card>
 
-          {/* Target Pills */}
-          <Card className="p-4">
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Cantidad de Pastillas</Label>
-              <div className="flex items-center gap-3">
-                <Input
-                  type="number"
-                  value={targetPills}
-                  onChange={(e) => handleTargetPillsChange(Number(e.target.value))}
-                  className="h-9 w-20 text-center font-mono"
-                  min={1}
-                  max={100}
-                />
-                <Slider
-                  value={[targetPills]}
-                  onValueChange={([v]) => handleTargetPillsChange(v)}
-                  min={1}
-                  max={100}
-                  step={1}
-                  className="flex-1"
-                />
-              </div>
-            </div>
-          </Card>
-
           {/* Dosing Settings */}
           <Card className="p-4">
             <Label className="mb-3 block text-sm font-medium">Dosificación</Label>
@@ -278,7 +177,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
                   value={[wheelDivisions]}
                   onValueChange={([v]) => {
                     setWheelDivisions(v)
-                    onSaveSettings?.(delays, { wheelDivisions: v, lotSize })
+                    handleDosingChange(v, lotSize)
                   }}
                   min={10}
                   max={50}
@@ -295,11 +194,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
                   value={[lotSize]}
                   onValueChange={([v]) => {
                     setLotSize(v)
-                    onSaveSettings?.(delays, { wheelDivisions, lotSize: v })
+                    handleDosingChange(wheelDivisions, v)
                   }}
-                  min={5}
-                  max={50}
-                  step={5}
+                  min={1}
+                  max={Math.min(50, wheelDivisions)}
+                  step={1}
                 />
               </div>
             </div>
@@ -312,8 +211,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
               <DelayControl
                 label="Asentamiento"
                 value={delays.settle}
-                min={500}
-                max={5000}
+                min={50}
+                max={15_000}
                 step={100}
                 unit="ms"
                 onChange={(v) => handleDelayChange('settle', v)}
@@ -322,8 +221,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
               <DelayControl
                 label="Peso"
                 value={delays.weight}
-                min={500}
-                max={5000}
+                min={50}
+                max={15_000}
                 step={100}
                 unit="ms"
                 onChange={(v) => handleDelayChange('weight', v)}
@@ -332,8 +231,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
               <DelayControl
                 label="Transferencia"
                 value={delays.transfer}
-                min={500}
-                max={3000}
+                min={50}
+                max={15_000}
                 step={100}
                 unit="ms"
                 onChange={(v) => handleDelayChange('transfer', v)}
@@ -342,8 +241,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
               <DelayControl
                 label="Molienda"
                 value={delays.grind}
-                min={1000}
-                max={10000}
+                min={100}
+                max={15_000}
                 step={500}
                 unit="ms"
                 onChange={(v) => handleDelayChange('grind', v)}
@@ -352,8 +251,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
               <DelayControl
                 label="Tapado"
                 value={delays.cap}
-                min={500}
-                max={5000}
+                min={50}
+                max={15_000}
                 step={100}
                 unit="ms"
                 onChange={(v) => handleDelayChange('cap', v)}
@@ -362,8 +261,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
               <DelayControl
                 label="Elevador Arriba"
                 value={delays.elevUp}
-                min={1000}
-                max={8000}
+                min={100}
+                max={15_000}
                 step={500}
                 unit="ms"
                 onChange={(v) => handleDelayChange('elevUp', v)}
@@ -372,8 +271,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
               <DelayControl
                 label="Elevador Abajo"
                 value={delays.elevDown}
-                min={1000}
-                max={8000}
+                min={100}
+                max={15_000}
                 step={500}
                 unit="ms"
                 onChange={(v) => handleDelayChange('elevDown', v)}
@@ -387,27 +286,32 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
 
       {/* Footer with View Switcher and Disconnect */}
       <div className="bg-muted/50 space-y-3 p-4">
-        {/* View Switcher - More prominent */}
         <div className="space-y-2">
-          <Label className="text-muted-foreground text-xs">Vista Actual</Label>
+          <Label className="text-muted-foreground text-xs">Modo</Label>
           <div className="grid grid-cols-2 gap-2">
             <Button
-              onClick={() => onViewChange('dashboard')}
-              variant={currentView === 'dashboard' ? 'default' : 'secondary'}
+              onClick={() => {
+                setSimulationMode(false)
+                onSendCommand('MODE:REAL')
+              }}
+              variant={simulationMode ? 'secondary' : 'default'}
               size="default"
               className="gap-2 font-medium"
             >
               <View className="h-4 w-4" />
-              Dashboard
+              Real
             </Button>
             <Button
-              onClick={() => onViewChange('3d')}
-              variant={currentView === '3d' ? 'default' : 'secondary'}
+              onClick={() => {
+                setSimulationMode(true)
+                onSendCommand('MODE:SIM')
+              }}
+              variant={simulationMode ? 'default' : 'secondary'}
               size="default"
               className="gap-2 font-medium"
             >
               <Boxes className="h-4 w-4" />
-              Vista 3D
+              Simulacion
             </Button>
           </div>
         </div>

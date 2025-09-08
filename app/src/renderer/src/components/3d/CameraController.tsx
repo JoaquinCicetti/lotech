@@ -10,7 +10,7 @@ export const CameraController: React.FC<CameraControllerProps> = (props) => {
 
   return (
     <>
-      <PerspectiveCamera makeDefault position={[12, 5, 4]} fov={60} near={0.1} far={1000} />
+      <PerspectiveCamera makeDefault position={[13, 7, 5]} fov={60} near={0.1} far={1000} />
       <OrbitControls
         enablePan={true}
         enableZoom={true}

@@ -1,4 +1,6 @@
-import { Settings2, Terminal } from 'lucide-react'
+import { useAppStore } from '@renderer/store/appStore'
+import { ViewMode } from '@renderer/types'
+import { Boxes, Settings2, Terminal, View } from 'lucide-react'
 import React from 'react'
 import { cn } from '../lib/utils'
 import { Button } from './ui/button'
@@ -24,6 +26,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
     onToggleRightSidebar,
   } = props
 
+  const { currentView, setCurrentView } = useAppStore()
   return (
     <div className="bg-background relative flex h-screen overflow-hidden">
       {/* Left Sidebar */}
@@ -54,11 +57,36 @@ export const Layout: React.FC<LayoutProps> = (props) => {
           <span className="hidden sm:inline">{showLeftSidebar ? '◀' : 'Control'}</span>
         </Button>
 
+        <div
+          className={cn(
+            'absolute top-4 left-1/2 z-40 grid -translate-x-1/2 grid-cols-2 gap-1 gap-2 shadow-lg'
+          )}
+        >
+          <Button
+            onClick={() => setCurrentView(ViewMode.STANDARD)}
+            variant={currentView === ViewMode.STANDARD ? 'default' : 'secondary'}
+            size="default"
+            className="gap-2 font-medium"
+          >
+            <View className="h-4 w-4" />
+            Dashboard
+          </Button>
+          <Button
+            onClick={() => setCurrentView(ViewMode.MODEL)}
+            variant={currentView === ViewMode.MODEL ? 'default' : 'secondary'}
+            size="default"
+            className="gap-2 font-medium"
+          >
+            <Boxes className="h-4 w-4" />
+            Vista 3D
+          </Button>
+        </div>
+        <div className="bg-border h-8 w-px" />
+
         {/* Right Sidebar Toggle - Inside main content */}
         <Button
           onClick={onToggleRightSidebar}
           variant={showRightSidebar ? 'ghost' : 'secondary'}
-          size="sm"
           className={cn(
             'absolute top-4 z-40 gap-1 shadow-lg transition-all',
             showRightSidebar ? 'right-2' : 'right-4'

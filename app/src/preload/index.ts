@@ -10,6 +10,8 @@ const serial = {
   close: (path: string) => ipcRenderer.invoke('serial:close', path),
   onData: (cb: (payload: { path: string; line: string }) => void) =>
     ipcRenderer.on('serial:data', (_e, payload) => cb(payload)),
+  onError: (cb: (payload: { path: string; error: string }) => void) =>
+    ipcRenderer.on('serial:error', (_e, payload) => cb(payload)),
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

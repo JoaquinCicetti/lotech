@@ -1,55 +1,100 @@
-import { MachineState } from '@renderer/types'
+import { DEFAULT_DELAYS, DEFAULT_DOSING, DEFAULT_VIEW } from '@renderer/constants/settings'
+import {
+  DelaySettings,
+  DosingSettings,
+  MachineState,
+  SerialPortInfo,
+  SystemStatus,
+  ViewMode,
+} from '@renderer/types'
 import { create } from 'zustand'
 
-interface SystemState {
+interface AppState {
+  // Connection state
+  ports: SerialPortInfo[]
+  selectedPort: string
   isConnected: boolean
-  machineState: MachineState
-  loadCellReadings: number[]
-  motorsStatus: {
-    motor1: boolean
-    motor2: boolean
-  }
-  solenoidsStatus: {
-    solenoid1: boolean
-    solenoid2: boolean
-    solenoid3: boolean
-  }
+  connectionError: string | null
+  lastMessageTime: number
+
+  // Serial data
+  serialData: string[]
+
+  // System status
+  systemStatus: SystemStatus
+
+  // UI state
+  showConsole: boolean
+  simulationMode: boolean
+  currentView: ViewMode
+
+  // Settings
+  currentDelays: DelaySettings
+  currentDosing: DosingSettings
+
+  // Actions
+  setPorts: (ports: SerialPortInfo[]) => void
+  setSelectedPort: (port: string) => void
   setConnected: (connected: boolean) => void
-  setMachineState: (state: MachineState) => void
-  setLoadCellReading: (index: number, weight: number) => void
-  setMotorStatus: (motor: 'motor1' | 'motor2', status: boolean) => void
-  setSolenoidStatus: (solenoid: 'solenoid1' | 'solenoid2' | 'solenoid3', status: boolean) => void
+  setConnectionError: (error: string | null) => void
+  setLastMessageTime: (time: number) => void
+  addSerialData: (line: string) => void
+  clearSerialData: () => void
+  updateSystemStatus: (update: Partial<SystemStatus>) => void
+  setShowConsole: (show: boolean) => void
+  setSimulationMode: (mode: boolean) => void
+  setCurrentView: (view: ViewMode) => void
+  setCurrentDelays: (delays: DelaySettings) => void
+  setCurrentDosing: (dosing: DosingSettings) => void
 }
 
-export const useAppStore = create<SystemState>((set) => ({
+const INITIAL_STATUS: SystemStatus = {
+  state: MachineState.INICIO,
+  pillCount: 0,
+  targetPills: 20,
+  weight: 0,
+  sensors: {
+    posAlta: false,
+    posBaja: true,
+    weightStable: false,
+    frascoVacio: true,
+    pastillasCargadas: true,
+  },
+}
+
+export const useAppStore = create<AppState>((set) => ({
+  // Initial state
+  ports: [],
+  selectedPort: '',
   isConnected: false,
-  machineState: MachineState.INICIO,
-  loadCellReadings: Array(9).fill(0),
-  motorsStatus: {
-    motor1: false,
-    motor2: false,
-  },
-  solenoidsStatus: {
-    solenoid1: false,
-    solenoid2: false,
-    solenoid3: false,
-  },
-  setConnected: (connected) => set({ isConnected: connected }),
-  setMachineState: (state) => set({ machineState: state }),
-  setLoadCellReading: (index, weight) => {
-    console.log('loadcell', index, weight)
-    return set((state) => {
-      const newReadings = [...state.loadCellReadings]
-      newReadings[index] = weight
-      return { loadCellReadings: newReadings }
-    })
-  },
-  setMotorStatus: (motor, status) =>
+  connectionError: null,
+  lastMessageTime: Date.now(),
+  serialData: [],
+  systemStatus: INITIAL_STATUS,
+  showConsole: false,
+  simulationMode: true,
+  currentView: DEFAULT_VIEW.viewMode,
+  currentDelays: DEFAULT_DELAYS,
+  currentDosing: DEFAULT_DOSING,
+
+  // Actions
+  setPorts: (ports) => set({ ports }),
+  setSelectedPort: (selectedPort) => set({ selectedPort }),
+  setConnected: (isConnected) => set({ isConnected }),
+  setConnectionError: (connectionError) => set({ connectionError }),
+  setLastMessageTime: (lastMessageTime) => set({ lastMessageTime }),
+  addSerialData: (line) =>
     set((state) => ({
-      motorsStatus: { ...state.motorsStatus, [motor]: status },
+      serialData: [...state.serialData, `[${new Date().toLocaleTimeString()}] ${line}`].slice(-100),
     })),
-  setSolenoidStatus: (solenoid, status) =>
+  clearSerialData: () => set({ serialData: [] }),
+  updateSystemStatus: (update) =>
     set((state) => ({
-      solenoidsStatus: { ...state.solenoidsStatus, [solenoid]: status },
+      systemStatus: { ...state.systemStatus, ...update },
     })),
+  setShowConsole: (showConsole) => set({ showConsole }),
+  setSimulationMode: (simulationMode) => set({ simulationMode }),
+  setCurrentView: (currentView) => set({ currentView }),
+  setCurrentDelays: (currentDelays) => set({ currentDelays }),
+  setCurrentDosing: (currentDosing) => set({ currentDosing }),
 }))

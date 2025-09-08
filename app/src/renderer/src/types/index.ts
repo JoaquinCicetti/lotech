@@ -14,11 +14,37 @@ export enum MachineState {
   CIERRE = '7_CIERRE',
   RETIRO = '8_RETIRO',
 }
+
+export interface DelaySettings {
+  settle: number
+  weight: number
+  transfer: number
+  grind: number
+  cap: number
+  elevUp: number
+  elevDown: number
+}
+
+export interface DosingSettings {
+  wheelDivisions: number
+  lotSize: number
+}
+
+export enum ViewMode {
+  STANDARD = 'dashboard',
+  MODEL = '3d',
+}
+
+export interface ViewSettings {
+  viewMode: ViewMode
+}
+
 export interface SystemStatus {
   state: MachineState
   pillCount: number
   targetPills: number
   weight?: number
+  lastHeartbeat?: number
   stateProgress?: {
     state: string
     expectedDuration: number
@@ -45,6 +71,7 @@ export interface SerialAPI {
   write: (args: { path: string; data: string | Uint8Array }) => Promise<boolean>
   close: (path: string) => Promise<boolean>
   onData: (cb: (p: { path: string; line: string }) => void) => void
+  onError: (cb: (p: { path: string; error: string }) => void) => void
 }
 
 declare global {

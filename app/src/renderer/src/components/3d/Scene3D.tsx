@@ -1,5 +1,6 @@
 import { Grid, Loader } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
+import { useAppStore } from '@renderer/store/appStore'
 import React, { Suspense } from 'react'
 import { SystemStatus } from '../../types'
 import { CameraController } from './CameraController'
@@ -14,7 +15,7 @@ interface Scene3DProps {
 
 export const Scene3D: React.FC<Scene3DProps> = (props) => {
   const { systemStatus } = props
-
+  const { isConnected } = useAppStore()
   return (
     <div className="from-background to-muted/20 relative h-[100vh] w-full overflow-hidden rounded-lg bg-gradient-to-b">
       <Canvas shadows camera={{ fov: 80 }}>
@@ -41,6 +42,7 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
             pillCount={systemStatus.pillCount}
             targetPills={systemStatus.targetPills}
             weight={systemStatus.weight}
+            isConnected={isConnected}
           />
           {/* Use SimpleMachine instead of MachineModel for now */}
           {/* <SimpleMachine systemStatus={systemStatus} /> */}

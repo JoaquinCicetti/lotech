@@ -3,39 +3,52 @@ import { SystemStatus } from '../types'
 
 export class SerialMessageParser {
   static parseMessage(line: string, currentStatus: SystemStatus): Partial<SystemStatus> | null {
-    // Remove any trailing/leading whitespace
-    const cleanLine = line.trim()
+    // Remove any trailing/leading whitespace and control characters
+    const cleanLine = line.trim().replace(/[\r\x00-\x1F\x7F]/g, '')
+
+    // Skip empty or too short messages
+    if (cleanLine.length < 3) {
+      return null
+    }
 
     // ESTADO: State change
-    if (cleanLine.startsWith('ESTADO:') && cleanLine.includes(':')) {
+    if (cleanLine.startsWith('ESTADO:')) {
       const newState = cleanLine.substring(7).trim()
 
-      if (isValidMachineState(newState)) {
+      if (newState && isValidMachineState(newState)) {
+        console.log(`State change: ${newState}`)
         return { state: newState }
+      } else {
+        console.warn(`Invalid state received: ${newState}`)
       }
     }
 
     // PASTILLAS: Pill counter
     if (cleanLine.startsWith('PASTILLAS:')) {
-      const match = cleanLine.match(/^PASTILLAS:(\d+)\/(\d+)$/)
+      const match = cleanLine.match(/^PASTILLAS:(\d+)\/(\d+)/)
       if (match) {
         const count = parseInt(match[1])
         const target = parseInt(match[2])
         // Validate reasonable values
-        if (!isNaN(count) && !isNaN(target) && count >= 0 && target > 0) {
+        if (!isNaN(count) && !isNaN(target) && count >= 0 && target > 0 && target <= 1000) {
           return {
             pillCount: count,
             targetPills: target,
           }
+        } else {
+          console.warn(`Invalid pill count: ${cleanLine}`)
         }
       }
     }
 
     // PESO: Weight reading
     if (cleanLine.startsWith('PESO:')) {
-      const weight = parseFloat(cleanLine.substring(5))
-      if (!isNaN(weight)) {
+      const weightStr = cleanLine.substring(5).trim()
+      const weight = parseFloat(weightStr)
+      if (!isNaN(weight) && weight >= -100 && weight <= 10000) {
         return { weight }
+      } else {
+        console.warn(`Invalid weight reading: ${weightStr}`)
       }
     }
 
@@ -69,12 +82,13 @@ export class SerialMessageParser {
 
     // HB: Simple heartbeat
     if (cleanLine.startsWith('HB:')) {
-      const parts = cleanLine.split(',')
-      if (parts.length >= 2) {
-        const state = parts[0].substring(3)
+      const parts = cleanLine.substring(3).split(',')
+      if (parts.length >= 1) {
+        const state = parts[0].trim()
 
-        if (isValidMachineState(state)) {
-          return { state }
+        if (state && isValidMachineState(state)) {
+          // Only update state from heartbeat if we haven't received a state update recently
+          return { state, lastHeartbeat: Date.now() }
         }
       }
     }
@@ -90,13 +104,14 @@ export class SerialMessageParser {
       const sensors = { ...currentStatus.sensors }
       const parts = cleanLine.split(':')
 
-      if (parts[1] === 'FRASCO_VACIO') {
-        sensors.frascoVacio = parts[2] === '1'
-      } else if (parts[1] === 'PASTILLAS_CARGADAS') {
-        sensors.pastillasCargadas = parts[2] === '1'
+      if (parts.length >= 3) {
+        if (parts[1] === 'FRASCO_VACIO') {
+          sensors.frascoVacio = parts[2] === '1'
+        } else if (parts[1] === 'PASTILLAS_CARGADAS') {
+          sensors.pastillasCargadas = parts[2] === '1'
+        }
+        return { sensors }
       }
-
-      return { sensors }
     }
 
     // SIM: Simulation sensor changes
@@ -104,19 +119,23 @@ export class SerialMessageParser {
       const sensors = { ...currentStatus.sensors }
       const parts = cleanLine.split(':')
 
-      if (parts[1] === 'POS_ALTA') {
-        sensors.posAlta = parts[2] === 'ON'
-      } else if (parts[1] === 'POS_BAJA') {
-        sensors.posBaja = parts[2] === 'ON'
-      } else if (parts[1] === 'WEIGHT_STABLE') {
-        sensors.weightStable = parts[2] === 'ON'
-      } else if (parts[1] === 'FRASCO_VACIO') {
-        sensors.frascoVacio = parts[2] === 'ON'
-      } else if (parts[1] === 'PASTILLAS_CARGADAS') {
-        sensors.pastillasCargadas = parts[2] === 'ON'
-      }
+      if (parts.length >= 3) {
+        const sensorName = parts[1]
+        const value = parts[2]
 
-      return { sensors }
+        if (sensorName === 'POS_ALTA') {
+          sensors.posAlta = value === 'ON'
+        } else if (sensorName === 'POS_BAJA') {
+          sensors.posBaja = value === 'ON'
+        } else if (sensorName === 'WEIGHT_STABLE') {
+          sensors.weightStable = value === 'ON'
+        } else if (sensorName === 'FRASCO_VACIO') {
+          sensors.frascoVacio = value === 'ON'
+        } else if (sensorName === 'PASTILLAS_CARGADAS') {
+          sensors.pastillasCargadas = value === 'ON'
+        }
+        return { sensors }
+      }
     }
 
     // DELAYS: Configuration response
@@ -159,13 +178,15 @@ export class SerialMessageParser {
   }
 
   static getMessageType(line: string): 'info' | 'warning' | 'error' | 'success' | 'debug' {
+    const cleanLine = line.trim()
     // Only check for complete message patterns
-    if (line.startsWith('ERROR:')) return 'error'
-    if (line.startsWith('ESTADO:')) return 'warning'
-    if (line.startsWith('BTN:')) return 'success'
-    if (line.startsWith('HB:')) return 'debug'
-    if (line.startsWith('ACCION:')) return 'info'
-    if (line.startsWith('PESO:') || line.startsWith('PASTILLAS:')) return 'info'
+    if (cleanLine.startsWith('ERROR:')) return 'error'
+    if (cleanLine.startsWith('ESTADO:')) return 'warning'
+    if (cleanLine.startsWith('BTN:')) return 'success'
+    if (cleanLine.startsWith('HB:')) return 'debug'
+    if (cleanLine.startsWith('ACCION:')) return 'info'
+    if (cleanLine.startsWith('PESO:') || cleanLine.startsWith('PASTILLAS:')) return 'info'
+    if (cleanLine.startsWith('SIM:') || cleanLine.startsWith('SENSORES:')) return 'debug'
     return 'info'
   }
 
