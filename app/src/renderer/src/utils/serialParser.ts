@@ -1,16 +1,6 @@
+import { isValidMachineState } from '@renderer/constants/states'
 import { SystemStatus } from '../types'
 
-enum States {
-  INICIO = '0_INICIO',
-  ASCENSOR = '1_ASCENSOR',
-  DOSIFICACION = '2_DOSIFICACION',
-  PESAJE = '3_PESAJE',
-  TRASPASO = '4_TRASPASO',
-  MOLIENDA = '5_MOLIENDA',
-  DESCARGA = '6_DESCARGA',
-  CIERRE = '7_CIERRE',
-  RETIRO = '8_RETIRO',
-}
 export class SerialMessageParser {
   static parseMessage(line: string, currentStatus: SystemStatus): Partial<SystemStatus> | null {
     // Remove any trailing/leading whitespace
@@ -19,13 +9,9 @@ export class SerialMessageParser {
     // ESTADO: State change
     if (cleanLine.startsWith('ESTADO:') && cleanLine.includes(':')) {
       const newState = cleanLine.substring(7).trim()
-      // Validate state format (should be like "0_INICIO", "1_ASCENSOR", etc.)
-      if (/^\d+_[A-Z]+$/.test(newState)) {
-        // Validate it's a known state
-        const validStates = Object.values(States)
-        if (validStates.includes(newState as States)) {
-          return { state: newState }
-        }
+
+      if (isValidMachineState(newState)) {
+        return { state: newState }
       }
     }
 
@@ -86,19 +72,8 @@ export class SerialMessageParser {
       const parts = cleanLine.split(',')
       if (parts.length >= 2) {
         const state = parts[0].substring(3)
-        // Validate state format and it's a known state
-        const validStates = [
-          '0_INICIO',
-          '1_ASCENSOR',
-          '2_DOSIFICACION',
-          '3_PESAJE',
-          '4_TRASPASO',
-          '5_MOLIENDA',
-          '6_DESCARGA',
-          '7_CIERRE',
-          '8_RETIRO',
-        ]
-        if (/^\d+_[A-Z]+$/.test(state) && validStates.includes(state)) {
+
+        if (isValidMachineState(state)) {
           return { state }
         }
       }
@@ -164,7 +139,7 @@ export class SerialMessageParser {
           status.targetPills = parseInt(target)
         } else if (key === 'PESO') {
           status.weight = parseFloat(value)
-        } else if (key === 'ESTADO') {
+        } else if (key === 'ESTADO' && isValidMachineState(value)) {
           status.state = value
         } else if (key === 'FRASCO_VACIO') {
           sensors.frascoVacio = value === '1'

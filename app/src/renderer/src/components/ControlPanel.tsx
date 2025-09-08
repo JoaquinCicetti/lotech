@@ -1,11 +1,11 @@
 import { Play, RotateCcw } from 'lucide-react'
 import React from 'react'
 import { SystemStatus } from '../types'
+import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { Switch } from './ui/switch'
 import { Label } from './ui/label'
-import { Badge } from './ui/badge'
+import { Switch } from './ui/switch'
 
 interface ControlPanelProps {
   systemStatus: SystemStatus
@@ -24,30 +24,19 @@ interface SensorSwitchProps {
 
 const SensorSwitch: React.FC<SensorSwitchProps> = (props) => {
   const { label, checked, onChange, disabled = false } = props
-  
+
   return (
     <div className="flex items-center justify-between py-2">
       <Label htmlFor={label} className="text-sm font-normal">
         {label}
       </Label>
-      <Switch
-        id={label}
-        checked={checked}
-        onCheckedChange={onChange}
-        disabled={disabled}
-      />
+      <Switch id={label} checked={checked} onCheckedChange={onChange} disabled={disabled} />
     </div>
   )
 }
 
 export const ControlPanel: React.FC<ControlPanelProps> = (props) => {
-  const {
-    systemStatus,
-    simulationMode,
-    onSendCommand,
-    onToggleSensor,
-    onUpdateStatus,
-  } = props
+  const { systemStatus, simulationMode, onSendCommand, onToggleSensor, onUpdateStatus } = props
 
   const handleSensorToggle = (key: keyof SystemStatus['sensors'], sensor: string): void => {
     const newValue = !systemStatus.sensors[key]
@@ -82,13 +71,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   }
 
   const isStartEnabled = systemStatus.sensors.pastillasCargadas && systemStatus.sensors.frascoVacio
-  
+
   return (
-    <div className="grid grid-cols-3 gap-5 mb-8">
+    <div className="mb-8 grid grid-cols-3 gap-5">
       {/* Actions */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-sm font-medium text-muted-foreground">ACCIONES</CardTitle>
+          <CardTitle className="text-muted-foreground text-sm font-medium">ACCIONES</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex gap-3">
@@ -96,7 +85,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               onClick={() => onSendCommand('BTN:START')}
               disabled={!isStartEnabled}
               className="flex-1 gap-2"
-              variant={isStartEnabled ? "default" : "secondary"}
+              variant={isStartEnabled ? 'default' : 'secondary'}
             >
               <Play className="h-4 w-4" />
               INICIO
@@ -124,9 +113,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       </Card>
 
       {/* Sensors */}
-      <Card className={simulationMode ? '' : 'opacity-50 pointer-events-none'}>
+      <Card className={simulationMode ? '' : 'pointer-events-none opacity-50'}>
         <CardHeader className="pb-4">
-          <CardTitle className="text-sm font-medium text-muted-foreground">SENSORES</CardTitle>
+          <CardTitle className="text-muted-foreground text-sm font-medium">SENSORES</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1">
           <SensorSwitch
@@ -148,9 +137,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = (props) => {
       </Card>
 
       {/* Pre-conditions */}
-      <Card className={simulationMode ? '' : 'opacity-50 pointer-events-none'}>
+      <Card className={simulationMode ? '' : 'pointer-events-none opacity-50'}>
         <CardHeader className="pb-4">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
+          <CardTitle className="text-muted-foreground text-sm font-medium">
             PRE-CONDICIONES
           </CardTitle>
         </CardHeader>

@@ -13,7 +13,7 @@ interface ConsoleLineProps {
 
 const ConsoleLine: React.FC<ConsoleLineProps> = (props) => {
   const { line } = props
-  
+
   const getMessageColor = (line: string): string => {
     const type = SerialMessageParser.getMessageType(line)
     switch (type) {
@@ -29,17 +29,13 @@ const ConsoleLine: React.FC<ConsoleLineProps> = (props) => {
         return 'text-muted-foreground'
     }
   }
-  
-  return (
-    <div className={`py-0.5 font-mono text-xs ${getMessageColor(line)}`}>
-      {line}
-    </div>
-  )
+
+  return <div className={`py-0.5 font-mono text-xs ${getMessageColor(line)}`}>{line}</div>
 }
 
 export const Console: React.FC<ConsoleProps> = (props) => {
   const { serialData } = props
-  
+
   return (
     <ScrollArea className="h-full p-4">
       {serialData.map((line, index) => (

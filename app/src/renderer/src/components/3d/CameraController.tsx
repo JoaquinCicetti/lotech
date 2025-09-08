@@ -1,5 +1,5 @@
-import React from 'react'
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
+import React from 'react'
 
 interface CameraControllerProps {
   autoRotate?: boolean
@@ -7,16 +7,10 @@ interface CameraControllerProps {
 
 export const CameraController: React.FC<CameraControllerProps> = (props) => {
   const { autoRotate = false } = props
-  
+
   return (
     <>
-      <PerspectiveCamera
-        makeDefault
-        position={[8, 8, 8]}
-        fov={50}
-        near={0.1}
-        far={1000}
-      />
+      <PerspectiveCamera makeDefault position={[8, 8, 8]} fov={50} near={0.1} far={1000} />
       <OrbitControls
         enablePan={true}
         enableZoom={true}

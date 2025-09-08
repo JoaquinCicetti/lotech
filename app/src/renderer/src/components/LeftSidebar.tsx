@@ -1,25 +1,24 @@
-import React, { useState, useEffect } from 'react'
-import { 
-  View, 
-  Boxes, 
+import {
+  Boxes,
+  ChevronDown,
+  ChevronUp,
+  Pause,
+  Play,
   Power,
-  FlaskConical,
-  PlayCircle,
   RotateCcw,
   Scale,
-  ChevronUp,
-  ChevronDown,
-  Pause,
-  Square
+  Square,
+  View,
 } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
 import { Button } from './ui/button'
+import { Card } from './ui/card'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
 import { ScrollArea } from './ui/scroll-area'
 import { Separator } from './ui/separator'
-import { Label } from './ui/label'
-import { Input } from './ui/input'
-import { Switch } from './ui/switch'
 import { Slider } from './ui/slider'
-import { Card } from './ui/card'
+import { Switch } from './ui/switch'
 
 interface LeftSidebarProps {
   currentView: '3d' | 'dashboard'
@@ -56,13 +55,14 @@ interface DelayControlProps {
 
 const DelayControl: React.FC<DelayControlProps> = (props) => {
   const { label, value, min, max, step, unit, onChange } = props
-  
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <Label className="text-xs font-medium">{label}</Label>
-        <span className="text-xs text-muted-foreground font-mono">
-          {value}{unit}
+        <span className="text-muted-foreground font-mono text-xs">
+          {value}
+          {unit}
         </span>
       </div>
       <Slider
@@ -78,22 +78,22 @@ const DelayControl: React.FC<DelayControlProps> = (props) => {
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
-  const { 
-    currentView, 
-    onViewChange, 
+  const {
+    currentView,
+    onViewChange,
     simulationMode,
     onSimulationModeChange,
     onDisconnect,
     onSendCommand,
     currentDelays,
     currentDosing,
-    onSaveSettings
+    onSaveSettings,
   } = props
-  
+
   const [targetPills, setTargetPills] = useState(20)
   const [wheelDivisions, setWheelDivisions] = useState(currentDosing?.wheelDivisions || 20)
   const [lotSize, setLotSize] = useState(currentDosing?.lotSize || 10)
-  
+
   const [delays, setDelays] = useState({
     settle: currentDelays?.settle || 1500,
     weight: currentDelays?.weight || 2000,
@@ -101,39 +101,39 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
     grind: currentDelays?.grind || 5000,
     cap: currentDelays?.cap || 2500,
     elevUp: currentDelays?.elevUp || 4000,
-    elevDown: currentDelays?.elevDown || 4000
+    elevDown: currentDelays?.elevDown || 4000,
   })
-  
+
   useEffect(() => {
     if (currentDelays) {
       setDelays(currentDelays)
     }
   }, [currentDelays])
-  
+
   useEffect(() => {
     if (currentDosing) {
       setWheelDivisions(currentDosing.wheelDivisions)
       setLotSize(currentDosing.lotSize)
     }
   }, [currentDosing])
-  
+
   const handleDelayChange = (key: keyof typeof delays, value: number) => {
     const newDelays = { ...delays, [key]: value }
     setDelays(newDelays)
     // Auto-save on change
     onSaveSettings?.(newDelays, { wheelDivisions, lotSize })
   }
-  
+
   const handleTargetPillsChange = (value: number) => {
     setTargetPills(value)
     onSendCommand(`SET:TARGET:${value}`)
   }
-  
+
   return (
-    <div className="h-full flex flex-col bg-card border-r border-border">
+    <div className="bg-card border-border flex h-full flex-col border-r">
       {/* Header */}
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center justify-between mb-3">
+      <div className="border-border space-y-3 border-b p-4">
+        <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Control Panel</h2>
           <Switch
             id="simulation"
@@ -144,7 +144,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
             }}
           />
         </div>
-        
+
         {/* Quick Actions */}
         <div className="flex gap-2">
           <Button
@@ -153,7 +153,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
             variant="default"
             className="flex-1 gap-1"
           >
-            <PlayCircle className="h-3 w-3" />
+            <Play className="h-3 w-3" />
             Start
           </Button>
           <Button
@@ -166,14 +166,22 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
             Reset
           </Button>
         </div>
+        <Button
+          onClick={() => onSendCommand('RESET:ALL')}
+          variant="destructive"
+          className="w-full gap-2"
+        >
+          <RotateCcw className="h-4 w-4" />
+          REINICIAR TODO
+        </Button>
       </div>
-      
+
       {/* Scrollable Settings */}
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-6">
+        <div className="space-y-6 p-4">
           {/* Command Tools */}
           <Card className="p-4">
-            <Label className="text-sm font-medium mb-3 block">Comandos</Label>
+            <Label className="mb-3 block text-sm font-medium">Comandos</Label>
             <div className="grid grid-cols-2 gap-2">
               <Button
                 onClick={() => onSendCommand('BTN:PAUSE')}
@@ -231,7 +239,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
               </Button>
             </div>
           </Card>
-          
+
           {/* Target Pills */}
           <Card className="p-4">
             <div className="space-y-3">
@@ -256,15 +264,15 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
               </div>
             </div>
           </Card>
-          
+
           {/* Dosing Settings */}
           <Card className="p-4">
-            <Label className="text-sm font-medium mb-3 block">Dosificación</Label>
+            <Label className="mb-3 block text-sm font-medium">Dosificación</Label>
             <div className="space-y-4">
               <div>
-                <div className="flex items-center justify-between mb-1">
+                <div className="mb-1 flex items-center justify-between">
                   <Label className="text-xs">Divisiones de Rueda</Label>
-                  <span className="text-xs text-muted-foreground font-mono">{wheelDivisions}</span>
+                  <span className="text-muted-foreground font-mono text-xs">{wheelDivisions}</span>
                 </div>
                 <Slider
                   value={[wheelDivisions]}
@@ -277,11 +285,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
                   step={1}
                 />
               </div>
-              
+
               <div>
-                <div className="flex items-center justify-between mb-1">
+                <div className="mb-1 flex items-center justify-between">
                   <Label className="text-xs">Tamaño del Lote</Label>
-                  <span className="text-xs text-muted-foreground font-mono">{lotSize}</span>
+                  <span className="text-muted-foreground font-mono text-xs">{lotSize}</span>
                 </div>
                 <Slider
                   value={[lotSize]}
@@ -296,10 +304,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
               </div>
             </div>
           </Card>
-          
+
           {/* Timing Settings */}
           <Card className="p-4">
-            <Label className="text-sm font-medium mb-4 block">Tiempos de Proceso</Label>
+            <Label className="mb-4 block text-sm font-medium">Tiempos de Proceso</Label>
             <div className="space-y-4">
               <DelayControl
                 label="Asentamiento"
@@ -310,7 +318,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
                 unit="ms"
                 onChange={(v) => handleDelayChange('settle', v)}
               />
-              
+
               <DelayControl
                 label="Peso"
                 value={delays.weight}
@@ -320,7 +328,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
                 unit="ms"
                 onChange={(v) => handleDelayChange('weight', v)}
               />
-              
+
               <DelayControl
                 label="Transferencia"
                 value={delays.transfer}
@@ -330,7 +338,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
                 unit="ms"
                 onChange={(v) => handleDelayChange('transfer', v)}
               />
-              
+
               <DelayControl
                 label="Molienda"
                 value={delays.grind}
@@ -340,7 +348,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
                 unit="ms"
                 onChange={(v) => handleDelayChange('grind', v)}
               />
-              
+
               <DelayControl
                 label="Tapado"
                 value={delays.cap}
@@ -350,7 +358,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
                 unit="ms"
                 onChange={(v) => handleDelayChange('cap', v)}
               />
-              
+
               <DelayControl
                 label="Elevador Arriba"
                 value={delays.elevUp}
@@ -360,7 +368,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
                 unit="ms"
                 onChange={(v) => handleDelayChange('elevUp', v)}
               />
-              
+
               <DelayControl
                 label="Elevador Abajo"
                 value={delays.elevDown}
@@ -374,14 +382,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
           </Card>
         </div>
       </ScrollArea>
-      
+
       <Separator />
-      
+
       {/* Footer with View Switcher and Disconnect */}
-      <div className="p-4 space-y-3 bg-muted/50">
+      <div className="bg-muted/50 space-y-3 p-4">
         {/* View Switcher - More prominent */}
         <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Vista Actual</Label>
+          <Label className="text-muted-foreground text-xs">Vista Actual</Label>
           <div className="grid grid-cols-2 gap-2">
             <Button
               onClick={() => onViewChange('dashboard')}
@@ -403,13 +411,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
             </Button>
           </div>
         </div>
-        
-        <Button
-          onClick={onDisconnect}
-          variant="destructive"
-          size="sm"
-          className="w-full gap-2"
-        >
+
+        <Button onClick={onDisconnect} variant="destructive" size="sm" className="w-full gap-2">
           <Power className="h-4 w-4" />
           Desconectar
         </Button>

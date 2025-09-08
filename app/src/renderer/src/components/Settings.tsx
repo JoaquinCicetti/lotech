@@ -50,6 +50,15 @@ const DEFAULT_VIEW: ViewSettings = {
   viewMode: 'standard',
 }
 
+const timeOptions = [
+  { key: 'settle', label: 'Tiempo de Asentamiento (Dosificación)', unit: 'ms' },
+  { key: 'weight', label: 'Tiempo de Estabilización (Peso)', unit: 'ms' },
+  { key: 'transfer', label: 'Tiempo de Transferencia', unit: 'ms' },
+  { key: 'grind', label: 'Tiempo de Molienda', unit: 'ms' },
+  { key: 'cap', label: 'Tiempo de Cierre de Tapa', unit: 'ms' },
+  { key: 'elevUp', label: 'Tiempo de Elevador Subiendo', unit: 'ms' },
+  { key: 'elevDown', label: 'Tiempo de Elevador Bajando', unit: 'ms' },
+]
 export const Settings: React.FC<SettingsProps> = ({
   isOpen,
   onClose,
@@ -158,15 +167,7 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {[
-            { key: 'settle', label: 'Tiempo de Asentamiento (Dosificación)', unit: 'ms' },
-            { key: 'weight', label: 'Tiempo de Estabilización (Peso)', unit: 'ms' },
-            { key: 'transfer', label: 'Tiempo de Transferencia', unit: 'ms' },
-            { key: 'grind', label: 'Tiempo de Molienda', unit: 'ms' },
-            { key: 'cap', label: 'Tiempo de Cierre de Tapa', unit: 'ms' },
-            { key: 'elevUp', label: 'Tiempo de Elevador Subiendo', unit: 'ms' },
-            { key: 'elevDown', label: 'Tiempo de Elevador Bajando', unit: 'ms' },
-          ].map(({ key, label, unit }) => (
+          {timeOptions.map(({ key, label, unit }) => (
             <div key={key}>
               <label
                 style={{

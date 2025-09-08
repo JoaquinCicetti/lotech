@@ -3,8 +3,19 @@ export interface SerialPortInfo {
   friendlyName?: string
 }
 
+export enum MachineState {
+  INICIO = '0_INICIO',
+  ASCENSOR = '1_ASCENSOR',
+  DOSIFICACION = '2_DOSIFICACION',
+  PESAJE = '3_PESAJE',
+  TRASPASO = '4_TRASPASO',
+  MOLIENDA = '5_MOLIENDA',
+  DESCARGA = '6_DESCARGA',
+  CIERRE = '7_CIERRE',
+  RETIRO = '8_RETIRO',
+}
 export interface SystemStatus {
-  state: string
+  state: MachineState
   pillCount: number
   targetPills: number
   weight?: number

@@ -139,8 +139,8 @@ void StateMachine::executeStateEntry() {
       } else {
         transferSolenoid.activate();
         // Clear weight stable since pill is being removed
-        loadCell.simulateWeight(false);
-        Serial.println("SIM:WEIGHT_STABLE:OFF");
+        // loadCell.simulateWeight(false);
+        // Serial.println("SIM:WEIGHT_STABLE:OFF");
       }
       break;
       

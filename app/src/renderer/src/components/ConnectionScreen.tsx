@@ -1,4 +1,4 @@
-import { Wifi } from 'lucide-react'
+import { Pill } from 'lucide-react'
 import React, { useEffect } from 'react'
 import { SerialPortInfo } from '../types'
 import { Button } from './ui/button'
@@ -50,7 +50,7 @@ export const ConnectionScreen: React.FC<ConnectionScreenProps> = (props) => {
       <Card className="border-border mx-4 w-full max-w-md">
         <CardHeader className="pb-4 text-center">
           <div className="mb-4 flex justify-center">
-            <Wifi className="text-primary h-12 w-12" />
+            <Pill className="text-primary h-12 w-12" />
           </div>
           <CardTitle className="text-3xl font-light">LOTECH</CardTitle>
         </CardHeader>

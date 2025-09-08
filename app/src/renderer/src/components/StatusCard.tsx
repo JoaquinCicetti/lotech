@@ -1,6 +1,6 @@
 import React from 'react'
-import { Card } from './ui/card'
 import { cn } from '../lib/utils'
+import { Card } from './ui/card'
 
 interface StatusCardProps {
   state: string
@@ -38,27 +38,29 @@ const StatusRow: React.FC<StatusRowProps> = (props) => {
 }
 
 export const StatusCard: React.FC<StatusCardProps> = (props) => {
-  const { 
-    state, 
-    pillCount, 
-    targetPills, 
-    weight = 0, 
+  const {
+    state,
+    pillCount,
+    targetPills,
+    weight = 0,
     isConnected,
     loadCellCount = 0,
     className,
-    position = 'static'
+    position = 'static',
   } = props
-  
+
   const progress = (pillCount / targetPills) * 100
-  
+
   return (
-    <Card className={cn(
-      "shadow-xl",
-      position === 'floating' 
-        ? "bg-background/95 border-border backdrop-blur-md" 
-        : "bg-card border-border",
-      className
-    )}>
+    <Card
+      className={cn(
+        'shadow-xl',
+        position === 'floating'
+          ? 'bg-background/95 border-border backdrop-blur-md'
+          : 'bg-card border-border',
+        className
+      )}
+    >
       <div className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">Estado de Máquina</h3>
@@ -71,20 +73,10 @@ export const StatusCard: React.FC<StatusCardProps> = (props) => {
 
         <div className="space-y-3">
           <StatusRow label="Estado" value={state} variant="primary" />
-          <StatusRow
-            label="Progreso"
-            value={`${pillCount}/${targetPills}`}
-          />
-          <StatusRow
-            label="Peso"
-            value={`${weight.toFixed(2)}g`}
-            variant="secondary"
-          />
+          <StatusRow label="Progreso" value={`${pillCount}/${targetPills}`} />
+          <StatusRow label="Peso" value={`${weight.toFixed(2)}g`} variant="secondary" />
           {loadCellCount !== undefined && (
-            <StatusRow
-              label="Celdas Activas"
-              value={`${loadCellCount}/9`}
-            />
+            <StatusRow label="Celdas Activas" value={`${loadCellCount}/9`} />
           )}
         </div>
 
@@ -99,9 +91,7 @@ export const StatusCard: React.FC<StatusCardProps> = (props) => {
             />
           </div>
           <div className="mt-2 flex justify-between">
-            <span className="text-muted-foreground text-xs">
-              {Math.round(progress)}%
-            </span>
+            <span className="text-muted-foreground text-xs">{Math.round(progress)}%</span>
             <span className="text-muted-foreground text-xs">{pillCount} pastillas</span>
           </div>
         </div>
