@@ -19,6 +19,8 @@ function App(): React.JSX.Element {
     systemStatus,
     currentView,
     connectionError,
+    commandQueue,
+    isProcessingCommand,
     setPorts,
     setSelectedPort,
     setConnected,
@@ -30,9 +32,67 @@ function App(): React.JSX.Element {
     setShowConsole,
     setCurrentDelays,
     setCurrentDosing,
+    dequeueCommand,
+    setProcessingCommand,
+    addPendingConfirmation,
+    removePendingConfirmation,
+    getPendingConfirmation,
   } = useAppStore()
 
   const [showSettings, setShowSettings] = useState<boolean>(false)
+
+  // Command queue processor
+  useEffect(() => {
+    if (!isConnected || isProcessingCommand || commandQueue.length === 0) return
+    
+    const processNextCommand = async () => {
+      const cmd = dequeueCommand()
+      if (!cmd) return
+      
+      setProcessingCommand(true)
+      
+      // Track pending confirmations for settings commands
+      if (cmd.startsWith('SET:')) {
+        const key = cmd.split(':').slice(0, 2).join(':')
+        addPendingConfirmation(key, {
+          command: cmd,
+          timestamp: Date.now(),
+          timeoutMs: 3000,
+          onTimeout: () => {
+            console.warn(`Command timeout: ${cmd}`)
+            // Could revert optimistic update here if needed
+          }
+        })
+      }
+      
+      await sendCommandDirect(cmd)
+      
+      // Wait a bit before processing next command to avoid buffer overflow
+      await new Promise(resolve => setTimeout(resolve, 100))
+      setProcessingCommand(false)
+    }
+    
+    processNextCommand()
+  }, [isConnected, isProcessingCommand, commandQueue, selectedPort, dequeueCommand, setProcessingCommand, addPendingConfirmation])
+  
+  // Check for confirmation timeouts
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const store = useAppStore.getState()
+      const now = Date.now()
+      
+      store.pendingConfirmations.forEach((pending, key) => {
+        const elapsed = now - pending.timestamp
+        if (pending.timeoutMs && elapsed > pending.timeoutMs) {
+          console.warn(`Confirmation timeout for ${key}`)
+          if (pending.onTimeout) pending.onTimeout()
+          removePendingConfirmation(key)
+        }
+      })
+    }, 500)
+    
+    return () => clearInterval(interval)
+  }, [removePendingConfirmation])
 
   useEffect(() => {
     // Keyboard shortcut for console (Ctrl/Cmd + `)
@@ -79,15 +139,27 @@ function App(): React.JSX.Element {
       // Check if it's a delays response
       const delays = SerialMessageParser.parseDelays(line)
       if (delays) {
-        const newDelays = {
-          settle: delays.settle || 1500,
-          weight: delays.weight || 2000,
-          transfer: delays.transfer || 1200,
-          grind: delays.grind || 5000,
-          cap: delays.cap || 2500,
-          elevUp: delays.up || 4000,
-          elevDown: delays.down || 4000,
+        const store = useAppStore.getState()
+        const currentDelays = store.currentDelays
+
+        // Check if this is a confirmation for a pending command
+        if (line.startsWith('SET:DELAY:')) {
+          const key = line.split(':').slice(0, 2).join(':')
+          removePendingConfirmation(key)
         }
+
+        // Merge with current delays (for individual updates)
+        const newDelays = {
+          settle: delays.settle ?? currentDelays.settle,
+          weight: delays.weight ?? currentDelays.weight,
+          transfer: delays.transfer ?? currentDelays.transfer,
+          grind: delays.grind ?? currentDelays.grind,
+          cap: delays.cap ?? currentDelays.cap,
+          elevUp: delays.elevup ?? delays.up ?? currentDelays.elevUp,
+          elevDown: delays.elevdown ?? delays.down ?? currentDelays.elevDown,
+        }
+
+        // Update store with confirmed values from device
         setCurrentDelays(newDelays)
 
         // Save to localStorage
@@ -98,11 +170,24 @@ function App(): React.JSX.Element {
       // Check if it's a dosing response
       const dosing = SerialMessageParser.parseDosing(line)
       if (dosing) {
-        const newDosing = {
-          wheelDivisions: dosing.divisions || 20,
-          lotSize: dosing.lot_size || 10,
+        const store = useAppStore.getState()
+        const currentDosing = store.currentDosing
+        
+        // Check if this is a confirmation for a pending command
+        if (line.startsWith('SET:DIVISIONS:') || line.startsWith('SET:LOT_SIZE:')) {
+          const key = line.split(':').slice(0, 2).join(':')
+          removePendingConfirmation(key)
         }
+
+        // Merge with current dosing (for individual updates)
+        const newDosing = {
+          wheelDivisions: dosing.divisions ?? currentDosing.wheelDivisions,
+          lotSize: dosing.lot_size ?? currentDosing.lotSize,
+        }
+
+        // Update store with confirmed values from device
         setCurrentDosing(newDosing)
+
         // Save to localStorage
         localStorage.setItem('dosingSettings', JSON.stringify(newDosing))
         return
@@ -162,16 +247,15 @@ function App(): React.JSX.Element {
       setLastMessageTime(Date.now())
 
       if (success) {
-        // Send saved settings to controller if they exist
-        const savedDosing = localStorage.getItem('dosingSettings')
-        if (savedDosing) {
-          const dosing = JSON.parse(savedDosing)
-          await sendCommand(`SET:DIVISIONS:${dosing.wheelDivisions}`)
-          await sendCommand(`SET:LOT_SIZE:${dosing.lotSize}`)
-        }
-
-        // Request current state from controller
-        await sendCommand('STATUS')
+        // Wait a bit for the controller to be ready
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Send initial commands directly (not queued) to get current state
+        await sendCommandDirect('STATUS')
+        await new Promise(resolve => setTimeout(resolve, 100))
+        await sendCommandDirect('GET:DELAYS')
+        await new Promise(resolve => setTimeout(resolve, 100))
+        await sendCommandDirect('GET:DOSING')
       }
     } catch (error) {
       console.error('Failed to connect:', error)
@@ -192,9 +276,20 @@ function App(): React.JSX.Element {
     }
   }
 
-  const sendCommand = async (cmd: string): Promise<void> => {
+  const sendCommandDirect = async (cmd: string): Promise<void> => {
     if (!selectedPort || !cmd) return
-    await window.serial.write({ path: selectedPort, data: `${cmd}\r\n` })
+    try {
+      await window.serial.write({ path: selectedPort, data: `${cmd}\r\n` })
+    } catch (error) {
+      console.error('Failed to send command:', error)
+    }
+  }
+  
+  // Queue command for sequential processing
+  const sendCommand = (cmd: string): void => {
+    if (!cmd) return
+    const store = useAppStore.getState()
+    store.queueCommand(cmd)
   }
 
   // Show connection screen if not connected
@@ -220,7 +315,7 @@ function App(): React.JSX.Element {
             <h3 className="text-sm font-semibold">Serial Console</h3>
           </div>
           <div className="flex-1 overflow-hidden">
-            <Console serialData={serialData} />
+            <Console serialData={serialData} onSendCommand={sendCommand} />
           </div>
         </div>
       }
@@ -241,7 +336,6 @@ function App(): React.JSX.Element {
               currentState={systemStatus.state}
               stateProgress={systemStatus.stateProgress}
               pillCount={systemStatus.pillCount}
-              targetPills={systemStatus.targetPills}
             />
             <CommandPanel onSendCommand={sendCommand} />
           </div>

@@ -42,7 +42,6 @@ export interface ViewSettings {
 export interface SystemStatus {
   state: MachineState
   pillCount: number
-  targetPills: number
   weight?: number
   lastHeartbeat?: number
   stateProgress?: {

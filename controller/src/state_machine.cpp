@@ -24,7 +24,6 @@ StateMachine::StateMachine() {
   stateJustChanged = false;
   stateTimer = 0;
   pastillasCount = 0;
-  targetPastillas = lot_size;
 }
 
 void StateMachine::changeState(State newState) {
@@ -43,7 +42,7 @@ void StateMachine::changeState(State newState) {
       Serial.print("PASTILLAS:");
       Serial.print(pastillasCount);
       Serial.print("/");
-      Serial.println(targetPastillas);
+      Serial.println(lot_size);
       Serial.flush();
     }
     
@@ -250,9 +249,9 @@ void StateMachine::processTransitions() {
         Serial.print("PASTILLAS:");
         Serial.print(pastillasCount);
         Serial.print("/");
-        Serial.println(targetPastillas);
+        Serial.println(lot_size);
         
-        if (pastillasCount < targetPastillas) {
+        if (pastillasCount < lot_size) {
           // Continue with next pill
           changeState(ESTADO2_DOSIFICACION);
         } else {

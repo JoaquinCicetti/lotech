@@ -130,12 +130,56 @@ void CommandProcessor::processCommand(String command) {
     Serial.println(threshold);
   }
   
-  // Parameter commands
-  else if (command.startsWith("SET:TARGET:")) {
-    int target = command.substring(11).toInt();
-    stateMachine.setTargetPills(target);
-    Serial.print("SET:TARGET:");
-    Serial.println(target);
+  // Parameter commands (removed SET:TARGET - use SET:LOT_SIZE instead)
+  // Handle batch dosing update: SET:DOSING:DIVISIONS:20,LOT_SIZE:10
+  else if (command.startsWith("SET:DOSING:")) {
+    String params = command.substring(11);
+    int startIdx = 0;
+    int newDivisions = wheel_divisions;
+    int newLotSize = lot_size;
+    
+    while (startIdx < params.length()) {
+      int colonIdx = params.indexOf(':', startIdx);
+      int commaIdx = params.indexOf(',', startIdx);
+      if (commaIdx == -1) commaIdx = params.length();
+      
+      if (colonIdx > 0 && colonIdx < commaIdx) {
+        String key = params.substring(startIdx, colonIdx);
+        String value = params.substring(colonIdx + 1, commaIdx);
+        int val = value.toInt();
+        
+        if (key == "DIVISIONS" && val > 0 && val <= 50) {
+          newDivisions = val;
+        } else if (key == "LOT_SIZE" && val > 0) {
+          newLotSize = val;
+        }
+      }
+      
+      startIdx = commaIdx + 1;
+    }
+    
+    // Validate lot size against divisions
+    if (newLotSize <= newDivisions) {
+      wheel_divisions = newDivisions;
+      lot_size = newLotSize;
+      
+      // If we're at the start, reset the counter too
+      if (stateMachine.getCurrentState() == ESTADO0_INICIO) {
+        stateMachine.resetPillCount();
+      }
+    }
+    
+    // Send confirmation
+    Serial.print("DOSING:DIVISIONS:");
+    Serial.print(wheel_divisions);
+    Serial.print(",LOT_SIZE:");
+    Serial.println(lot_size);
+    
+    // Send updated pill count
+    Serial.print("PASTILLAS:");
+    Serial.print(stateMachine.getPillCount());
+    Serial.print("/");
+    Serial.println(lot_size);
   }
   else if (command.startsWith("SET:DIVISIONS:")) {
     int divisions = command.substring(14).toInt();
@@ -149,7 +193,6 @@ void CommandProcessor::processCommand(String command) {
     int size = command.substring(13).toInt();
     if (size > 0 && size <= wheel_divisions) {  // Must be <= divisions
       lot_size = size;
-      stateMachine.setTargetPills(lot_size);
       // If we're at the start, reset the counter too
       if (stateMachine.getCurrentState() == ESTADO0_INICIO) {
         stateMachine.resetPillCount();
@@ -165,6 +208,59 @@ void CommandProcessor::processCommand(String command) {
   }
   
   // Delay configuration commands
+  // Handle both individual and batch delay updates
+  else if (command.startsWith("SET:DELAYS:")) {
+    // Parse all delays at once: SET:DELAYS:SETTLE:1500,WEIGHT:2000,TRANSFER:1200,...
+    String params = command.substring(11);
+    int startIdx = 0;
+    
+    while (startIdx < params.length()) {
+      int colonIdx = params.indexOf(':', startIdx);
+      int commaIdx = params.indexOf(',', startIdx);
+      if (commaIdx == -1) commaIdx = params.length();
+      
+      if (colonIdx > 0 && colonIdx < commaIdx) {
+        String key = params.substring(startIdx, colonIdx);
+        String value = params.substring(colonIdx + 1, commaIdx);
+        int val = value.toInt();
+        
+        if (key == "SETTLE") {
+          t_step_settle = val;
+        } else if (key == "WEIGHT") {
+          t_weight_settle = val;
+        } else if (key == "TRANSFER") {
+          t_transfer = val;
+        } else if (key == "GRIND") {
+          t_grind = val;
+        } else if (key == "CAP") {
+          t_cap_push = val;
+        } else if (key == "UP") {
+          t_elev_up = val;
+        } else if (key == "DOWN") {
+          t_elev_down = val;
+        }
+      }
+      
+      startIdx = commaIdx + 1;
+    }
+    
+    // Send confirmation with all current values
+    Serial.print("DELAYS:");
+    Serial.print("SETTLE:");
+    Serial.print(t_step_settle);
+    Serial.print(",WEIGHT:");
+    Serial.print(t_weight_settle);
+    Serial.print(",TRANSFER:");
+    Serial.print(t_transfer);
+    Serial.print(",GRIND:");
+    Serial.print(t_grind);
+    Serial.print(",CAP:");
+    Serial.print(t_cap_push);
+    Serial.print(",UP:");
+    Serial.print(t_elev_up);
+    Serial.print(",DOWN:");
+    Serial.println(t_elev_down);
+  }
   else if (command.startsWith("SET:DELAY:SETTLE:")) {
     t_step_settle = command.substring(17).toInt();
     Serial.print("SET:DELAY:SETTLE:");
@@ -245,7 +341,7 @@ void CommandProcessor::printStatus() {
   Serial.print(",PASTILLAS:");
   Serial.print(stateMachine.getPillCount());
   Serial.print("/");
-  Serial.print(stateMachine.getTargetPills());
+  Serial.print(lot_size);
   Serial.print(",MODO:");
   Serial.print(globalMode == MODE_REAL ? "REAL" : "SIM");
   Serial.print(",PESO:");
@@ -281,6 +377,22 @@ void CommandProcessor::printHelp() {
   Serial.println("SET:WEIGHT_THRESHOLD:n - Establecer umbral de deteccion de peso");
   Serial.println("");
   Serial.println("=== COMANDOS DE PARAMETROS ===");
-  Serial.println("SET:TARGET:n - Establecer cantidad objetivo de pastillas");
+  Serial.println("SET:DIVISIONS:n - Establecer divisiones de rueda (max pastillas en rueda)");
+  Serial.println("SET:LOT_SIZE:n - Establecer tamaño del lote");
+  Serial.println("SET:DOSING:DIVISIONS:n,LOT_SIZE:n - Configurar dosificacion completa");
+  Serial.println("");
+  Serial.println("=== COMANDOS DE TIEMPOS ===");
+  Serial.println("SET:DELAY:SETTLE:n - Tiempo de asentamiento");
+  Serial.println("SET:DELAY:WEIGHT:n - Tiempo de peso");
+  Serial.println("SET:DELAY:TRANSFER:n - Tiempo de transferencia");
+  Serial.println("SET:DELAY:GRIND:n - Tiempo de molienda");
+  Serial.println("SET:DELAY:CAP:n - Tiempo de tapado");
+  Serial.println("SET:DELAY:UP:n - Tiempo elevador arriba");
+  Serial.println("SET:DELAY:DOWN:n - Tiempo elevador abajo");
+  Serial.println("SET:DELAYS:SETTLE:n,WEIGHT:n,... - Configurar todos los tiempos");
+  Serial.println("");
+  Serial.println("=== COMANDOS DE CONSULTA ===");
+  Serial.println("GET:DELAYS - Obtener configuracion de tiempos");
+  Serial.println("GET:DOSING - Obtener configuracion de dosificacion");
   Serial.println("STATUS - Obtener estado actual");
 }

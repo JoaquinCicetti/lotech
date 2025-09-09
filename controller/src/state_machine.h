@@ -42,7 +42,6 @@ private:
   
   // Process variables
   int pastillasCount;
-  int targetPastillas;
   
 public:
   StateMachine();
@@ -59,8 +58,7 @@ public:
   
   // Process variables
   int getPillCount() const { return pastillasCount; }
-  int getTargetPills() const { return targetPastillas; }
-  void setTargetPills(int target) { targetPastillas = target; }
+  int getLotSize() const { return lot_size; }  // Use global lot_size directly
   void incrementPillCount() { pastillasCount++; }
   void resetPillCount() { pastillasCount = 0; }
   

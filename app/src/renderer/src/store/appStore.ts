@@ -9,6 +9,14 @@ import {
 } from '@renderer/types'
 import { create } from 'zustand'
 
+interface PendingCommand {
+  command: string
+  timestamp: number
+  onConfirm?: (value: any) => void
+  onTimeout?: () => void
+  timeoutMs?: number
+}
+
 interface AppState {
   // Connection state
   ports: SerialPortInfo[]
@@ -31,6 +39,11 @@ interface AppState {
   // Settings
   currentDelays: DelaySettings
   currentDosing: DosingSettings
+  
+  // Command queue and pending confirmations
+  commandQueue: string[]
+  isProcessingCommand: boolean
+  pendingConfirmations: Map<string, PendingCommand>
 
   // Actions
   setPorts: (ports: SerialPortInfo[]) => void
@@ -46,12 +59,19 @@ interface AppState {
   setCurrentView: (view: ViewMode) => void
   setCurrentDelays: (delays: DelaySettings) => void
   setCurrentDosing: (dosing: DosingSettings) => void
+  
+  // Command queue actions
+  queueCommand: (command: string) => void
+  dequeueCommand: () => string | undefined
+  setProcessingCommand: (processing: boolean) => void
+  addPendingConfirmation: (key: string, command: PendingCommand) => void
+  removePendingConfirmation: (key: string) => void
+  getPendingConfirmation: (key: string) => PendingCommand | undefined
 }
 
 const INITIAL_STATUS: SystemStatus = {
   state: MachineState.INICIO,
   pillCount: 0,
-  targetPills: 20,
   weight: 0,
   sensors: {
     posAlta: false,
@@ -76,6 +96,9 @@ export const useAppStore = create<AppState>((set) => ({
   currentView: DEFAULT_VIEW.viewMode,
   currentDelays: DEFAULT_DELAYS,
   currentDosing: DEFAULT_DOSING,
+  commandQueue: [],
+  isProcessingCommand: false,
+  pendingConfirmations: new Map(),
 
   // Actions
   setPorts: (ports) => set({ ports }),
@@ -97,4 +120,32 @@ export const useAppStore = create<AppState>((set) => ({
   setCurrentView: (currentView) => set({ currentView }),
   setCurrentDelays: (currentDelays) => set({ currentDelays }),
   setCurrentDosing: (currentDosing) => set({ currentDosing }),
+  
+  // Command queue actions
+  queueCommand: (command) => set((state) => ({
+    commandQueue: [...state.commandQueue, command]
+  })),
+  dequeueCommand: () => {
+    const state = useAppStore.getState()
+    const [first, ...rest] = state.commandQueue
+    if (first) {
+      set({ commandQueue: rest })
+    }
+    return first
+  },
+  setProcessingCommand: (isProcessingCommand) => set({ isProcessingCommand }),
+  addPendingConfirmation: (key, command) => set((state) => {
+    const newMap = new Map(state.pendingConfirmations)
+    newMap.set(key, command)
+    return { pendingConfirmations: newMap }
+  }),
+  removePendingConfirmation: (key) => set((state) => {
+    const newMap = new Map(state.pendingConfirmations)
+    newMap.delete(key)
+    return { pendingConfirmations: newMap }
+  }),
+  getPendingConfirmation: (key) => {
+    const state = useAppStore.getState()
+    return state.pendingConfirmations.get(key)
+  },
 }))

@@ -1,5 +1,15 @@
 import { useAppStore } from '@renderer/store/appStore'
-import { Boxes, ChevronDown, ChevronUp, Pause, Power, Scale, Square, View } from 'lucide-react'
+import {
+  Boxes,
+  ChevronDown,
+  ChevronUp,
+  Pause,
+  Power,
+  RefreshCw,
+  Scale,
+  Square,
+  View,
+} from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
@@ -10,7 +20,7 @@ import { Slider } from './ui/slider'
 
 interface LeftSidebarProps {
   onDisconnect: () => void
-  onSendCommand: (command: string) => void
+  onSendCommand: (command: string) => void | Promise<void>
 }
 
 interface DelayControlProps {
@@ -51,20 +61,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
   const { onDisconnect, onSendCommand } = props
 
   // Get all settings from the store
-  const {
-    simulationMode,
-    currentDelays,
-    currentDosing,
-    setSimulationMode,
-    setCurrentDelays,
-    setCurrentDosing,
-  } = useAppStore()
+  const { simulationMode, currentDelays, currentDosing, setSimulationMode } = useAppStore()
 
   const [wheelDivisions, setWheelDivisions] = useState(currentDosing.wheelDivisions)
   const [lotSize, setLotSize] = useState(currentDosing.lotSize)
   const [delays, setDelays] = useState(currentDelays)
 
-  // Sync with store changes
+  // Sync with store changes (when device confirms)
   useEffect(() => {
     setDelays(currentDelays)
   }, [currentDelays])
@@ -74,30 +77,72 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
     setLotSize(currentDosing.lotSize)
   }, [currentDosing])
 
+  // Don't request settings here - it's done once on connection
+
+  // Function to sync all settings to device
+  const syncAllSettingsToDevice = () => {
+    // Send individual commands (they'll be queued)
+    onSendCommand(`SET:DELAY:SETTLE:${delays.settle}`)
+    onSendCommand(`SET:DELAY:WEIGHT:${delays.weight}`)
+    onSendCommand(`SET:DELAY:TRANSFER:${delays.transfer}`)
+    onSendCommand(`SET:DELAY:GRIND:${delays.grind}`)
+    onSendCommand(`SET:DELAY:CAP:${delays.cap}`)
+    onSendCommand(`SET:DELAY:UP:${delays.elevUp}`)
+    onSendCommand(`SET:DELAY:DOWN:${delays.elevDown}`)
+    onSendCommand(`SET:DIVISIONS:${wheelDivisions}`)
+    onSendCommand(`SET:LOT_SIZE:${lotSize}`)
+  }
+
   const handleDelayChange = (key: keyof typeof delays, value: number) => {
     const newDelays = { ...delays, [key]: value }
     setDelays(newDelays)
-    // Auto-save to store and localStorage
-    setCurrentDelays(newDelays)
-    localStorage.setItem('delaySettings', JSON.stringify(newDelays))
-    // Send to controller
-    const cmd = `SET:DELAYS:SETTLE:${newDelays.settle},WEIGHT:${newDelays.weight},TRANSFER:${newDelays.transfer},GRIND:${newDelays.grind},CAP:${newDelays.cap},UP:${newDelays.elevUp},DOWN:${newDelays.elevDown}`
+
+    // Send individual delay command to controller
+    const delayMap: Record<string, string> = {
+      settle: 'SETTLE',
+      weight: 'WEIGHT',
+      transfer: 'TRANSFER',
+      grind: 'GRIND',
+      cap: 'CAP',
+      elevUp: 'UP',
+      elevDown: 'DOWN',
+    }
+
+    const cmd = `SET:DELAY:${delayMap[key]}:${value}`
     onSendCommand(cmd)
   }
 
   const handleDosingChange = (wheelDiv: number, lot: number) => {
-    const newDosing = { wheelDivisions: wheelDiv, lotSize: lot }
-    setCurrentDosing(newDosing)
-    localStorage.setItem('dosingSettings', JSON.stringify(newDosing))
-    onSendCommand(`SET:DIVISIONS:${wheelDiv}`)
-    onSendCommand(`SET:LOT_SIZE:${lot}`)
+    // Update local state optimistically
+    setWheelDivisions(wheelDiv)
+    setLotSize(lot)
+    
+    // Send commands to device (they'll be queued and sent one by one)
+    if (wheelDiv !== currentDosing.wheelDivisions) {
+      onSendCommand(`SET:DIVISIONS:${wheelDiv}`)
+    }
+    if (lot !== currentDosing.lotSize) {
+      onSendCommand(`SET:LOT_SIZE:${lot}`)
+    }
   }
 
   return (
     <div className="bg-card border-border flex h-full flex-col border-r">
       {/* Header */}
       <div className="border-border space-y-3 border-b p-4">
-        <h2 className="text-lg font-semibold">Control Panel</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Control Panel</h2>
+          <Button
+            onClick={syncAllSettingsToDevice}
+            size="sm"
+            variant="outline"
+            className="gap-1"
+            title="Sync all settings to device"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Sync
+          </Button>
+        </div>
       </div>
 
       {/* Scrollable Settings */}

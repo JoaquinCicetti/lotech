@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import { PROCESS_STATES } from '../constants/states'
 import { SystemStatus } from '../types'
+import { useAppStore } from '../store/appStore'
 import { Card } from './ui/card'
 import { Progress } from './ui/progress'
 
 interface ProcessStepperProps {
   currentState: string
   pillCount: number
-  targetPills: number
   stateProgress?: SystemStatus['stateProgress']
 }
 
 export const ProcessStepper: React.FC<ProcessStepperProps> = (props) => {
-  const { currentState, pillCount, targetPills, stateProgress } = props
+  const { currentState, pillCount, stateProgress } = props
+  const { currentDosing } = useAppStore()
   const [progressPercent, setProgressPercent] = useState(0)
 
   useEffect(() => {
@@ -116,10 +117,10 @@ export const ProcessStepper: React.FC<ProcessStepperProps> = (props) => {
       <div className="py-5 text-center">
         <div className="text-muted-foreground mb-2 text-sm">Progreso del lote</div>
         <div className="text-5xl font-light">
-          {pillCount} <span className="text-muted-foreground">/ {targetPills}</span>
+          {pillCount} <span className="text-muted-foreground">/ {currentDosing.lotSize}</span>
         </div>
         <div className="mt-4">
-          <Progress value={(pillCount / targetPills) * 100} className="h-1" />
+          <Progress value={(pillCount / currentDosing.lotSize) * 100} className="h-1" />
         </div>
       </div>
     </Card>

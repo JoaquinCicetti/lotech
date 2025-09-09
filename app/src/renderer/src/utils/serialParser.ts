@@ -4,6 +4,7 @@ import { SystemStatus } from '../types'
 export class SerialMessageParser {
   static parseMessage(line: string, currentStatus: SystemStatus): Partial<SystemStatus> | null {
     // Remove any trailing/leading whitespace and control characters
+    // eslint-disable-next-line no-control-regex
     const cleanLine = line.trim().replace(/[\r\x00-\x1F\x7F]/g, '')
 
     // Skip empty or too short messages
@@ -23,17 +24,18 @@ export class SerialMessageParser {
       }
     }
 
-    // PASTILLAS: Pill counter
+    // PASTILLAS: Pill counter (current/lotSize)
     if (cleanLine.startsWith('PASTILLAS:')) {
       const match = cleanLine.match(/^PASTILLAS:(\d+)\/(\d+)/)
       if (match) {
         const count = parseInt(match[1])
-        const target = parseInt(match[2])
+        const lotSize = parseInt(match[2])
         // Validate reasonable values
-        if (!isNaN(count) && !isNaN(target) && count >= 0 && target > 0 && target <= 1000) {
+        if (!isNaN(count) && !isNaN(lotSize) && count >= 0 && lotSize > 0 && lotSize <= 1000) {
+          // Note: lotSize is stored in dosing settings, not system status
+          // We only track the current pill count in status
           return {
             pillCount: count,
-            targetPills: target,
           }
         } else {
           console.warn(`Invalid pill count: ${cleanLine}`)
@@ -99,6 +101,12 @@ export class SerialMessageParser {
       return null
     }
 
+    // SET: Configuration confirmations (to avoid UNKNOWN messages)
+    if (cleanLine.startsWith('SET:')) {
+      // These are confirmations from the device, already handled in parseDelays/parseDosing
+      return null
+    }
+
     // SENSORES: Sensor updates (both real and simulation modes)
     if (cleanLine.startsWith('SENSORES:')) {
       const sensors = { ...currentStatus.sensors }
@@ -153,9 +161,8 @@ export class SerialMessageParser {
       parts.forEach((part) => {
         const [key, value] = part.split(':')
         if (key === 'PASTILLAS') {
-          const [count, target] = value.split('/')
+          const [count] = value.split('/')
           status.pillCount = parseInt(count)
-          status.targetPills = parseInt(target)
         } else if (key === 'PESO') {
           status.weight = parseFloat(value)
         } else if (key === 'ESTADO' && isValidMachineState(value)) {
@@ -174,6 +181,30 @@ export class SerialMessageParser {
       return status
     }
 
+    // MODO: Mode changes
+    if (cleanLine.startsWith('MODO:')) {
+      // Just log information, no state change needed
+      return null
+    }
+
+    // ESCALA: Scale messages
+    if (cleanLine.startsWith('ESCALA:')) {
+      // Just log information, no state change needed
+      return null
+    }
+
+    // ACCION: Action messages
+    if (cleanLine.startsWith('ACCION:')) {
+      // Just log information, no state change needed
+      return null
+    }
+
+    // SISTEMA: System messages
+    if (cleanLine.startsWith('SISTEMA:')) {
+      // Just log information, no state change needed
+      return null
+    }
+
     return null
   }
 
@@ -181,44 +212,93 @@ export class SerialMessageParser {
     const cleanLine = line.trim()
     // Only check for complete message patterns
     if (cleanLine.startsWith('ERROR:')) return 'error'
+    if (cleanLine.startsWith('UNKNOWN:')) return 'error'
     if (cleanLine.startsWith('ESTADO:')) return 'warning'
     if (cleanLine.startsWith('BTN:')) return 'success'
+    if (cleanLine.startsWith('SET:')) return 'success'
     if (cleanLine.startsWith('HB:')) return 'debug'
     if (cleanLine.startsWith('ACCION:')) return 'info'
+    if (cleanLine.startsWith('MODO:')) return 'info'
+    if (cleanLine.startsWith('ESCALA:')) return 'info'
+    if (cleanLine.startsWith('ELEVADOR:')) return 'info'
     if (cleanLine.startsWith('PESO:') || cleanLine.startsWith('PASTILLAS:')) return 'info'
     if (cleanLine.startsWith('SIM:') || cleanLine.startsWith('SENSORES:')) return 'debug'
+    if (cleanLine.startsWith('DELAYS:') || cleanLine.startsWith('DOSING:')) return 'success'
+    if (cleanLine.startsWith('SISTEMA:')) return 'warning'
     return 'info'
   }
 
   static parseDelays(line: string): Record<string, number> | null {
-    if (!line.startsWith('DELAYS:')) return null
+    // Handle full DELAYS response from GET:DELAYS
+    if (line.startsWith('DELAYS:')) {
+      const result: Record<string, number> = {}
+      const parts = line.substring(7).split(',')
 
-    const result: Record<string, number> = {}
-    const parts = line.substring(7).split(',')
+      parts.forEach((part) => {
+        const [key, value] = part.split(':')
+        if (key && value) {
+          result[key.toLowerCase()] = parseInt(value)
+        }
+      })
 
-    parts.forEach((part) => {
-      const [key, value] = part.split(':')
-      if (key && value) {
-        result[key.toLowerCase()] = parseInt(value)
+      return result
+    }
+
+    // Handle individual SET:DELAY confirmations
+    if (line.startsWith('SET:DELAY:')) {
+      const match = line.match(/^SET:DELAY:([A-Z]+):(\d+)$/)
+      if (match) {
+        const key = match[1].toLowerCase()
+        const value = parseInt(match[2])
+        // Map controller keys to app keys
+        const keyMap: Record<string, string> = {
+          settle: 'settle',
+          weight: 'weight',
+          transfer: 'transfer',
+          grind: 'grind',
+          cap: 'cap',
+          up: 'elevUp',
+          down: 'elevDown',
+        }
+        const mappedKey = keyMap[key] || key
+        return { [mappedKey]: value }
       }
-    })
+    }
 
-    return result
+    return null
   }
 
   static parseDosing(line: string): Record<string, number> | null {
-    if (!line.startsWith('DOSING:')) return null
+    // Handle full DOSING response from GET:DOSING
+    if (line.startsWith('DOSING:')) {
+      const result: Record<string, number> = {}
+      const parts = line.substring(7).split(',')
 
-    const result: Record<string, number> = {}
-    const parts = line.substring(7).split(',')
+      parts.forEach((part) => {
+        const [key, value] = part.split(':')
+        if (key && value) {
+          result[key.toLowerCase()] = parseInt(value)
+        }
+      })
 
-    parts.forEach((part) => {
-      const [key, value] = part.split(':')
-      if (key && value) {
-        result[key.toLowerCase()] = parseInt(value)
+      return result
+    }
+
+    // Handle individual SET confirmations
+    if (line.startsWith('SET:DIVISIONS:')) {
+      const value = parseInt(line.substring(14))
+      if (!isNaN(value)) {
+        return { divisions: value }
       }
-    })
+    }
 
-    return result
+    if (line.startsWith('SET:LOT_SIZE:')) {
+      const value = parseInt(line.substring(13))
+      if (!isNaN(value)) {
+        return { lot_size: value }
+      }
+    }
+
+    return null
   }
 }
