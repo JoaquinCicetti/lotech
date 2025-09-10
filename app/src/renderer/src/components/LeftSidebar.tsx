@@ -61,7 +61,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
   const { onDisconnect, onSendCommand } = props
 
   // Get all settings from the store
-  const { simulationMode, currentDelays, currentDosing, setSimulationMode } = useAppStore()
+  const { simulationMode, testMode, currentDelays, currentDosing, setSimulationMode, setTestMode } =
+    useAppStore()
 
   const [wheelDivisions, setWheelDivisions] = useState(currentDosing.wheelDivisions)
   const [lotSize, setLotSize] = useState(currentDosing.lotSize)
@@ -151,62 +152,170 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
         <div className="space-y-6 p-4">
           {/* Command Tools */}
           <Card className="p-4">
-            <Label className="mb-3 block text-sm font-medium">Comandos</Label>
+            <Label className="mb-3 block text-sm font-medium">
+              {testMode ? 'Control Manual' : 'Comandos'}
+            </Label>
             <div className="grid grid-cols-2 gap-2">
-              <Button
-                onClick={() => onSendCommand('BTN:PAUSE')}
-                size="sm"
-                variant="outline"
-                className="gap-1"
-              >
-                <Pause className="h-3 w-3" />
-                Pausar
-              </Button>
-              <Button
-                onClick={() => onSendCommand('BTN:STOP')}
-                size="sm"
-                variant="outline"
-                className="gap-1"
-              >
-                <Square className="h-3 w-3" />
-                Detener
-              </Button>
-              <Button
-                onClick={() => onSendCommand('TARE')}
-                size="sm"
-                variant="outline"
-                className="gap-1"
-              >
-                <Scale className="h-3 w-3" />
-                Tara
-              </Button>
-              <Button
-                onClick={() => onSendCommand('SIM:WEIGHT_STABLE:1')}
-                size="sm"
-                variant="outline"
-                className="gap-1"
-              >
-                <Scale className="h-3 w-3" />
-                Estabilizar
-              </Button>
-              <Button
-                onClick={() => onSendCommand('ELEV:UP')}
-                size="sm"
-                variant="outline"
-                className="gap-1"
-              >
-                <ChevronUp className="h-3 w-3" />
-                Subir
-              </Button>
-              <Button
-                onClick={() => onSendCommand('ELEV:DOWN')}
-                size="sm"
-                variant="outline"
-                className="gap-1"
-              >
-                <ChevronDown className="h-3 w-3" />
-                Bajar
-              </Button>
+              {testMode ? (
+                <>
+                  <Button
+                    onClick={() => onSendCommand('ELEVATOR_UP')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <ChevronUp className="h-3 w-3" />
+                    Elev Arriba
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('ELEVATOR_DOWN')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                    Elev Abajo
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('ELEVATOR_STOP')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <Square className="h-3 w-3" />
+                    Elev Stop
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('DOSING_STEP')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <Boxes className="h-3 w-3" />
+                    Dosificar
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('GRINDER_ON')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <Power className="h-3 w-3" />
+                    Moler ON
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('GRINDER_OFF')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <Square className="h-3 w-3" />
+                    Moler OFF
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('TRANSFER_ON')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                    Transfer ON
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('TRANSFER_OFF')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <Square className="h-3 w-3" />
+                    Transfer OFF
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('CAP_ON')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <View className="h-3 w-3" />
+                    Tapa ON
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('CAP_OFF')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <Square className="h-3 w-3" />
+                    Tapa OFF
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('WEIGHT')}
+                    size="sm"
+                    variant="outline"
+                    className="col-span-2 gap-1"
+                  >
+                    <Scale className="h-3 w-3" />
+                    Leer Peso
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={() => onSendCommand('BTN:PAUSE')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <Pause className="h-3 w-3" />
+                    Pausar
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('BTN:STOP')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <Square className="h-3 w-3" />
+                    Detener
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('TARE')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <Scale className="h-3 w-3" />
+                    Tara
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('SIM:WEIGHT_STABLE:1')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <Scale className="h-3 w-3" />
+                    Estabilizar
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('ELEV:UP')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <ChevronUp className="h-3 w-3" />
+                    Subir
+                  </Button>
+                  <Button
+                    onClick={() => onSendCommand('ELEV:DOWN')}
+                    size="sm"
+                    variant="outline"
+                    className="gap-1"
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                    Bajar
+                  </Button>
+                </>
+              )}
             </div>
           </Card>
 
@@ -338,9 +447,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
             <Button
               onClick={() => {
                 setSimulationMode(false)
+                setTestMode(false)
                 onSendCommand('MODE:REAL')
               }}
-              variant={simulationMode ? 'secondary' : 'default'}
+              variant={simulationMode || testMode ? 'secondary' : 'default'}
               size="default"
               className="gap-2 font-medium"
             >
@@ -350,9 +460,10 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
             <Button
               onClick={() => {
                 setSimulationMode(true)
+                setTestMode(false)
                 onSendCommand('MODE:SIM')
               }}
-              variant={simulationMode ? 'default' : 'secondary'}
+              variant={simulationMode && !testMode ? 'default' : 'secondary'}
               size="default"
               className="gap-2 font-medium"
             >
@@ -360,6 +471,23 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
               Simulacion
             </Button>
           </div>
+          <Button
+            onClick={() => {
+              const newTestMode = !testMode
+              setTestMode(newTestMode)
+              if (newTestMode) {
+                onSendCommand('MODE:TEST')
+              } else {
+                onSendCommand(simulationMode ? 'MODE:SIM' : 'MODE:REAL')
+              }
+            }}
+            variant={testMode ? 'destructive' : 'outline'}
+            size="default"
+            className="w-full gap-2 font-medium"
+          >
+            <Power className="h-4 w-4" />
+            {testMode ? 'Test Mode ON' : 'Test Mode OFF'}
+          </Button>
         </div>
 
         <Button onClick={onDisconnect} variant="destructive" size="sm" className="w-full gap-2">

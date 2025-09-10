@@ -1,4 +1,5 @@
 #include "serial_protocol.h"
+#include "hardware.h"
 
 void SerialProtocol::sendState(const char* state) {
   Serial.print(F("ESTADO:"));
@@ -80,5 +81,47 @@ void SerialProtocol::sendAction(const char* action) {
 
 void SerialProtocol::sendInfo(const char* info) {
   Serial.println(info);
+  Serial.flush();
+}
+
+void SerialProtocol::sendTestHeartbeat() {
+  Serial.print(F("HB:TEST,"));
+  
+  // Elevator status
+  Serial.print(F("E:"));
+  if (elevator.isMoving()) {
+    Serial.print(F("MOV"));
+  } else if (elevator.isAtTop()) {
+    Serial.print(F("UP"));
+  } else if (elevator.isAtBottom()) {
+    Serial.print(F("DOWN"));
+  } else {
+    Serial.print(F("MID"));
+  }
+  
+  // Dosing status
+  Serial.print(F(",D:"));
+  Serial.print(dosingWheel.isDispensing() ? F("ACT") : F("IDLE"));
+  
+  // Grinder status
+  Serial.print(F(",G:"));
+  Serial.print(grinder.isRunning() ? F("ON") : F("OFF"));
+  
+  // Transfer solenoid
+  Serial.print(F(",T:"));
+  Serial.print(transferSolenoid.isActive() ? F("OPEN") : F("CLOSED"));
+  
+  // Cap solenoid
+  Serial.print(F(",C:"));
+  Serial.print(capSolenoid.isActive() ? F("PUSH") : F("RET"));
+  
+  // Weight
+  Serial.print(F(",W:"));
+  Serial.print(loadCell.readWeight(), 1);
+  
+  // Timestamp
+  Serial.print(F(",MS:"));
+  Serial.println(millis());
+  
   Serial.flush();
 }

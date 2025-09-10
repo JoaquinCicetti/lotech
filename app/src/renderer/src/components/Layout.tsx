@@ -101,7 +101,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
       <div
         className={cn(
           'border-border bg-card border-l transition-all duration-300',
-          showRightSidebar ? 'w-96' : 'w-0'
+          showRightSidebar ? 'w-120' : 'w-0'
         )}
       >
         {showRightSidebar && <div className="h-full overflow-y-auto">{rightSidebar}</div>}

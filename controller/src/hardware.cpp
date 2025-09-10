@@ -81,14 +81,18 @@ void Elevator::run() {
       }
     }
   } else {
-    // Simulation mode: use timers only
+    // Simulation/Test mode: use timers only
     if (movingUp) {
       motor.runSpeed();
       if (millis() - moveStartTime > T_ELEV_UP) {
         atTop = true;
         atBottom = false;
         stop();
-        Serial.println("ELEVADOR:ARRIBA");
+        if (mode == MODE_TEST) {
+          Serial.println("TEST:ELEVATOR:UP");
+        } else {
+          Serial.println("ELEVADOR:ARRIBA");
+        }
       }
     } else if (movingDown) {
       motor.runSpeed();
@@ -96,7 +100,11 @@ void Elevator::run() {
         atTop = false;
         atBottom = true;
         stop();
-        Serial.println("ELEVADOR:ABAJO");
+        if (mode == MODE_TEST) {
+          Serial.println("TEST:ELEVATOR:DOWN");
+        } else {
+          Serial.println("ELEVADOR:ABAJO");
+        }
       }
     }
   }
@@ -155,6 +163,10 @@ void DosingWheel::dispenseOne() {
     motor.move(stepsPerDivision);
     dosingInProgress = true;
     Serial.println("ACCION:DOSIFICANDO");
+    Serial.print("DEBUG:DOSING:STEPS:");
+    Serial.println(stepsPerDivision);
+  } else {
+    Serial.println("DEBUG:DOSING:ALREADY_IN_PROGRESS");
   }
 }
 
@@ -165,8 +177,17 @@ void DosingWheel::stop() {
 
 void DosingWheel::run() {
   motor.run();
-  if (motor.distanceToGo() == 0) {
-    dosingInProgress = false;
+  if (dosingInProgress) {
+    long remaining = motor.distanceToGo();
+    if (remaining == 0) {
+      dosingInProgress = false;
+      // Send completion message in test mode
+      if (globalMode == MODE_TEST) {
+        Serial.println("TEST:DOSING:COMPLETE");
+        Serial.print("DEBUG:DOSING:POS:");
+        Serial.println(motor.currentPosition());
+      }
+    }
   }
 }
 

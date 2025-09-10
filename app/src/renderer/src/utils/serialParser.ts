@@ -181,6 +181,79 @@ export class SerialMessageParser {
       return status
     }
 
+    // TEST: Test mode hardware status updates
+    if (cleanLine.startsWith('TEST:')) {
+      const parts = cleanLine.split(':')
+      
+      if (parts.length >= 3) {
+        const hardware = currentStatus.hardware || {
+          elevator: 'IDLE',
+          dosing: 'IDLE',
+          grinder: 'OFF',
+          transfer: 'CLOSED',
+          cap: 'RETRACTED',
+          weight: 0
+        }
+        
+        const component = parts[1]
+        const status = parts[2]
+        
+        if (component === 'ELEVATOR') {
+          if (status === 'MOVING_UP') {
+            hardware.elevator = 'MOVING_UP' as any
+          } else if (status === 'MOVING_DOWN') {
+            hardware.elevator = 'MOVING_DOWN' as any
+          } else {
+            hardware.elevator = status as 'UP' | 'DOWN' | 'MOVING' | 'MIDDLE' | 'IDLE'
+          }
+        } else if (component === 'DOSING') {
+          if (status === 'STEP') {
+            hardware.dosing = 'ACTIVE'
+          } else if (status === 'COMPLETE' || status === 'STOP') {
+            hardware.dosing = 'IDLE'
+          }
+        } else if (component === 'GRINDER') {
+          hardware.grinder = status as 'ON' | 'OFF'
+        } else if (component === 'TRANSFER') {
+          hardware.transfer = status === 'ON' ? 'OPEN' : 'CLOSED'
+        } else if (component === 'CAP') {
+          hardware.cap = status === 'ON' ? 'PUSHED' : 'RETRACTED'
+        } else if (component === 'WEIGHT' && parts.length >= 3) {
+          hardware.weight = parseFloat(status) || 0
+        }
+        
+        return { hardware }
+      }
+    }
+    
+    // TEST_MODE: Test mode enable/disable
+    if (cleanLine.startsWith('TEST_MODE:')) {
+      const enabled = cleanLine.includes('ENABLED')
+      // Store test mode state if needed
+      return null
+    }
+
+    // ELEVADOR: Elevator position messages (for non-test mode)
+    if (cleanLine.startsWith('ELEVADOR:')) {
+      const position = cleanLine.substring(9).trim()
+      const hardware = currentStatus.hardware || {
+        elevator: 'IDLE',
+        dosing: 'IDLE',
+        grinder: 'OFF',
+        transfer: 'CLOSED',
+        cap: 'RETRACTED',
+        weight: 0
+      }
+      
+      if (position === 'ARRIBA') {
+        hardware.elevator = 'UP'
+      } else if (position === 'ABAJO') {
+        hardware.elevator = 'DOWN'
+      }
+      
+      return { hardware }
+    }
+
     // MODO: Mode changes
     if (cleanLine.startsWith('MODO:')) {
       // Just log information, no state change needed

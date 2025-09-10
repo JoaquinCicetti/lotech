@@ -2,6 +2,7 @@
 #include "hardware.h"
 #include "state_machine.h"
 #include "config.h"
+#include "test_mode.h"
 
 CommandProcessor commands;
 
@@ -25,9 +26,17 @@ void CommandProcessor::processCommand(String command) {
   
   // Mode commands
   if (command == "MODE:REAL") {
+    TestMode::setActive(false);
     setGlobalMode(MODE_REAL);
   } else if (command == "MODE:SIM") {
+    TestMode::setActive(false);
     setGlobalMode(MODE_SIMULATION);
+  } else if (command == "MODE:TEST" || command == "TEST_MODE") {
+    TestMode::setActive(true);
+  } else if (TestMode::isActive()) {
+    // If in test mode, route commands to test handler
+    TestMode::processCommand(command);
+    return;
   }
   
   // Button simulation commands

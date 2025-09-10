@@ -8,10 +8,16 @@ const serial = {
   write: (args: { path: string; data: string | Uint8Array }) =>
     ipcRenderer.invoke('serial:write', args),
   close: (path: string) => ipcRenderer.invoke('serial:close', path),
-  onData: (cb: (payload: { path: string; line: string }) => void) =>
-    ipcRenderer.on('serial:data', (_e, payload) => cb(payload)),
-  onError: (cb: (payload: { path: string; error: string }) => void) =>
-    ipcRenderer.on('serial:error', (_e, payload) => cb(payload)),
+  onData: (cb: (payload: { path: string; line: string }) => void) => {
+    const listener = (_e: any, payload: any) => cb(payload)
+    ipcRenderer.on('serial:data', listener)
+    return () => ipcRenderer.removeListener('serial:data', listener)
+  },
+  onError: (cb: (payload: { path: string; error: string }) => void) => {
+    const listener = (_e: any, payload: any) => cb(payload)
+    ipcRenderer.on('serial:error', listener)
+    return () => ipcRenderer.removeListener('serial:error', listener)
+  },
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

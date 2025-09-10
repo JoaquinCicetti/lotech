@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { CommandPanel } from './components/CommandPanel'
 import { ConnectionScreen } from './components/ConnectionScreen'
 import { Console } from './components/Console'
@@ -40,6 +40,19 @@ function App(): React.JSX.Element {
 
   const [showSettings, setShowSettings] = useState<boolean>(false)
 
+  // Define sendCommandDirect early so it can be used in useEffect
+  const sendCommandDirect = useCallback(
+    async (cmd: string): Promise<void> => {
+      if (!selectedPort || !cmd) return
+      try {
+        await window.serial.write({ path: selectedPort, data: cmd })
+      } catch (error) {
+        console.error('Failed to send command:', error)
+      }
+    },
+    [selectedPort]
+  )
+
   // Command queue processor
   useEffect(() => {
     if (!isConnected || isProcessingCommand || commandQueue.length === 0) return
@@ -80,6 +93,7 @@ function App(): React.JSX.Element {
     dequeueCommand,
     setProcessingCommand,
     addPendingConfirmation,
+    sendCommandDirect,
   ])
 
   // Check for confirmation timeouts
@@ -218,8 +232,8 @@ function App(): React.JSX.Element {
       addSerialData(`ERROR: ${error}`)
     }
 
-    window.serial.onData(handleData)
-    window.serial.onError(handleError)
+    const removeDataListener = window.serial.onData(handleData)
+    const removeErrorListener = window.serial.onError(handleError)
 
     // Monitor connection health
     const healthCheckInterval = setInterval(() => {
@@ -233,6 +247,8 @@ function App(): React.JSX.Element {
     }, 1000)
 
     return () => {
+      removeDataListener?.()
+      removeErrorListener?.()
       clearInterval(healthCheckInterval)
     }
   }, [
@@ -281,15 +297,6 @@ function App(): React.JSX.Element {
       setConnectionError(null)
     } catch (error) {
       console.error('Failed to disconnect:', error)
-    }
-  }
-
-  const sendCommandDirect = async (cmd: string): Promise<void> => {
-    if (!selectedPort || !cmd) return
-    try {
-      await window.serial.write({ path: selectedPort, data: `${cmd}\r\n` })
-    } catch (error) {
-      console.error('Failed to send command:', error)
     }
   }
 

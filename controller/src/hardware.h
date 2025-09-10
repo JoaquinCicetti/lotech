@@ -12,7 +12,8 @@
 
 enum ControlMode {
   MODE_SIMULATION,
-  MODE_REAL
+  MODE_REAL,
+  MODE_TEST  // Test mode for manual hardware control
 };
 
 // =====================================================

@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { SerialMessageParser } from '../utils/serialParser'
-import { ScrollArea } from './ui/scroll-area'
-import { Input } from './ui/input'
-import { Button } from './ui/button'
 import { Send } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { SerialMessageParser } from '../utils/serialParser'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { ScrollArea } from './ui/scroll-area'
 
 interface ConsoleProps {
   serialData: string[]
@@ -48,7 +48,9 @@ export const Console: React.FC<ConsoleProps> = (props) => {
   // Auto-scroll to bottom when new data arrives
   useEffect(() => {
     if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+      const scrollContainer = scrollAreaRef.current.querySelector(
+        '[data-radix-scroll-area-viewport]'
+      )
       if (scrollContainer) {
         scrollContainer.scrollTop = scrollContainer.scrollHeight
       }
@@ -59,11 +61,11 @@ export const Console: React.FC<ConsoleProps> = (props) => {
     if (command.trim() && onSendCommand) {
       // Add to serial data display
       onSendCommand(command.trim())
-      
+
       // Add to history
-      setCommandHistory(prev => [...prev, command.trim()])
+      setCommandHistory((prev) => [...prev, command.trim()])
       setHistoryIndex(-1)
-      
+
       // Clear input
       setCommand('')
     }
@@ -99,9 +101,9 @@ export const Console: React.FC<ConsoleProps> = (props) => {
           <ConsoleLine key={index} line={line} index={index} />
         ))}
       </ScrollArea>
-      
+
       {onSendCommand && (
-        <div className="border-t border-border p-3">
+        <div className="border-border border-t p-3">
           <div className="flex gap-2">
             <Input
               ref={inputRef}
@@ -111,15 +113,11 @@ export const Console: React.FC<ConsoleProps> = (props) => {
               placeholder="Enter command (e.g., STATUS, GET:DELAYS, SET:DELAY:SETTLE:1500)"
               className="flex-1 font-mono text-xs"
             />
-            <Button
-              onClick={handleSendCommand}
-              size="sm"
-              disabled={!command.trim()}
-            >
+            <Button onClick={handleSendCommand} size="sm" disabled={!command.trim()}>
               <Send className="h-3 w-3" />
             </Button>
           </div>
-          <div className="mt-1 text-xs text-muted-foreground">
+          <div className="text-muted-foreground mt-1 text-xs">
             Use ↑↓ for command history • Enter to send
           </div>
         </div>

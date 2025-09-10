@@ -22,6 +22,7 @@ export const MachineModel: React.FC<MachineModelProps> = (props) => {
 
   const wheelRef = useRef<THREE.Object3D>(null!)
   const grinderRef = useRef<THREE.Object3D>(null!)
+  const grinderKnifeRef = useRef<THREE.Object3D>(null!)
   const capperRef = useRef<THREE.Object3D>(null!)
   const solenoidRef = useRef<THREE.Object3D>(null!)
   const loadCellRef = useRef<THREE.Object3D>(null!)
@@ -31,6 +32,7 @@ export const MachineModel: React.FC<MachineModelProps> = (props) => {
     containerRef.current = nodes['Frasco_FINAL_ABSOLUTO_318_v5']
     wheelRef.current = nodes['Ruleta_Termoformada']
     grinderRef.current = nodes['Carcasa_Motor']
+    grinderKnifeRef.current = nodes['Body1017']
     capperRef.current = nodes['Body1048']
     solenoidRef.current = nodes['Body1020']
     loadCellRef.current = nodes['Body1051']
@@ -45,6 +47,7 @@ export const MachineModel: React.FC<MachineModelProps> = (props) => {
         containerRef={containerRef}
         wheelRef={wheelRef}
         grinderRef={grinderRef}
+        grinderKnifeRef={grinderKnifeRef}
         capperRef={capperRef}
         solenoidRef={solenoidRef}
         loadCellRef={loadCellRef}

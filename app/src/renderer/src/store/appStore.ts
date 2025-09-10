@@ -80,6 +80,14 @@ const INITIAL_STATUS: SystemStatus = {
     frascoVacio: true,
     pastillasCargadas: true,
   },
+  hardware: {
+    elevator: 'DOWN',
+    dosing: 'IDLE',
+    grinder: 'OFF',
+    transfer: 'CLOSED',
+    cap: 'RETRACTED',
+    weight: 0,
+  },
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -117,6 +125,7 @@ export const useAppStore = create<AppState>((set) => ({
     })),
   setShowConsole: (showConsole) => set({ showConsole }),
   setSimulationMode: (simulationMode) => set({ simulationMode }),
+  setTestMode: (testMode) => set({ testMode }),
   setCurrentView: (currentView) => set({ currentView }),
   setCurrentDelays: (currentDelays) => set({ currentDelays }),
   setCurrentDosing: (currentDosing) => set({ currentDosing }),

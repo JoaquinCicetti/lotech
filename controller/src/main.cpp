@@ -4,6 +4,7 @@
 #include "state_machine.h"
 #include "commands.h"
 #include "serial_protocol.h"
+#include "test_mode.h"
 
 unsigned long lastHeartbeat = 0;
 
@@ -23,6 +24,9 @@ void setup() {
   transferSolenoid.init();
   capSolenoid.init();
   
+  // Initialize test mode
+  TestMode::init();
+  
   // Set default mode
   setGlobalMode(MODE_SIMULATION);
   
@@ -36,21 +40,34 @@ void loop() {
   // Process serial commands
   commands.processSerialInput();
   
-  // Process state machine
-  if (stateMachine.hasStateChanged()) {
-    stateMachine.clearStateChange();
-    stateMachine.executeStateEntry();
+  // Only process state machine if not in test mode
+  if (!TestMode::isActive()) {
+    // Process state machine
+    if (stateMachine.hasStateChanged()) {
+      stateMachine.clearStateChange();
+      stateMachine.executeStateEntry();
+    }
+    
+    // Execute continuous state actions
+    stateMachine.executeStateContinuous();
+    
+    // Check for state transitions
+    stateMachine.processTransitions();
+  } else {
+    // In test mode, run hardware updates
+    elevator.run();
+    dosingWheel.run();
   }
   
-  // Execute continuous state actions
-  stateMachine.executeStateContinuous();
-  
-  // Check for state transitions
-  stateMachine.processTransitions();
-  
-  // Send simple heartbeat
+  // Send heartbeat
   if (millis() - lastHeartbeat >= HEARTBEAT_INTERVAL) {
-    SerialProtocol::sendHeartbeat(stateMachine.getStateName().c_str(), millis());
+    if (TestMode::isActive()) {
+      // In test mode, send detailed hardware status
+      SerialProtocol::sendTestHeartbeat();
+    } else {
+      // Normal mode heartbeat
+      SerialProtocol::sendHeartbeat(stateMachine.getStateName().c_str(), millis());
+    }
     lastHeartbeat = millis();
   }
 }

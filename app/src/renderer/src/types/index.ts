@@ -39,6 +39,15 @@ export interface ViewSettings {
   viewMode: ViewMode
 }
 
+export interface HardwareStatus {
+  elevator: 'UP' | 'DOWN' | 'MOVING' | 'MOVING_UP' | 'MOVING_DOWN' | 'MIDDLE' | 'IDLE'
+  dosing: 'ACTIVE' | 'IDLE'
+  grinder: 'ON' | 'OFF'
+  transfer: 'OPEN' | 'CLOSED'
+  cap: 'PUSHED' | 'RETRACTED'
+  weight: number
+}
+
 export interface SystemStatus {
   state: MachineState
   pillCount: number
@@ -56,6 +65,7 @@ export interface SystemStatus {
     frascoVacio: boolean
     pastillasCargadas: boolean
   }
+  hardware?: HardwareStatus
 }
 
 export interface ProcessState {
