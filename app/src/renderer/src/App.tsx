@@ -36,7 +36,6 @@ function App(): React.JSX.Element {
     setProcessingCommand,
     addPendingConfirmation,
     removePendingConfirmation,
-    getPendingConfirmation,
   } = useAppStore()
 
   const [showSettings, setShowSettings] = useState<boolean>(false)
@@ -44,13 +43,13 @@ function App(): React.JSX.Element {
   // Command queue processor
   useEffect(() => {
     if (!isConnected || isProcessingCommand || commandQueue.length === 0) return
-    
+
     const processNextCommand = async () => {
       const cmd = dequeueCommand()
       if (!cmd) return
-      
+
       setProcessingCommand(true)
-      
+
       // Track pending confirmations for settings commands
       if (cmd.startsWith('SET:')) {
         const key = cmd.split(':').slice(0, 2).join(':')
@@ -61,26 +60,34 @@ function App(): React.JSX.Element {
           onTimeout: () => {
             console.warn(`Command timeout: ${cmd}`)
             // Could revert optimistic update here if needed
-          }
+          },
         })
       }
-      
+
       await sendCommandDirect(cmd)
-      
+
       // Wait a bit before processing next command to avoid buffer overflow
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
       setProcessingCommand(false)
     }
-    
+
     processNextCommand()
-  }, [isConnected, isProcessingCommand, commandQueue, selectedPort, dequeueCommand, setProcessingCommand, addPendingConfirmation])
-  
+  }, [
+    isConnected,
+    isProcessingCommand,
+    commandQueue,
+    selectedPort,
+    dequeueCommand,
+    setProcessingCommand,
+    addPendingConfirmation,
+  ])
+
   // Check for confirmation timeouts
   useEffect(() => {
     const interval = setInterval(() => {
       const store = useAppStore.getState()
       const now = Date.now()
-      
+
       store.pendingConfirmations.forEach((pending, key) => {
         const elapsed = now - pending.timestamp
         if (pending.timeoutMs && elapsed > pending.timeoutMs) {
@@ -90,7 +97,7 @@ function App(): React.JSX.Element {
         }
       })
     }, 500)
-    
+
     return () => clearInterval(interval)
   }, [removePendingConfirmation])
 
@@ -172,7 +179,7 @@ function App(): React.JSX.Element {
       if (dosing) {
         const store = useAppStore.getState()
         const currentDosing = store.currentDosing
-        
+
         // Check if this is a confirmation for a pending command
         if (line.startsWith('SET:DIVISIONS:') || line.startsWith('SET:LOT_SIZE:')) {
           const key = line.split(':').slice(0, 2).join(':')
@@ -235,6 +242,7 @@ function App(): React.JSX.Element {
     setCurrentDelays,
     setCurrentDosing,
     updateSystemStatus,
+    removePendingConfirmation,
   ])
 
   const connect = async (): Promise<void> => {
@@ -248,13 +256,13 @@ function App(): React.JSX.Element {
 
       if (success) {
         // Wait a bit for the controller to be ready
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
+        await new Promise((resolve) => setTimeout(resolve, 500))
+
         // Send initial commands directly (not queued) to get current state
         await sendCommandDirect('STATUS')
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise((resolve) => setTimeout(resolve, 100))
         await sendCommandDirect('GET:DELAYS')
-        await new Promise(resolve => setTimeout(resolve, 100))
+        await new Promise((resolve) => setTimeout(resolve, 100))
         await sendCommandDirect('GET:DOSING')
       }
     } catch (error) {
@@ -284,7 +292,7 @@ function App(): React.JSX.Element {
       console.error('Failed to send command:', error)
     }
   }
-  
+
   // Queue command for sequential processing
   const sendCommand = (cmd: string): void => {
     if (!cmd) return

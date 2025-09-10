@@ -93,12 +93,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
     onSendCommand(`SET:LOT_SIZE:${lotSize}`)
   }
 
-  const handleDelayChange = (key: keyof typeof delays, value: number) => {
+  type Keys = keyof typeof delays
+  const handleDelayChange = (key: Keys, value: number) => {
     const newDelays = { ...delays, [key]: value }
     setDelays(newDelays)
 
     // Send individual delay command to controller
-    const delayMap: Record<string, string> = {
+    const delayMap: Record<Keys, string> = {
       settle: 'SETTLE',
       weight: 'WEIGHT',
       transfer: 'TRANSFER',
@@ -116,7 +117,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
     // Update local state optimistically
     setWheelDivisions(wheelDiv)
     setLotSize(lot)
-    
+
     // Send commands to device (they'll be queued and sent one by one)
     if (wheelDiv !== currentDosing.wheelDivisions) {
       onSendCommand(`SET:DIVISIONS:${wheelDiv}`)

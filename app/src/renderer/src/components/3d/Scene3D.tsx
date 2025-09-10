@@ -10,12 +10,12 @@ import { StatusDisplay } from './StatusDisplay'
 
 interface Scene3DProps {
   systemStatus: SystemStatus
-  onSendCommand: (command: string) => void
 }
 
 export const Scene3D: React.FC<Scene3DProps> = (props) => {
   const { systemStatus } = props
-  const { isConnected } = useAppStore()
+  const { isConnected, currentDosing } = useAppStore()
+
   return (
     <div className="from-background to-muted/20 relative h-[100vh] w-full overflow-hidden rounded-lg bg-gradient-to-b">
       <Canvas shadows camera={{ fov: 80 }}>
@@ -40,7 +40,7 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
           <StatusDisplay
             state={systemStatus.state}
             pillCount={systemStatus.pillCount}
-            targetPills={systemStatus.targetPills}
+            targetPills={currentDosing.lotSize}
             weight={systemStatus.weight}
             isConnected={isConnected}
           />
