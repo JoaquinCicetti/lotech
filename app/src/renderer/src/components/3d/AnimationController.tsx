@@ -15,7 +15,7 @@ interface AnimationControllerProps {
   solenoidRef: React.RefObject<THREE.Object3D | null>
   loadCellRef: React.RefObject<THREE.Object3D | null>
 }
-const baseColor = new THREE.Color(0x808080)
+const baseColor = new THREE.Color(0x344496)
 const pulseColor = new THREE.Color(0xbef264)
 
 export const AnimationController: React.FC<AnimationControllerProps> = (props) => {
