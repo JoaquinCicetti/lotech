@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import { MachineState, SystemStatus } from '../../types'
 
 interface AnimationControllerProps {
-  systemStatus: Pick<SystemStatus, 'state' | 'sensors' | 'stateProgress'>
+  systemStatus: SystemStatus
   elevatorRef: React.RefObject<THREE.Object3D | null>
   containerRef: React.RefObject<THREE.Object3D | null>
   wheelRef: React.RefObject<THREE.Object3D | null>
@@ -44,7 +44,8 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
     elevatorTarget: 0, // Track where elevator is going
   })
 
-  const { testMode, currentDosing } = useAppStore()
+  const testMode = useAppStore((state) => state.testMode)
+  const currentDosing = useAppStore((state) => state.currentDosing)
 
   useFrame((state, delta) => {
     const { state: currentState, hardware } = systemStatus

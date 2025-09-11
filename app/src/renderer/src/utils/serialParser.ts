@@ -184,7 +184,7 @@ export class SerialMessageParser {
     // TEST: Test mode hardware status updates
     if (cleanLine.startsWith('TEST:')) {
       const parts = cleanLine.split(':')
-      
+
       if (parts.length >= 3) {
         const hardware = currentStatus.hardware || {
           elevator: 'IDLE',
@@ -192,12 +192,12 @@ export class SerialMessageParser {
           grinder: 'OFF',
           transfer: 'CLOSED',
           cap: 'RETRACTED',
-          weight: 0
+          weight: 0,
         }
-        
+
         const component = parts[1]
         const status = parts[2]
-        
+
         if (component === 'ELEVATOR') {
           if (status === 'MOVING_UP') {
             hardware.elevator = 'MOVING_UP' as any
@@ -221,14 +221,14 @@ export class SerialMessageParser {
         } else if (component === 'WEIGHT' && parts.length >= 3) {
           hardware.weight = parseFloat(status) || 0
         }
-        
+
         return { hardware }
       }
     }
-    
+
     // TEST_MODE: Test mode enable/disable
     if (cleanLine.startsWith('TEST_MODE:')) {
-      const enabled = cleanLine.includes('ENABLED')
+      // const enabled = cleanLine.includes('ENABLED')
       // Store test mode state if needed
       return null
     }
@@ -242,15 +242,15 @@ export class SerialMessageParser {
         grinder: 'OFF',
         transfer: 'CLOSED',
         cap: 'RETRACTED',
-        weight: 0
+        weight: 0,
       }
-      
+
       if (position === 'ARRIBA') {
         hardware.elevator = 'UP'
       } else if (position === 'ABAJO') {
         hardware.elevator = 'DOWN'
       }
-      
+
       return { hardware }
     }
 

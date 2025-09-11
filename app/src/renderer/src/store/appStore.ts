@@ -34,6 +34,7 @@ interface AppState {
   // UI state
   showConsole: boolean
   simulationMode: boolean
+  testMode: boolean
   currentView: ViewMode
 
   // Settings
@@ -56,6 +57,7 @@ interface AppState {
   updateSystemStatus: (update: Partial<SystemStatus>) => void
   setShowConsole: (show: boolean) => void
   setSimulationMode: (mode: boolean) => void
+  setTestMode: (mode: boolean) => void
   setCurrentView: (view: ViewMode) => void
   setCurrentDelays: (delays: DelaySettings) => void
   setCurrentDosing: (dosing: DosingSettings) => void
@@ -101,6 +103,7 @@ export const useAppStore = create<AppState>((set) => ({
   systemStatus: INITIAL_STATUS,
   showConsole: false,
   simulationMode: true,
+  testMode: false,
   currentView: DEFAULT_VIEW.viewMode,
   currentDelays: DEFAULT_DELAYS,
   currentDosing: DEFAULT_DOSING,

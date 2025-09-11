@@ -79,8 +79,8 @@ export interface SerialAPI {
   open: (opts: { path: string; baudRate: number }) => Promise<boolean>
   write: (args: { path: string; data: string | Uint8Array }) => Promise<boolean>
   close: (path: string) => Promise<boolean>
-  onData: (cb: (p: { path: string; line: string }) => void) => void
-  onError: (cb: (p: { path: string; error: string }) => void) => void
+  onData: (cb: (p: { path: string; line: string }) => void) => (() => void) | undefined
+  onError: (cb: (p: { path: string; error: string }) => void) => (() => void) | undefined
 }
 
 declare global {
