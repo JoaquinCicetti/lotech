@@ -13,9 +13,6 @@ void CommandProcessor::processSerialInput() {
     if (incomingChar == '\n' || incomingChar == '\r') {
       if (bufferIndex > 0) {
         inputBuffer[bufferIndex] = '\0';
-        // Debug: echo command
-        Serial.print(F("CMD:"));
-        Serial.println(inputBuffer);
         processCommand(inputBuffer);
         bufferIndex = 0;
       }
@@ -169,6 +166,24 @@ void CommandProcessor::processCommand(const char* command) {
     Serial.println(t_elev_down);
   }
   
+  // Proximity threshold commands
+  else if (strncmp(command, "SET:PROX:UP:", 12) == 0) {
+    uint16_t threshold = atoi(command + 12);
+    if (threshold >= 0 && threshold <= 1024) {
+      prox_threshold_up = threshold;
+      Serial.print(F("SET:PROX:UP:"));
+      Serial.println(prox_threshold_up);
+    }
+  }
+  else if (strncmp(command, "SET:PROX:DOWN:", 14) == 0) {
+    uint16_t threshold = atoi(command + 14);
+    if (threshold >= 0 && threshold <= 1024) {
+      prox_threshold_down = threshold;
+      Serial.print(F("SET:PROX:DOWN:"));
+      Serial.println(prox_threshold_down);
+    }
+  }
+  
   // Query commands
   else if (strcmp(command, "GET:DOSING") == 0) {
     Serial.print(F("DOSING:DIVISIONS:"));
@@ -192,11 +207,27 @@ void CommandProcessor::processCommand(const char* command) {
     Serial.print(F(",DOWN:"));
     Serial.println(t_elev_down);
   }
+  else if (strcmp(command, "GET:PROX") == 0) {
+    Serial.print(F("PROX:UP:"));
+    Serial.print(prox_threshold_up);
+    Serial.print(F(",DOWN:"));
+    Serial.println(prox_threshold_down);
+  }
   else if (strcmp(command, "STATUS") == 0) {
     printStatus();
   } 
   else if (strcmp(command, "HELP") == 0) {
     printHelp();
+  }
+  else if (strcmp(command, "PROX") == 0) {
+    // Manual proximity read
+    if (proxSensor.isAvailable()) {
+      uint16_t prox = proxSensor.read();
+      Serial.print(F("PROX:"));
+      Serial.println(prox);
+    } else {
+      Serial.println(F("PROX:NA"));
+    }
   }
   else {
     Serial.print(F("UNKNOWN:"));

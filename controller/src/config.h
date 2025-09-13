@@ -28,9 +28,7 @@
 #define HX711_DOUT_PIN A0  // Data pin
 #define HX711_SCK_PIN A1   // Clock pin
 
-// Position sensors (optional - for real hardware)
-#define SENSOR_POS_ALTA_PIN A2
-#define SENSOR_POS_BAJA_PIN A3
+// Proximity sensor uses I2C (A4/SDA, A5/SCL) - no need to define pins
 
 // =====================================================
 // TIMING PARAMETERS (milliseconds)
@@ -82,6 +80,13 @@
 #define DOSING_MAX_SPEED 800
 #define ELEVATOR_ACCELERATION 500
 #define DOSING_ACCELERATION 400
+
+// =====================================================
+// PROXIMITY SENSOR PARAMETERS
+// =====================================================
+
+#define PROX_THRESHOLD_UP_DEFAULT 100    // Default threshold for top position (0-1024)
+#define PROX_THRESHOLD_DOWN_DEFAULT 20   // Default threshold for bottom position (0-1024)
 
 // =====================================================
 // SYSTEM PARAMETERS

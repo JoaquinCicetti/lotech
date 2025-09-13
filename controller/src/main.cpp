@@ -7,6 +7,8 @@
 #include "test_mode.h"
 
 unsigned long lastHeartbeat = 0;
+unsigned long lastProxReport = 0;
+uint16_t lastProxValue = 9999; // Set to impossible value to force first report
 
 void setup() {
   Serial.begin(9600);
@@ -14,6 +16,17 @@ void setup() {
 
   // Initialize all hardware modules
   Serial.println(F("Inicializando"));
+  
+  // Try to init proximity sensor (don't block if fails)
+  if (proxSensor.init()) {
+    Serial.println(F("PROX:INIT_OK"));
+    // Send initial proximity reading
+    uint16_t initialProx = proxSensor.read();
+    Serial.print(F("PROX:"));
+    Serial.println(initialProx);
+  } else {
+    Serial.println(F("PROX:INIT_FAIL"));
+  }
   
   elevator.init();
   dosingWheel.init();
@@ -69,4 +82,41 @@ void loop() {
     lastHeartbeat = millis();
   }
   
+  // Read and report proximity if available - but not too often!
+  if (proxSensor.isAvailable() && (millis() - lastProxReport > 500)) { // Only check every 500ms
+    uint16_t prox = proxSensor.read();
+    
+    // Only report if value changed significantly (by more than 5)
+    int proxDiff = abs((int)prox - (int)lastProxValue);
+    if (proxDiff > 5) {
+      Serial.print(F("PROX:"));
+      Serial.print(prox);
+      // Also report position based on thresholds
+      if (prox > prox_threshold_up) {
+        Serial.print(F(",POS:UP"));
+      } else if (prox <= prox_threshold_down) {
+        Serial.print(F(",POS:DOWN"));
+      } else {
+        Serial.print(F(",POS:MID"));
+      }
+      Serial.println();
+      lastProxValue = prox;
+      lastProxReport = millis();
+    }
+    // Also send periodic update every 5 seconds
+    else if (millis() - lastProxReport > 5000) {
+      Serial.print(F("PROX:"));
+      Serial.print(prox);
+      if (prox > prox_threshold_up) {
+        Serial.print(F(",POS:UP"));
+      } else if (prox <= prox_threshold_down) {
+        Serial.print(F(",POS:DOWN"));
+      } else {
+        Serial.print(F(",POS:MID"));
+      }
+      Serial.println();
+      lastProxValue = prox;
+      lastProxReport = millis();
+    }
+  }
 }

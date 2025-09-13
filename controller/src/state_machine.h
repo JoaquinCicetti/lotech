@@ -32,6 +32,10 @@ extern unsigned long t_elev_down;
 extern int wheel_divisions;
 extern int lot_size;
 
+// Global proximity thresholds (extern declarations)
+extern uint16_t prox_threshold_up;
+extern uint16_t prox_threshold_down;
+
 // State machine class
 class StateMachine {
 private:

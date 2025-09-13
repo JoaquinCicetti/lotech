@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <AccelStepper.h>
 #include <HX711.h>
+#include <Arduino_APDS9960.h>
 #include "config.h"
 
 // =====================================================
@@ -131,6 +132,25 @@ public:
 };
 
 // =====================================================
+// PROXIMITY SENSOR MODULE
+// =====================================================
+
+class ProximitySensor {
+private:
+  uint16_t lastProximity;  // Scaled value 0-1024
+  uint8_t lastRawValue;     // Raw sensor value 0-255
+  bool available;
+  static const uint8_t CHANGE_THRESHOLD = 5;  // Only report if raw value changes by 5+
+  
+public:
+  ProximitySensor() : lastProximity(0), lastRawValue(0), available(false) {}
+  bool init();
+  uint16_t read();  // Returns scaled 0-1024
+  bool hasSignificantChange();
+  bool isAvailable() const { return available; }
+};
+
+// =====================================================
 // INPUT MODULE (Buttons and Sensors)
 // =====================================================
 
@@ -181,6 +201,7 @@ extern Grinder grinder;
 extern Solenoid transferSolenoid;
 extern Solenoid capSolenoid;
 extern InputSystem inputs;
+extern ProximitySensor proxSensor;
 
 // Global control mode
 extern ControlMode globalMode;

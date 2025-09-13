@@ -10,7 +10,7 @@ import {
   Square,
   View,
 } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
 import { Label } from './ui/label'
@@ -61,46 +61,39 @@ const DelayControl: React.FC<DelayControlProps> = (props) => {
 export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
   const { onDisconnect, onSendCommand } = props
 
-  // Get all settings from the store
-  const { simulationMode, testMode, currentDelays, currentDosing, setSimulationMode, setTestMode } =
-    useAppStore()
-
-  const [wheelDivisions, setWheelDivisions] = useState(currentDosing.wheelDivisions)
-  const [lotSize, setLotSize] = useState(currentDosing.lotSize)
-  const [delays, setDelays] = useState(currentDelays)
-
-  // Sync with store changes (when device confirms)
-  useEffect(() => {
-    setDelays(currentDelays)
-  }, [currentDelays])
-
-  useEffect(() => {
-    setWheelDivisions(currentDosing.wheelDivisions)
-    setLotSize(currentDosing.lotSize)
-  }, [currentDosing])
-
-  // Don't request settings here - it's done once on connection
+  // Get all settings from the store - use them directly
+  const {
+    simulationMode,
+    testMode,
+    currentDelays,
+    currentDosing,
+    setSimulationMode,
+    setTestMode,
+    setCurrentDelays,
+    setCurrentDosing,
+  } = useAppStore()
 
   // Function to sync all settings to device
   const syncAllSettingsToDevice = () => {
     // Send individual commands (they'll be queued)
-    onSendCommand(`SET:DELAY:SETTLE:${delays.settle}`)
-    onSendCommand(`SET:DELAY:WEIGHT:${delays.weight}`)
-    onSendCommand(`SET:DELAY:TRANSFER:${delays.transfer}`)
-    onSendCommand(`SET:DELAY:GRIND:${delays.grind}`)
-    onSendCommand(`SET:DELAY:CAP:${delays.cap}`)
-    onSendCommand(`SET:DELAY:UP:${delays.elevUp}`)
-    onSendCommand(`SET:DELAY:DOWN:${delays.elevDown}`)
-    onSendCommand(`SET:DIVISIONS:${wheelDivisions}`)
-    onSendCommand(`SET:LOT_SIZE:${lotSize}`)
+    onSendCommand(`SET:DELAY:SETTLE:${currentDelays.settle}`)
+    onSendCommand(`SET:DELAY:WEIGHT:${currentDelays.weight}`)
+    onSendCommand(`SET:DELAY:TRANSFER:${currentDelays.transfer}`)
+    onSendCommand(`SET:DELAY:GRIND:${currentDelays.grind}`)
+    onSendCommand(`SET:DELAY:CAP:${currentDelays.cap}`)
+    onSendCommand(`SET:DELAY:UP:${currentDelays.elevUp}`)
+    onSendCommand(`SET:DELAY:DOWN:${currentDelays.elevDown}`)
+    onSendCommand(`SET:DIVISIONS:${currentDosing.wheelDivisions}`)
+    onSendCommand(`SET:LOT_SIZE:${currentDosing.lotSize}`)
   }
 
-  type Keys = keyof typeof delays
+  type Keys = keyof typeof currentDelays
   const handleDelayChange = (key: Keys, value: number) => {
-    const newDelays = { ...delays, [key]: value }
-    setDelays(newDelays)
+    // Update store optimistically
+    const newDelays = { ...currentDelays, [key]: value }
+    setCurrentDelays(newDelays)
 
-    // Send individual delay command to controller
+    // Send command to device
     const delayMap: Record<Keys, string> = {
       settle: 'SETTLE',
       weight: 'WEIGHT',
@@ -116,11 +109,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
   }
 
   const handleDosingChange = (wheelDiv: number, lot: number) => {
-    // Update local state optimistically
-    setWheelDivisions(wheelDiv)
-    setLotSize(lot)
+    // Update store optimistically
+    const newDosing = {
+      wheelDivisions: wheelDiv,
+      lotSize: lot,
+    }
+    setCurrentDosing(newDosing)
 
-    // Send commands to device (they'll be queued and sent one by one)
+    // Send commands to device
     if (wheelDiv !== currentDosing.wheelDivisions) {
       onSendCommand(`SET:DIVISIONS:${wheelDiv}`)
     }
@@ -152,8 +148,8 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
       <ScrollArea className="flex-1">
         <div className="space-y-6 p-4">
           {/* Sensor Status */}
-          <SensorStatus />
-          
+          <SensorStatus onSendCommand={onSendCommand} />
+
           {/* Command Tools */}
           <Card className="p-4">
             <Label className="mb-3 block text-sm font-medium">
@@ -330,14 +326,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
               <div>
                 <div className="mb-1 flex items-center justify-between">
                   <Label className="text-xs">Divisiones de Rueda</Label>
-                  <span className="text-muted-foreground font-mono text-xs">{wheelDivisions}</span>
+                  <span className="text-muted-foreground font-mono text-xs">
+                    {currentDosing.wheelDivisions}
+                  </span>
                 </div>
                 <Slider
-                  value={[wheelDivisions]}
-                  onValueChange={([v]) => {
-                    setWheelDivisions(v)
-                    handleDosingChange(v, lotSize)
-                  }}
+                  value={[currentDosing.wheelDivisions]}
+                  onValueChange={([v]) => handleDosingChange(v, currentDosing.lotSize)}
                   min={10}
                   max={50}
                   step={1}
@@ -347,16 +342,15 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
               <div>
                 <div className="mb-1 flex items-center justify-between">
                   <Label className="text-xs">Tamaño del Lote</Label>
-                  <span className="text-muted-foreground font-mono text-xs">{lotSize}</span>
+                  <span className="text-muted-foreground font-mono text-xs">
+                    {currentDosing.lotSize}
+                  </span>
                 </div>
                 <Slider
-                  value={[lotSize]}
-                  onValueChange={([v]) => {
-                    setLotSize(v)
-                    handleDosingChange(wheelDivisions, v)
-                  }}
+                  value={[currentDosing.lotSize]}
+                  onValueChange={([v]) => handleDosingChange(currentDosing.wheelDivisions, v)}
                   min={1}
-                  max={Math.min(50, wheelDivisions)}
+                  max={Math.min(50, currentDosing.wheelDivisions)}
                   step={1}
                 />
               </div>
@@ -369,7 +363,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
             <div className="space-y-4">
               <DelayControl
                 label="Asentamiento"
-                value={delays.settle}
+                value={currentDelays.settle}
                 min={50}
                 max={15_000}
                 step={100}
@@ -379,7 +373,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
 
               <DelayControl
                 label="Peso"
-                value={delays.weight}
+                value={currentDelays.weight}
                 min={50}
                 max={15_000}
                 step={100}
@@ -389,7 +383,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
 
               <DelayControl
                 label="Transferencia"
-                value={delays.transfer}
+                value={currentDelays.transfer}
                 min={50}
                 max={15_000}
                 step={100}
@@ -399,7 +393,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
 
               <DelayControl
                 label="Molienda"
-                value={delays.grind}
+                value={currentDelays.grind}
                 min={100}
                 max={15_000}
                 step={500}
@@ -409,7 +403,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
 
               <DelayControl
                 label="Tapado"
-                value={delays.cap}
+                value={currentDelays.cap}
                 min={50}
                 max={15_000}
                 step={100}
@@ -419,7 +413,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
 
               <DelayControl
                 label="Elevador Arriba"
-                value={delays.elevUp}
+                value={currentDelays.elevUp}
                 min={100}
                 max={15_000}
                 step={500}
@@ -429,7 +423,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
 
               <DelayControl
                 label="Elevador Abajo"
-                value={delays.elevDown}
+                value={currentDelays.elevDown}
                 min={100}
                 max={15_000}
                 step={500}
