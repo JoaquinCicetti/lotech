@@ -40,7 +40,7 @@ void Elevator::moveUp() {
   movingDown = false;
   motor.setSpeed(ELEVATOR_SPEED);
   moveStartTime = millis();
-  Serial.println("ACCION:ELEVADOR_SUBIENDO");
+  Serial.println(F("ACCION:ELEVADOR_SUBIENDO"));
 }
 
 void Elevator::moveDown() {
@@ -48,14 +48,14 @@ void Elevator::moveDown() {
   movingDown = true;
   motor.setSpeed(-ELEVATOR_SPEED);
   moveStartTime = millis();
-  Serial.println("ACCION:ELEVADOR_BAJANDO");
+  Serial.println(F("ACCION:ELEVADOR_BAJANDO"));
 }
 
 void Elevator::stop() {
   movingUp = false;
   movingDown = false;
   motor.setSpeed(0);
-  Serial.println("ACCION:ELEVADOR_DETENIDO");
+  Serial.println(F("ACCION:ELEVADOR_DETENIDO"));
 }
 
 void Elevator::run() {

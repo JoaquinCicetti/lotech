@@ -71,11 +71,11 @@ unsigned long StateMachine::getExpectedStateDelay(State state) const {
   }
 }
 
-String StateMachine::getStateName() const {
+const char* StateMachine::getStateName() const {
   return getStateName(currentState);
 }
 
-String StateMachine::getStateName(State state) const {
+const char* StateMachine::getStateName(State state) const {
   switch(state) {
     case ESTADO0_INICIO: return "0_INICIO";
     case ESTADO1_ASCENSOR: return "1_ASCENSOR";

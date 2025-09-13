@@ -17,6 +17,7 @@ import { Label } from './ui/label'
 import { ScrollArea } from './ui/scroll-area'
 import { Separator } from './ui/separator'
 import { Slider } from './ui/slider'
+import { SensorStatus } from './SensorStatus'
 
 interface LeftSidebarProps {
   onDisconnect: () => void
@@ -150,6 +151,9 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
       {/* Scrollable Settings */}
       <ScrollArea className="flex-1">
         <div className="space-y-6 p-4">
+          {/* Sensor Status */}
+          <SensorStatus />
+          
           {/* Command Tools */}
           <Card className="p-4">
             <Label className="mb-3 block text-sm font-medium">

@@ -54,6 +54,17 @@ export class SerialMessageParser {
       }
     }
 
+    // PROXIMITY: Proximity sensor reading
+    if (cleanLine.startsWith('PROXIMITY:')) {
+      const proximityStr = cleanLine.substring(10).trim()
+      const proximity = parseInt(proximityStr)
+      if (!isNaN(proximity) && proximity >= 0 && proximity <= 255) {
+        return { proximityDistance: proximity }
+      } else {
+        console.warn(`Invalid proximity reading: ${proximityStr}`)
+      }
+    }
+
     // ELEVADOR: Elevator position
     if (cleanLine.startsWith('ELEVADOR:')) {
       const position = cleanLine.substring(9).trim()

@@ -10,12 +10,10 @@ unsigned long lastHeartbeat = 0;
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial) {
-    ;
-  }
+  delay(100);  // Small delay for serial init
 
   // Initialize all hardware modules
-  Serial.println("Inicializando");
+  Serial.println(F("Inicializando"));
   
   elevator.init();
   dosingWheel.init();
@@ -30,9 +28,9 @@ void setup() {
   // Set default mode
   setGlobalMode(MODE_SIMULATION);
   
-  Serial.println("Escribe HELP para listar los comandos");
+  Serial.println(F("Escribe HELP para listar los comandos"));
 
-  Serial.print("Estado actual: ");
+  Serial.print(F("Estado actual: "));
   Serial.println(stateMachine.getStateName());
 }
 
@@ -66,8 +64,9 @@ void loop() {
       SerialProtocol::sendTestHeartbeat();
     } else {
       // Normal mode heartbeat
-      SerialProtocol::sendHeartbeat(stateMachine.getStateName().c_str(), millis());
+      SerialProtocol::sendHeartbeat(stateMachine.getStateName(), millis());
     }
     lastHeartbeat = millis();
   }
+  
 }
