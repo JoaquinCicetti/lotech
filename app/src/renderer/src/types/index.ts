@@ -52,6 +52,7 @@ export interface SystemStatus {
   state: MachineState
   pillCount: number
   weight?: number
+  proximityDistance?: number
   lastHeartbeat?: number
   stateProgress?: {
     state: string

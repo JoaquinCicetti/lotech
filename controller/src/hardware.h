@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <AccelStepper.h>
 #include <HX711.h>
+#include <Arduino_APDS9960.h>
 #include "config.h"
 
 // =====================================================
@@ -21,7 +22,7 @@ enum ControlMode {
 // =====================================================
 
 class Elevator {
-private:
+public:  // Make motor and flags public for test mode
   AccelStepper motor;
   bool movingUp;
   bool movingDown;
@@ -51,7 +52,7 @@ public:
 // =====================================================
 
 class DosingWheel {
-private:
+public:  // Make motor and flag public for test mode access
   AccelStepper motor;
   bool dosingInProgress;
   
@@ -70,6 +71,9 @@ public:
 // =====================================================
 
 class LoadCell {
+public:  // Make public for debugging
+  ControlMode mode;
+  bool isReady;
 private:
   HX711 scale;
   float currentWeight;
@@ -77,8 +81,6 @@ private:
   float calibrationFactor;
   float weightThreshold;
   unsigned long weightStableTime;
-  ControlMode mode;
-  bool isReady;
   
   // Simulation variables
   bool simWeightStable;
@@ -128,6 +130,26 @@ public:
   void activate();
   void deactivate();
   bool isActive() const { return active; }
+};
+
+// =====================================================
+// PROXIMITY SENSOR MODULE
+// =====================================================
+
+class ProximitySensor {
+private:
+  uint16_t lastProximity;  // Scaled value 0-1024
+  uint8_t lastRawValue;     // Raw sensor value 0-255
+  bool available;
+  static const uint8_t CHANGE_THRESHOLD = 5;  // Only report if raw value changes by 5+
+  
+public:
+  ProximitySensor() : lastProximity(0), lastRawValue(0), available(false) {}
+  bool init();
+  uint16_t read();  // Returns scaled 0-1024
+  bool hasSignificantChange();
+  bool isAvailable() const { return available; }
+  uint8_t getLastRawValue() const { return lastRawValue; }
 };
 
 // =====================================================
@@ -181,6 +203,7 @@ extern Grinder grinder;
 extern Solenoid transferSolenoid;
 extern Solenoid capSolenoid;
 extern InputSystem inputs;
+extern ProximitySensor proxSensor;
 
 // Global control mode
 extern ControlMode globalMode;

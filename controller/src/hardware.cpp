@@ -9,6 +9,7 @@ Grinder grinder;
 Solenoid transferSolenoid(SOLENOID1_PIN, "TRASPASO");
 Solenoid capSolenoid(SOLENOID2_PIN, "TAPA");
 InputSystem inputs;
+ProximitySensor proxSensor;
 ControlMode globalMode = MODE_SIMULATION;
 
 // =====================================================
@@ -38,73 +39,94 @@ void Elevator::init() {
 void Elevator::moveUp() {
   movingUp = true;
   movingDown = false;
-  motor.setSpeed(ELEVATOR_SPEED);
+  motor.setSpeed(800);  // Force a known speed
+  motor.setMaxSpeed(1000);
   moveStartTime = millis();
-  Serial.println("ACCION:ELEVADOR_SUBIENDO");
+  Serial.println(F("ACCION:ELEVADOR_SUBIENDO"));
+  Serial.print(F("DEBUG:SPEED_SET:"));
+  Serial.println(motor.speed());
 }
 
 void Elevator::moveDown() {
   movingUp = false;
   movingDown = true;
-  motor.setSpeed(-ELEVATOR_SPEED);
+  motor.setSpeed(-800);  // Negative for opposite direction
+  motor.setMaxSpeed(1000);
   moveStartTime = millis();
-  Serial.println("ACCION:ELEVADOR_BAJANDO");
+  Serial.println(F("ACCION:ELEVADOR_BAJANDO"));
+  Serial.print(F("DEBUG:SPEED_SET:"));
+  Serial.println(motor.speed());
 }
 
 void Elevator::stop() {
   movingUp = false;
   movingDown = false;
   motor.setSpeed(0);
-  Serial.println("ACCION:ELEVADOR_DETENIDO");
+  Serial.println(F("ACCION:ELEVADOR_DETENIDO"));
 }
 
 void Elevator::run() {
   if (mode == MODE_REAL) {
-    // Real mode: check actual sensors
-    if (movingUp) {
+    // Real mode: run motor and check sensors
+    if (movingUp || movingDown) {
       motor.runSpeed();
-      // Check real sensor or timeout
-      if (digitalRead(SENSOR_POS_ALTA_PIN) == HIGH || 
-          (millis() - moveStartTime > T_ELEV_UP)) {
-        atTop = true;
-        atBottom = false;
-        stop();
-      }
-    } else if (movingDown) {
-      motor.runSpeed();
-      // Check real sensor or timeout
-      if (digitalRead(SENSOR_POS_BAJA_PIN) == HIGH || 
-          (millis() - moveStartTime > T_ELEV_DOWN)) {
-        atTop = false;
-        atBottom = true;
-        stop();
+      
+      if (movingUp) {
+        bool reachedTop = false;
+        
+        // Check proximity sensor (skip if not available)
+        if (proxSensor.isAvailable()) {
+          uint16_t prox = proxSensor.read();
+          reachedTop = (prox > prox_threshold_up);
+        }
+        
+        // Check if reached top or timeout
+        if (reachedTop || (millis() - moveStartTime > T_ELEV_UP)) {
+          atTop = true;
+          atBottom = false;
+          stop();
+          Serial.println(F("ELEVADOR:ARRIBA"));
+        }
+      } else if (movingDown) {
+        bool reachedBottom = false;
+        
+        // Check proximity sensor (skip if not available)
+        if (proxSensor.isAvailable()) {
+          uint16_t prox = proxSensor.read();
+          reachedBottom = (prox <= prox_threshold_down);
+        }
+        
+        // Check if reached bottom or timeout
+        if (reachedBottom || (millis() - moveStartTime > T_ELEV_DOWN)) {
+          atTop = false;
+          atBottom = true;
+          stop();
+          Serial.println(F("ELEVADOR:ABAJO"));
+        }
       }
     }
-  } else {
-    // Simulation/Test mode: use timers only
-    if (movingUp) {
+  } else if (mode == MODE_TEST) {
+    // Test mode: just run the motor without sensor checks
+    if (movingUp || movingDown) {
       motor.runSpeed();
+    }
+  } else {
+    // Simulation mode only: use timers, no real motor movement
+    if (movingUp) {
+      // Don't actually run motor in simulation
       if (millis() - moveStartTime > T_ELEV_UP) {
         atTop = true;
         atBottom = false;
         stop();
-        if (mode == MODE_TEST) {
-          Serial.println("TEST:ELEVATOR:UP");
-        } else {
-          Serial.println("ELEVADOR:ARRIBA");
-        }
+        Serial.println(F("ELEVADOR:ARRIBA"));
       }
     } else if (movingDown) {
-      motor.runSpeed();
+      // Don't actually run motor in simulation
       if (millis() - moveStartTime > T_ELEV_DOWN) {
         atTop = false;
         atBottom = true;
         stop();
-        if (mode == MODE_TEST) {
-          Serial.println("TEST:ELEVATOR:DOWN");
-        } else {
-          Serial.println("ELEVADOR:ABAJO");
-        }
+        Serial.println(F("ELEVADOR:ABAJO"));
       }
     }
   }
@@ -112,14 +134,26 @@ void Elevator::run() {
 
 bool Elevator::isAtTop() const {
   if (mode == MODE_REAL) {
-    return digitalRead(SENSOR_POS_ALTA_PIN) == HIGH;
+    // Use proximity sensor for position detection
+    if (proxSensor.isAvailable()) {
+      uint16_t prox = proxSensor.read();
+      return prox > prox_threshold_up;
+    }
+    // If no proximity sensor, rely on timeout only
+    return atTop;
   }
   return atTop;
 }
 
 bool Elevator::isAtBottom() const {
   if (mode == MODE_REAL) {
-    return digitalRead(SENSOR_POS_BAJA_PIN) == HIGH;
+    // Use proximity sensor for position detection
+    if (proxSensor.isAvailable()) {
+      uint16_t prox = proxSensor.read();
+      return prox <= prox_threshold_down;
+    }
+    // If no proximity sensor, rely on timeout only
+    return atBottom;
   }
   return atBottom;
 }
@@ -151,16 +185,17 @@ void DosingWheel::init() {
   // Configure microstepping pins
   pinMode(MOTOR2_MS1_PIN, OUTPUT);
   pinMode(MOTOR2_MS2_PIN, OUTPUT);
-  digitalWrite(MOTOR2_MS1_PIN, HIGH);  // Half-stepping
-  digitalWrite(MOTOR2_MS2_PIN, LOW);
+  digitalWrite(MOTOR2_MS1_PIN, LOW);   // Full stepping for better torque
+  digitalWrite(MOTOR2_MS2_PIN, LOW);   // MS1=0, MS2=0 = Full step
 }
 
 void DosingWheel::dispenseOne() {
   // Only dispense if not already dispensing
   if (!dosingInProgress) {
     // Calculate steps based on current wheel divisions
-    int stepsPerDivision = (STEPS_PER_REVOLUTION * MICROSTEPS) / wheel_divisions;
-    motor.move(stepsPerDivision);
+    // Use full stepping (no microstepping multiplier)
+    int stepsPerDivision = STEPS_PER_REVOLUTION / wheel_divisions;
+    motor.move(stepsPerDivision);  // Positive for forward
     dosingInProgress = true;
     Serial.println("ACCION:DOSIFICANDO");
     Serial.print("DEBUG:DOSING:STEPS:");
@@ -173,6 +208,9 @@ void DosingWheel::dispenseOne() {
 void DosingWheel::stop() {
   motor.stop();
   dosingInProgress = false;
+  // Set MS pins LOW to reduce current when idle
+  digitalWrite(MOTOR2_MS1_PIN, LOW);
+  digitalWrite(MOTOR2_MS2_PIN, LOW);
 }
 
 void DosingWheel::run() {
@@ -228,7 +266,7 @@ void LoadCell::init() {
 }
 
 float LoadCell::readWeight() {
-  if (mode == MODE_REAL && isReady) {
+  if ((mode == MODE_REAL || mode == MODE_TEST) && isReady) {
     currentWeight = scale.get_units(10);  // Average of 10 readings
     return currentWeight;
   }
@@ -359,6 +397,89 @@ bool InputSystem::isPastillasCargadas() const {
 }
 
 // =====================================================
+// PROXIMITY SENSOR IMPLEMENTATION
+// =====================================================
+
+bool ProximitySensor::init() {
+  available = false;
+  lastProximity = 0;
+  lastRawValue = 0;
+  
+  // Initialize with timeout to avoid blocking
+  if (!APDS.begin()) {
+    Serial.println(F("PROX:FAIL"));
+    return false;
+  }
+  
+  // Wait a bit for sensor to stabilize
+  delay(10);
+  
+  // Read initial value
+  if (APDS.proximityAvailable()) {
+    int initial = APDS.readProximity();
+    if (initial >= 0) {
+      lastRawValue = constrain(initial, 0, 255);
+      lastProximity = map(lastRawValue, 0, 255, 0, 1024);
+      Serial.print(F("PROX:INIT:"));
+      Serial.println(lastProximity);
+      Serial.print(F("PROX:RAW:"));
+      Serial.println(lastRawValue);
+    }
+  }
+  
+  available = true;
+  Serial.println(F("PROX:OK"));
+  return true;
+}
+
+uint16_t ProximitySensor::read() {
+  if (!available) return 0;
+  
+  // Rate limit reads to prevent overwhelming the sensor
+  static unsigned long lastReadTime = 0;
+  unsigned long now = millis();
+  
+  // Only read from sensor every 200ms minimum (increased from 100ms)
+  if (now - lastReadTime < 200) {
+    return lastProximity; // Return cached value
+  }
+  
+  // Try to read without blocking
+  lastReadTime = now;
+  
+  // Check if proximity data is available first
+  if (!APDS.proximityAvailable()) {
+    return lastProximity; // Return cached value if no new data
+  }
+  
+  int rawValue = APDS.readProximity();
+  // Arduino APDS9960 returns 0-255 where 0=far, 255=close
+  // But sometimes it can return -1 on error
+  if (rawValue < 0) {
+    return lastProximity; // Return cached value on error
+  }
+  
+  rawValue = constrain(rawValue, 0, 255);
+  
+  // Always update (remove the change threshold for now to debug)
+  lastRawValue = rawValue;
+  // Scale to 0-1024 range
+  lastProximity = map(rawValue, 0, 255, 0, 1024);
+  
+  return lastProximity;
+}
+
+bool ProximitySensor::hasSignificantChange() {
+  if (!available) return false;
+  
+  uint8_t currentRaw = lastRawValue;
+  read(); // Update reading
+  
+  // Return true if value changed significantly
+  return (abs(lastRawValue - currentRaw) >= CHANGE_THRESHOLD);
+}
+
+// =====================================================
 // GLOBAL MODE CONTROL
 // =====================================================
 
@@ -369,5 +490,11 @@ void setGlobalMode(ControlMode mode) {
   inputs.setMode(mode);
   
   Serial.print("MODO:");
-  Serial.println(mode == MODE_REAL ? "REAL" : "SIMULACION");
+  if (mode == MODE_REAL) {
+    Serial.println("REAL");
+  } else if (mode == MODE_TEST) {
+    Serial.println("TEST");
+  } else {
+    Serial.println("SIMULACION");
+  }
 }

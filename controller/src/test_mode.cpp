@@ -1,6 +1,7 @@
 #include "test_mode.h"
 #include "hardware.h"
 #include "serial_protocol.h"
+#include "config.h"
 
 bool TestMode::testModeActive = false;
 
@@ -29,7 +30,9 @@ void TestMode::setActive(bool active) {
     Serial.println(F("  ELEVATOR_UP    - Move elevator up"));
     Serial.println(F("  ELEVATOR_DOWN  - Move elevator down"));
     Serial.println(F("  ELEVATOR_STOP  - Stop elevator"));
-    Serial.println(F("  DOSING_STEP    - Dispense one pill"));
+    Serial.println(F("  DOSING_STEP    - Dispense one pill (single step)"));
+    Serial.println(F("  DOSING_FWD     - Move dosing wheel forward continuously"));
+    Serial.println(F("  DOSING_REV     - Move dosing wheel reverse continuously"));
     Serial.println(F("  DOSING_STOP    - Stop dosing wheel"));
     Serial.println(F("  GRINDER_ON     - Turn grinder on"));
     Serial.println(F("  GRINDER_OFF    - Turn grinder off"));
@@ -64,6 +67,10 @@ void TestMode::processCommand(const String& command) {
     elevatorStop();
   } else if (cmd == "DOSING_STEP") {
     dosingWheelStep();
+  } else if (cmd == "DOSING_FWD") {
+    dosingWheelForward();
+  } else if (cmd == "DOSING_REV") {
+    dosingWheelReverse();
   } else if (cmd == "DOSING_STOP") {
     dosingWheelStop();
   } else if (cmd == "GRINDER_ON") {
@@ -114,8 +121,26 @@ void TestMode::dosingWheelStep() {
   }
 }
 
+void TestMode::dosingWheelForward() {
+  // Direct pin control for testing
+  pinMode(MOTOR2_STEP_PIN, OUTPUT);
+  pinMode(MOTOR2_DIR_PIN, OUTPUT);
+  digitalWrite(MOTOR2_DIR_PIN, HIGH);
+  dosingWheel.dosingInProgress = true;
+  Serial.println(F("TEST:DOSING:FORWARD"));
+}
+
+void TestMode::dosingWheelReverse() {
+  // Direct pin control for testing
+  pinMode(MOTOR2_STEP_PIN, OUTPUT);
+  pinMode(MOTOR2_DIR_PIN, OUTPUT);
+  digitalWrite(MOTOR2_DIR_PIN, LOW);
+  dosingWheel.dosingInProgress = true;
+  Serial.println(F("TEST:DOSING:REVERSE"));
+}
+
 void TestMode::dosingWheelStop() {
-  dosingWheel.stop();
+  dosingWheel.dosingInProgress = false;
   Serial.println(F("TEST:DOSING:STOP"));
 }
 
@@ -150,9 +175,16 @@ void TestMode::capSolenoidOff() {
 }
 
 void TestMode::readWeight() {
+  // Debug: check load cell status
+  Serial.print(F("DEBUG:LOADCELL:MODE:"));
+  Serial.println(loadCell.mode);
+  Serial.print(F("DEBUG:LOADCELL:READY:"));
+  Serial.println(loadCell.isReady);
+  
   float weight = loadCell.readWeight();
   Serial.print(F("TEST:WEIGHT:"));
-  Serial.println(weight);
+  Serial.print(weight);
+  Serial.println(F(" g"));
 }
 
 void TestMode::getStatus() {

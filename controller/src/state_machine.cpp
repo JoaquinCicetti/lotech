@@ -18,6 +18,10 @@ unsigned long t_elev_down = T_ELEV_DOWN_DEFAULT;
 int wheel_divisions = WHEEL_DIVISIONS_DEFAULT;
 int lot_size = LOT_SIZE_DEFAULT;
 
+// Global proximity thresholds
+uint16_t prox_threshold_up = PROX_THRESHOLD_UP_DEFAULT;
+uint16_t prox_threshold_down = PROX_THRESHOLD_DOWN_DEFAULT;
+
 StateMachine::StateMachine() {
   currentState = ESTADO0_INICIO;
   previousState = ESTADO0_INICIO;
@@ -71,11 +75,11 @@ unsigned long StateMachine::getExpectedStateDelay(State state) const {
   }
 }
 
-String StateMachine::getStateName() const {
+const char* StateMachine::getStateName() const {
   return getStateName(currentState);
 }
 
-String StateMachine::getStateName(State state) const {
+const char* StateMachine::getStateName(State state) const {
   switch(state) {
     case ESTADO0_INICIO: return "0_INICIO";
     case ESTADO1_ASCENSOR: return "1_ASCENSOR";

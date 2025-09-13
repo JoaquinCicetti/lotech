@@ -32,6 +32,10 @@ extern unsigned long t_elev_down;
 extern int wheel_divisions;
 extern int lot_size;
 
+// Global proximity thresholds (extern declarations)
+extern uint16_t prox_threshold_up;
+extern uint16_t prox_threshold_down;
+
 // State machine class
 class StateMachine {
 private:
@@ -49,8 +53,8 @@ public:
   // State management
   void changeState(State newState);
   State getCurrentState() const { return currentState; }
-  String getStateName() const;
-  String getStateName(State state) const;
+  const char* getStateName() const;
+  const char* getStateName(State state) const;
   bool hasStateChanged() const { return stateJustChanged; }
   void clearStateChange() { stateJustChanged = false; }
   unsigned long getStateTime() const { return millis() - stateTimer; }

@@ -54,6 +54,42 @@ export class SerialMessageParser {
       }
     }
 
+    // PROX: Proximity sensor reading (0-1024 scale) with optional position
+    if (cleanLine.startsWith('PROX:')) {
+      const proximityStr = cleanLine.substring(5).trim()
+      
+      // Skip status messages
+      if (proximityStr === 'OK' || proximityStr === 'FAIL' || proximityStr === 'NA') {
+        return null
+      }
+      
+      // Parse proximity value and optional position
+      const parts = proximityStr.split(',')
+      const proximity = parseInt(parts[0])
+      
+      if (!isNaN(proximity) && proximity >= 0 && proximity <= 1024) {
+        const sensors = { ...currentStatus.sensors }
+        
+        // Check if position is included in message
+        if (parts.length > 1 && parts[1].startsWith('POS:')) {
+          const position = parts[1].substring(4)
+          sensors.posAlta = position === 'UP'
+          sensors.posBaja = position === 'DOWN'
+        } else {
+          // Fallback to default thresholds if position not included
+          sensors.posAlta = proximity > 100  // Top when proximity > 100
+          sensors.posBaja = proximity <= 20   // Bottom when proximity <= 20
+        }
+        
+        return { 
+          proximityDistance: proximity,
+          sensors 
+        }
+      } else {
+        console.warn(`Invalid proximity reading: ${proximityStr}`)
+      }
+    }
+
     // ELEVADOR: Elevator position
     if (cleanLine.startsWith('ELEVADOR:')) {
       const position = cleanLine.substring(9).trim()
@@ -104,6 +140,12 @@ export class SerialMessageParser {
     // SET: Configuration confirmations (to avoid UNKNOWN messages)
     if (cleanLine.startsWith('SET:')) {
       // These are confirmations from the device, already handled in parseDelays/parseDosing
+      return null
+    }
+
+    // CMD: Debug echo of received commands
+    if (cleanLine.startsWith('CMD:')) {
+      // Just debug output, ignore
       return null
     }
 
@@ -231,6 +273,23 @@ export class SerialMessageParser {
       // const enabled = cleanLine.includes('ENABLED')
       // Store test mode state if needed
       return null
+    }
+
+    // PROX thresholds response from GET:PROX
+    if (cleanLine.startsWith('PROX:UP:')) {
+      const parts = cleanLine.substring(8).split(',')
+      const upThreshold = parseInt(parts[0])
+      const downPart = parts[1]?.split(':')
+      if (downPart && downPart[0] === 'DOWN') {
+        const downThreshold = parseInt(downPart[1])
+        // Store thresholds - could be added to SystemStatus if needed
+        return {
+          proximityThresholds: {
+            up: upThreshold,
+            down: downThreshold
+          }
+        }
+      }
     }
 
     // ELEVADOR: Elevator position messages (for non-test mode)

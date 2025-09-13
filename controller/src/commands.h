@@ -5,13 +5,17 @@
 
 class CommandProcessor {
 private:
-  String inputBuffer;
+  static const int BUFFER_SIZE = 64;
+  char inputBuffer[BUFFER_SIZE];
+  int bufferIndex;
   
 public:
-  CommandProcessor() : inputBuffer("") {}
+  CommandProcessor() : bufferIndex(0) { 
+    inputBuffer[0] = '\0'; 
+  }
   
   void processSerialInput();
-  void processCommand(String command);
+  void processCommand(const char* command);
   void printHelp();
   void printStatus();
 };

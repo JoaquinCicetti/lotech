@@ -19,6 +19,8 @@ private:
   static void elevatorStop();
   
   static void dosingWheelStep();
+  static void dosingWheelForward();
+  static void dosingWheelReverse();
   static void dosingWheelStop();
   
   static void grinderOn();
