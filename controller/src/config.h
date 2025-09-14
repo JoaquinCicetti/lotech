@@ -85,8 +85,8 @@
 // PROXIMITY SENSOR PARAMETERS
 // =====================================================
 
-#define PROX_THRESHOLD_UP_DEFAULT 100    // Default threshold for top position (0-1024)
-#define PROX_THRESHOLD_DOWN_DEFAULT 20   // Default threshold for bottom position (0-1024)
+#define PROX_THRESHOLD_UP_DEFAULT 500    // Default threshold for top position (0-1024)
+#define PROX_THRESHOLD_DOWN_DEFAULT 50   // Default threshold for bottom position (0-1024)
 
 // =====================================================
 // SYSTEM PARAMETERS

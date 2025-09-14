@@ -22,7 +22,7 @@ enum ControlMode {
 // =====================================================
 
 class Elevator {
-private:
+public:  // Make motor and flags public for test mode
   AccelStepper motor;
   bool movingUp;
   bool movingDown;
@@ -52,7 +52,7 @@ public:
 // =====================================================
 
 class DosingWheel {
-private:
+public:  // Make motor and flag public for test mode access
   AccelStepper motor;
   bool dosingInProgress;
   
@@ -71,6 +71,9 @@ public:
 // =====================================================
 
 class LoadCell {
+public:  // Make public for debugging
+  ControlMode mode;
+  bool isReady;
 private:
   HX711 scale;
   float currentWeight;
@@ -78,8 +81,6 @@ private:
   float calibrationFactor;
   float weightThreshold;
   unsigned long weightStableTime;
-  ControlMode mode;
-  bool isReady;
   
   // Simulation variables
   bool simWeightStable;
@@ -148,6 +149,7 @@ public:
   uint16_t read();  // Returns scaled 0-1024
   bool hasSignificantChange();
   bool isAvailable() const { return available; }
+  uint8_t getLastRawValue() const { return lastRawValue; }
 };
 
 // =====================================================

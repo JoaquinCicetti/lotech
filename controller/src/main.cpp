@@ -83,30 +83,17 @@ void loop() {
   }
   
   // Read and report proximity if available - but not too often!
-  if (proxSensor.isAvailable() && (millis() - lastProxReport > 500)) { // Only check every 500ms
+  if (proxSensor.isAvailable() && (millis() - lastProxReport > 1000)) { // Check every 1 second
     uint16_t prox = proxSensor.read();
     
-    // Only report if value changed significantly (by more than 5)
+    // Only report if value changed significantly (by more than 10) or timeout
     int proxDiff = abs((int)prox - (int)lastProxValue);
-    if (proxDiff > 5) {
+    if (proxDiff > 10 || millis() - lastProxReport > 5000) {
       Serial.print(F("PROX:"));
       Serial.print(prox);
+      Serial.print(F(",RAW:"));
+      Serial.print(proxSensor.getLastRawValue());  // Add raw value for debugging
       // Also report position based on thresholds
-      if (prox > prox_threshold_up) {
-        Serial.print(F(",POS:UP"));
-      } else if (prox <= prox_threshold_down) {
-        Serial.print(F(",POS:DOWN"));
-      } else {
-        Serial.print(F(",POS:MID"));
-      }
-      Serial.println();
-      lastProxValue = prox;
-      lastProxReport = millis();
-    }
-    // Also send periodic update every 5 seconds
-    else if (millis() - lastProxReport > 5000) {
-      Serial.print(F("PROX:"));
-      Serial.print(prox);
       if (prox > prox_threshold_up) {
         Serial.print(F(",POS:UP"));
       } else if (prox <= prox_threshold_down) {

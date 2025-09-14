@@ -101,7 +101,7 @@ export const useAppStore = create<AppState>((set) => ({
   lastMessageTime: Date.now(),
   serialData: [],
   systemStatus: INITIAL_STATUS,
-  showConsole: false,
+  showConsole: true,
   simulationMode: true,
   testMode: false,
   currentView: DEFAULT_VIEW.viewMode,
