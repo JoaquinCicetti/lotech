@@ -55,7 +55,8 @@ class DosingWheel {
 public:  // Make motor and flag public for test mode access
   AccelStepper motor;
   bool dosingInProgress;
-  
+  bool continuousMode;  // For manual mode continuous movement
+
 public:
   DosingWheel();
   void init();
@@ -64,6 +65,10 @@ public:
   void run();  // Call in loop
   bool isDispensing() const { return dosingInProgress; }
   void updateStepsPerDivision();  // Recalculate steps based on wheel_divisions
+
+  // Manual mode continuous control
+  void startContinuous(bool forward);
+  void stopContinuous();
 };
 
 // =====================================================

@@ -4,7 +4,7 @@
 #include "state_machine.h"
 #include "commands.h"
 #include "serial_protocol.h"
-#include "test_mode.h"
+#include "manual_mode.h"
 
 unsigned long lastHeartbeat = 0;
 unsigned long lastProxReport = 0;
@@ -35,11 +35,8 @@ void setup() {
   transferSolenoid.init();
   capSolenoid.init();
   
-  // Initialize test mode
-  TestMode::init();
-  
-  // Set default mode
-  setGlobalMode(MODE_SIMULATION);
+  // Initialize manual mode (default)
+  ManualMode::init();
   
   Serial.println(F("Escribe HELP para listar los comandos"));
 
@@ -50,35 +47,35 @@ void setup() {
 void loop() {
   // Process serial commands
   commands.processSerialInput();
-  
-  // Only process state machine if not in test mode
-  if (!TestMode::isActive()) {
-    // Process state machine
+
+  // Handle different modes
+  if (ManualMode::isManual()) {
+    // Manual mode - just run hardware updates, no state machine
+    elevator.run();
+    dosingWheel.run();
+    // Motors respond directly to manual commands
+  }
+  else if (ManualMode::isAuto()) {
+    // Auto mode - run state machine
     if (stateMachine.hasStateChanged()) {
       stateMachine.clearStateChange();
       stateMachine.executeStateEntry();
     }
-    
+
     // Execute continuous state actions
     stateMachine.executeStateContinuous();
-    
+
     // Check for state transitions
     stateMachine.processTransitions();
-  } else {
-    // In test mode, run hardware updates
+
+    // Also run hardware updates for state machine
     elevator.run();
     dosingWheel.run();
   }
   
   // Send heartbeat
   if (millis() - lastHeartbeat >= HEARTBEAT_INTERVAL) {
-    if (TestMode::isActive()) {
-      // In test mode, send detailed hardware status
-      SerialProtocol::sendTestHeartbeat();
-    } else {
-      // Normal mode heartbeat
-      SerialProtocol::sendHeartbeat(stateMachine.getStateName(), millis());
-    }
+    SerialProtocol::sendHeartbeat(stateMachine.getStateName(), millis());
     lastHeartbeat = millis();
   }
   
