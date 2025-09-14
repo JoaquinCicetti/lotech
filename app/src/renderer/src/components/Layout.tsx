@@ -1,8 +1,10 @@
-import { useAppStore } from '@renderer/store/appStore'
+import { useConnectionStore } from '@renderer/store/connectionStore'
+import { useUIStore } from '@renderer/store/uiStore'
 import { ViewMode } from '@renderer/types'
-import { Boxes, Settings2, Terminal, View } from 'lucide-react'
+import { Boxes, Settings2, Terminal, View, Wifi, WifiOff } from 'lucide-react'
 import React from 'react'
 import { cn } from '../lib/utils'
+import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 
 interface LayoutProps {
@@ -26,7 +28,9 @@ export const Layout: React.FC<LayoutProps> = (props) => {
     onToggleRightSidebar,
   } = props
 
-  const { currentView, setCurrentView } = useAppStore()
+  const { currentView, setView } = useUIStore()
+  const { isConnected, selectedPort } = useConnectionStore()
+
   return (
     <div className="bg-background relative flex h-screen overflow-hidden">
       {/* Left Sidebar */}
@@ -43,58 +47,64 @@ export const Layout: React.FC<LayoutProps> = (props) => {
       <div className="relative flex-1 overflow-auto">
         {children}
 
-        {/* Left Sidebar Toggle - Inside main content */}
-        <Button
-          onClick={onToggleLeftSidebar}
-          variant={showLeftSidebar ? 'ghost' : 'secondary'}
-          size="sm"
-          className={cn(
-            'absolute top-4 z-40 gap-1 shadow-lg transition-all',
-            showLeftSidebar ? 'left-2' : 'left-4'
-          )}
-        >
-          <Settings2 className="h-4 w-4" />
-          <span className="hidden sm:inline">{showLeftSidebar ? '◀' : 'Control'}</span>
-        </Button>
+        {/* Header Controls Bar */}
+        <div className="absolute top-4 right-4 left-4 z-40 flex items-center justify-between">
+          {/* Left Controls */}
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={onToggleLeftSidebar}
+              variant={showLeftSidebar ? 'ghost' : 'secondary'}
+              size="sm"
+              className="gap-1 shadow-lg"
+            >
+              <Settings2 className="h-4 w-4" />
+              <span className="hidden sm:inline">{showLeftSidebar ? '◀' : 'Settings'}</span>
+            </Button>
 
-        <div
-          className={cn(
-            'absolute top-4 left-1/2 z-40 grid -translate-x-1/2 grid-cols-2 gap-1 gap-2 shadow-lg'
-          )}
-        >
+            {/* Connection Status */}
+            <Badge variant={isConnected ? 'default' : 'destructive'} className="gap-1">
+              {isConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+              {isConnected ? selectedPort : 'Disconnected'}
+            </Badge>
+          </div>
+
+          {/* Center Controls */}
+          <div className="flex items-center gap-3">
+            <div className="bg-border h-6 w-px" />
+
+            <div className="flex gap-1">
+              <Button
+                onClick={() => setView(ViewMode.STANDARD)}
+                variant={currentView === ViewMode.STANDARD ? 'default' : 'secondary'}
+                size="sm"
+                className="gap-2"
+              >
+                <View className="h-4 w-4" />
+                Dashboard
+              </Button>
+              <Button
+                onClick={() => setView(ViewMode.MODEL)}
+                variant={currentView === ViewMode.MODEL ? 'default' : 'secondary'}
+                size="sm"
+                className="gap-2"
+              >
+                <Boxes className="h-4 w-4" />
+                3D View
+              </Button>
+            </div>
+          </div>
+
+          {/* Right Controls */}
           <Button
-            onClick={() => setCurrentView(ViewMode.STANDARD)}
-            variant={currentView === ViewMode.STANDARD ? 'default' : 'secondary'}
-            size="default"
-            className="gap-2 font-medium"
+            onClick={onToggleRightSidebar}
+            variant={showRightSidebar ? 'ghost' : 'secondary'}
+            size="sm"
+            className="gap-1 shadow-lg"
           >
-            <View className="h-4 w-4" />
-            Dashboard
-          </Button>
-          <Button
-            onClick={() => setCurrentView(ViewMode.MODEL)}
-            variant={currentView === ViewMode.MODEL ? 'default' : 'secondary'}
-            size="default"
-            className="gap-2 font-medium"
-          >
-            <Boxes className="h-4 w-4" />
-            Vista 3D
+            <Terminal className="h-4 w-4" />
+            <span className="hidden sm:inline">{showRightSidebar ? '▶' : 'Status'}</span>
           </Button>
         </div>
-        <div className="bg-border h-8 w-px" />
-
-        {/* Right Sidebar Toggle - Inside main content */}
-        <Button
-          onClick={onToggleRightSidebar}
-          variant={showRightSidebar ? 'ghost' : 'secondary'}
-          className={cn(
-            'absolute top-4 z-40 gap-1 shadow-lg transition-all',
-            showRightSidebar ? 'right-2' : 'right-4'
-          )}
-        >
-          <Terminal className="h-4 w-4" />
-          <span className="hidden sm:inline">{showRightSidebar ? '▶' : 'Consola'}</span>
-        </Button>
       </div>
 
       {/* Right Sidebar */}

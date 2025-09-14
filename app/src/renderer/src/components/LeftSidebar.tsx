@@ -1,497 +1,476 @@
-import { useAppStore } from '@renderer/store/appStore'
 import {
-  Boxes,
-  ChevronDown,
-  ChevronUp,
-  Pause,
-  Power,
-  RefreshCw,
-  Scale,
-  Square,
-  View,
-} from 'lucide-react'
-import React from 'react'
-import { Button } from './ui/button'
-import { Card } from './ui/card'
-import { Label } from './ui/label'
-import { ScrollArea } from './ui/scroll-area'
-import { Separator } from './ui/separator'
-import { Slider } from './ui/slider'
-import { SensorStatus } from './SensorStatus'
+  tareLoadCell,
+  testCapPush,
+  testCapRetract,
+  testDosingBackward,
+  testDosingForward,
+  testDosingStop,
+  testElevatorDown,
+  testElevatorStop,
+  testElevatorUp,
+  testGrinderOff,
+  testGrinderOn,
+  testLoadCell,
+  testTransferClose,
+  testTransferOpen,
+  updateDelays,
+  updateDosing,
+  updateProximity,
+} from '@renderer/commands/serialCommands'
+import { Button } from '@renderer/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@renderer/components/ui/card'
+import { Label } from '@renderer/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@renderer/components/ui/select'
+import { Slider } from '@renderer/components/ui/slider'
+import { debounce } from '@renderer/lib/utils'
+import { useConnectionStore } from '@renderer/store/connectionStore'
+import { useSettingsStore } from '@renderer/store/settingsStore'
+import { useUIStore } from '@renderer/store/uiStore'
+import { DelaySettings, DosingSettings, ProximitySettings } from '@renderer/types'
+import { Clock, Package, RefreshCw, Ruler, Wifi, WifiOff, Wrench } from 'lucide-react'
+import React, { useState } from 'react'
+import { ModeSwitcher } from './ModeSwitcher'
 
 interface LeftSidebarProps {
-  onDisconnect: () => void
-  onSendCommand: (command: string) => void | Promise<void>
+  onConnect: () => Promise<void>
+  onDisconnect: () => Promise<void>
 }
 
-interface DelayControlProps {
-  label: string
-  value: number
-  min: number
-  max: number
-  step: number
-  unit: string
-  onChange: (value: number) => void
-}
+export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnect }) => {
+  const { ports, selectedPort, isConnected, connectionError, setSelectedPort } =
+    useConnectionStore()
 
-const DelayControl: React.FC<DelayControlProps> = (props) => {
-  const { label, value, min, max, step, unit, onChange } = props
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs font-medium">{label}</Label>
-        <span className="text-muted-foreground font-mono text-xs">
-          {value}
-          {unit}
-        </span>
-      </div>
-      <Slider
-        value={[value]}
-        onValueChange={([v]) => onChange(v)}
-        min={min}
-        max={max}
-        step={step}
-        className="w-full"
-      />
-    </div>
-  )
-}
-
-export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
-  const { onDisconnect, onSendCommand } = props
-
-  // Get all settings from the store - use them directly
   const {
-    simulationMode,
-    testMode,
-    currentDelays,
-    currentDosing,
-    setSimulationMode,
-    setTestMode,
-    setCurrentDelays,
-    setCurrentDosing,
-  } = useAppStore()
+    delays,
+    dosing,
+    proximity,
+    updateDelay,
+    updateDosing: updateDosingStore,
+    updateProximity: updateProximityStore,
+  } = useSettingsStore()
 
-  // Function to sync all settings to device
-  const syncAllSettingsToDevice = () => {
-    // Send individual commands (they'll be queued)
-    onSendCommand(`SET:DELAY:SETTLE:${currentDelays.settle}`)
-    onSendCommand(`SET:DELAY:WEIGHT:${currentDelays.weight}`)
-    onSendCommand(`SET:DELAY:TRANSFER:${currentDelays.transfer}`)
-    onSendCommand(`SET:DELAY:GRIND:${currentDelays.grind}`)
-    onSendCommand(`SET:DELAY:CAP:${currentDelays.cap}`)
-    onSendCommand(`SET:DELAY:UP:${currentDelays.elevUp}`)
-    onSendCommand(`SET:DELAY:DOWN:${currentDelays.elevDown}`)
-    onSendCommand(`SET:DIVISIONS:${currentDosing.wheelDivisions}`)
-    onSendCommand(`SET:LOT_SIZE:${currentDosing.lotSize}`)
+  const { currentMode } = useUIStore()
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Create debounced functions outside of useCallback
+  const sendDelaysDebounced = debounce((delays: DelaySettings) => {
+    updateDelays(delays)
+  }, 500)
+
+  const sendDosingDebounced = debounce((dosing: DosingSettings) => {
+    updateDosing(dosing.wheelDivisions, dosing.lotSize)
+  }, 500)
+
+  const sendProximityDebounced = debounce((proximity: ProximitySettings) => {
+    updateProximity(proximity.minProximity, proximity.maxProximity)
+  }, 500)
+
+  const handleDelayChange = (key: keyof DelaySettings, value: number) => {
+    const newDelays = { ...delays, [key]: value }
+    updateDelay(key, value)
+    sendDelaysDebounced(newDelays)
   }
 
-  type Keys = keyof typeof currentDelays
-  const handleDelayChange = (key: Keys, value: number) => {
-    // Update store optimistically
-    const newDelays = { ...currentDelays, [key]: value }
-    setCurrentDelays(newDelays)
-
-    // Send command to device
-    const delayMap: Record<Keys, string> = {
-      settle: 'SETTLE',
-      weight: 'WEIGHT',
-      transfer: 'TRANSFER',
-      grind: 'GRIND',
-      cap: 'CAP',
-      elevUp: 'UP',
-      elevDown: 'DOWN',
-    }
-
-    const cmd = `SET:DELAY:${delayMap[key]}:${value}`
-    onSendCommand(cmd)
+  const handleDosingChange = (key: keyof DosingSettings, value: number) => {
+    const newDosing = { ...dosing, [key]: value }
+    updateDosingStore(key, value)
+    sendDosingDebounced(newDosing)
   }
 
-  const handleDosingChange = (wheelDiv: number, lot: number) => {
-    // Update store optimistically
-    const newDosing = {
-      wheelDivisions: wheelDiv,
-      lotSize: lot,
-    }
-    setCurrentDosing(newDosing)
+  const handleProximityChange = (key: keyof ProximitySettings, value: number) => {
+    const newProximity = { ...proximity, [key]: value }
+    updateProximityStore(key, value)
+    sendProximityDebounced(newProximity)
+  }
 
-    // Send commands to device
-    if (wheelDiv !== currentDosing.wheelDivisions) {
-      onSendCommand(`SET:DIVISIONS:${wheelDiv}`)
-    }
-    if (lot !== currentDosing.lotSize) {
-      onSendCommand(`SET:LOT_SIZE:${lot}`)
+  const handleRefreshPorts = async () => {
+    setIsRefreshing(true)
+    try {
+      const newPorts = await window.serial.list()
+      useConnectionStore.getState().setPorts(newPorts)
+    } catch (error) {
+      console.error('Failed to refresh ports:', error)
+    } finally {
+      setIsRefreshing(false)
     }
   }
 
   return (
-    <div className="bg-card border-border flex h-full flex-col border-r">
-      {/* Header */}
-      <div className="border-border space-y-3 border-b p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Control Panel</h2>
-          <Button
-            onClick={syncAllSettingsToDevice}
-            size="sm"
-            variant="outline"
-            className="gap-1"
-            title="Sync all settings to device"
-          >
-            <RefreshCw className="h-3 w-3" />
-            Sync
-          </Button>
-        </div>
-      </div>
-
-      {/* Scrollable Settings */}
-      <ScrollArea className="flex-1">
-        <div className="space-y-6 p-4">
-          {/* Sensor Status */}
-          <SensorStatus onSendCommand={onSendCommand} />
-
-          {/* Command Tools */}
-          <Card className="p-4">
-            <Label className="mb-3 block text-sm font-medium">
-              {testMode ? 'Control Manual' : 'Comandos'}
-            </Label>
-            <div className="grid grid-cols-2 gap-2">
-              {testMode ? (
-                <>
-                  <Button
-                    onClick={() => onSendCommand('ELEVATOR_UP')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <ChevronUp className="h-3 w-3" />
-                    Elev Arriba
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('ELEVATOR_DOWN')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <ChevronDown className="h-3 w-3" />
-                    Elev Abajo
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('ELEVATOR_STOP')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <Square className="h-3 w-3" />
-                    Elev Stop
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('DOSING_STEP')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <Boxes className="h-3 w-3" />
-                    Dosificar
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('GRINDER_ON')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <Power className="h-3 w-3" />
-                    Moler ON
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('GRINDER_OFF')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <Square className="h-3 w-3" />
-                    Moler OFF
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('TRANSFER_ON')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                    Transfer ON
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('TRANSFER_OFF')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <Square className="h-3 w-3" />
-                    Transfer OFF
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('CAP_ON')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <View className="h-3 w-3" />
-                    Tapa ON
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('CAP_OFF')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <Square className="h-3 w-3" />
-                    Tapa OFF
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('WEIGHT')}
-                    size="sm"
-                    variant="outline"
-                    className="col-span-2 gap-1"
-                  >
-                    <Scale className="h-3 w-3" />
-                    Leer Peso
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    onClick={() => onSendCommand('BTN:PAUSE')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <Pause className="h-3 w-3" />
-                    Pausar
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('BTN:STOP')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <Square className="h-3 w-3" />
-                    Detener
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('TARE')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <Scale className="h-3 w-3" />
-                    Tara
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('SIM:WEIGHT_STABLE:1')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <Scale className="h-3 w-3" />
-                    Estabilizar
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('ELEV:UP')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <ChevronUp className="h-3 w-3" />
-                    Subir
-                  </Button>
-                  <Button
-                    onClick={() => onSendCommand('ELEV:DOWN')}
-                    size="sm"
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <ChevronDown className="h-3 w-3" />
-                    Bajar
-                  </Button>
-                </>
-              )}
-            </div>
-          </Card>
-
-          {/* Dosing Settings */}
-          <Card className="p-4">
-            <Label className="mb-3 block text-sm font-medium">Dosificación</Label>
-            <div className="space-y-4">
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <Label className="text-xs">Divisiones de Rueda</Label>
-                  <span className="text-muted-foreground font-mono text-xs">
-                    {currentDosing.wheelDivisions}
-                  </span>
-                </div>
-                <Slider
-                  value={[currentDosing.wheelDivisions]}
-                  onValueChange={([v]) => handleDosingChange(v, currentDosing.lotSize)}
-                  min={10}
-                  max={50}
-                  step={1}
-                />
-              </div>
-
-              <div>
-                <div className="mb-1 flex items-center justify-between">
-                  <Label className="text-xs">Tamaño del Lote</Label>
-                  <span className="text-muted-foreground font-mono text-xs">
-                    {currentDosing.lotSize}
-                  </span>
-                </div>
-                <Slider
-                  value={[currentDosing.lotSize]}
-                  onValueChange={([v]) => handleDosingChange(currentDosing.wheelDivisions, v)}
-                  min={1}
-                  max={Math.min(50, currentDosing.wheelDivisions)}
-                  step={1}
-                />
-              </div>
-            </div>
-          </Card>
-
-          {/* Timing Settings */}
-          <Card className="p-4">
-            <Label className="mb-4 block text-sm font-medium">Tiempos de Proceso</Label>
-            <div className="space-y-4">
-              <DelayControl
-                label="Asentamiento"
-                value={currentDelays.settle}
-                min={50}
-                max={15_000}
-                step={100}
-                unit="ms"
-                onChange={(v) => handleDelayChange('settle', v)}
-              />
-
-              <DelayControl
-                label="Peso"
-                value={currentDelays.weight}
-                min={50}
-                max={15_000}
-                step={100}
-                unit="ms"
-                onChange={(v) => handleDelayChange('weight', v)}
-              />
-
-              <DelayControl
-                label="Transferencia"
-                value={currentDelays.transfer}
-                min={50}
-                max={15_000}
-                step={100}
-                unit="ms"
-                onChange={(v) => handleDelayChange('transfer', v)}
-              />
-
-              <DelayControl
-                label="Molienda"
-                value={currentDelays.grind}
-                min={100}
-                max={15_000}
-                step={500}
-                unit="ms"
-                onChange={(v) => handleDelayChange('grind', v)}
-              />
-
-              <DelayControl
-                label="Tapado"
-                value={currentDelays.cap}
-                min={50}
-                max={15_000}
-                step={100}
-                unit="ms"
-                onChange={(v) => handleDelayChange('cap', v)}
-              />
-
-              <DelayControl
-                label="Elevador Arriba"
-                value={currentDelays.elevUp}
-                min={100}
-                max={15_000}
-                step={500}
-                unit="ms"
-                onChange={(v) => handleDelayChange('elevUp', v)}
-              />
-
-              <DelayControl
-                label="Elevador Abajo"
-                value={currentDelays.elevDown}
-                min={100}
-                max={15_000}
-                step={500}
-                unit="ms"
-                onChange={(v) => handleDelayChange('elevDown', v)}
-              />
-            </div>
-          </Card>
-        </div>
-      </ScrollArea>
-
-      <Separator />
-
-      {/* Footer with View Switcher and Disconnect */}
-      <div className="bg-muted/50 space-y-3 p-4">
-        <div className="space-y-2">
-          <Label className="text-muted-foreground text-xs">Modo</Label>
-          <div className="grid grid-cols-2 gap-2">
+    <div className="flex h-full flex-col">
+      {/* Connection Card - Always at top */}
+      <Card className="mb-2">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            {isConnected ? (
+              <Wifi className="h-4 w-4 text-green-500" />
+            ) : (
+              <WifiOff className="h-4 w-4" />
+            )}
+            Conexión
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Select value={selectedPort} onValueChange={setSelectedPort} disabled={isConnected}>
+              <SelectTrigger className="h-8 flex-1 text-xs">
+                <SelectValue placeholder="Select port..." />
+              </SelectTrigger>
+              <SelectContent>
+                {ports.map((port) => (
+                  <SelectItem key={port.path} value={port.path}>
+                    {port.friendlyName || port.path}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
-              onClick={() => {
-                setSimulationMode(false)
-                setTestMode(false)
-                onSendCommand('MODE:REAL')
-              }}
-              variant={simulationMode || testMode ? 'secondary' : 'default'}
-              size="default"
-              className="gap-2 font-medium"
+              size="icon"
+              variant="outline"
+              onClick={handleRefreshPorts}
+              disabled={isConnected || isRefreshing}
+              className="h-8 w-8"
             >
-              <View className="h-4 w-4" />
-              Real
-            </Button>
-            <Button
-              onClick={() => {
-                setSimulationMode(true)
-                setTestMode(false)
-                onSendCommand('MODE:SIM')
-              }}
-              variant={simulationMode && !testMode ? 'default' : 'secondary'}
-              size="default"
-              className="gap-2 font-medium"
-            >
-              <Boxes className="h-4 w-4" />
-              Simulacion
+              <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
           </div>
+
+          {connectionError && <div className="text-destructive text-xs">{connectionError}</div>}
+
           <Button
-            onClick={() => {
-              const newTestMode = !testMode
-              setTestMode(newTestMode)
-              if (newTestMode) {
-                onSendCommand('MODE:TEST')
-              } else {
-                onSendCommand(simulationMode ? 'MODE:SIM' : 'MODE:REAL')
-              }
-            }}
-            variant={testMode ? 'destructive' : 'outline'}
-            size="default"
-            className="w-full gap-2 font-medium"
+            className="h-8 w-full text-xs"
+            variant={isConnected ? 'destructive' : 'default'}
+            onClick={isConnected ? onDisconnect : onConnect}
+            disabled={!selectedPort && !isConnected}
           >
-            <Power className="h-4 w-4" />
-            {testMode ? 'Test Mode ON' : 'Test Mode OFF'}
+            {isConnected ? 'Disconnect' : 'Connect'}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Settings - Always visible, scrollable */}
+      <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4">
+        {/* Delay Settings */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            <h3 className="text-sm font-medium">Delays (ms)</h3>
+          </div>
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Settle: {delays.settle}ms</Label>
+              <Slider
+                value={[delays.settle]}
+                onValueChange={([v]) => handleDelayChange('settle', v)}
+                max={5000}
+                step={100}
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Weight: {delays.weight}ms</Label>
+              <Slider
+                value={[delays.weight]}
+                onValueChange={([v]) => handleDelayChange('weight', v)}
+                max={5000}
+                step={100}
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Transfer: {delays.transfer}ms</Label>
+              <Slider
+                value={[delays.transfer]}
+                onValueChange={([v]) => handleDelayChange('transfer', v)}
+                max={5000}
+                step={100}
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Grind: {delays.grind}ms</Label>
+              <Slider
+                value={[delays.grind]}
+                onValueChange={([v]) => handleDelayChange('grind', v)}
+                max={5000}
+                step={100}
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Cap: {delays.cap}ms</Label>
+              <Slider
+                value={[delays.cap]}
+                onValueChange={([v]) => handleDelayChange('cap', v)}
+                max={5000}
+                step={100}
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Elevator Up: {delays.elevUp}ms</Label>
+              <Slider
+                value={[delays.elevUp]}
+                onValueChange={([v]) => handleDelayChange('elevUp', v)}
+                max={10000}
+                step={100}
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Elevator Down: {delays.elevDown}ms</Label>
+              <Slider
+                value={[delays.elevDown]}
+                onValueChange={([v]) => handleDelayChange('elevDown', v)}
+                max={10000}
+                step={100}
+                className="w-full"
+              />
+            </div>
+          </div>
         </div>
 
-        <Button onClick={onDisconnect} variant="destructive" size="sm" className="w-full gap-2">
-          <Power className="h-4 w-4" />
-          Desconectar
-        </Button>
+        {/* Dosing Settings */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            <h3 className="text-sm font-medium">Dosing</h3>
+          </div>
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Wheel Divisions: {dosing.wheelDivisions}</Label>
+              <Slider
+                value={[dosing.wheelDivisions]}
+                onValueChange={([v]) => handleDosingChange('wheelDivisions', v)}
+                min={1}
+                max={20}
+                step={1}
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Lot Size: {dosing.lotSize}</Label>
+              <Slider
+                value={[dosing.lotSize]}
+                onValueChange={([v]) => handleDosingChange('lotSize', v)}
+                min={1}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Proximity Settings */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Ruler className="h-4 w-4" />
+            <h3 className="text-sm font-medium">Proximity</h3>
+          </div>
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Min Distance: {proximity.minProximity}mm</Label>
+              <Slider
+                value={[proximity.minProximity]}
+                onValueChange={([v]) => handleProximityChange('minProximity', v)}
+                max={300}
+                step={5}
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Max Distance: {proximity.maxProximity}mm</Label>
+              <Slider
+                value={[proximity.maxProximity]}
+                onValueChange={([v]) => handleProximityChange('maxProximity', v)}
+                max={1024}
+                step={5}
+                className="w-full"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Manual Controls - Only visible in manual mode */}
+        {currentMode === 'manual' && (
+          <>
+            <div className="mt-4 border-t pt-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Wrench className="h-4 w-4" />
+                <h3 className="text-sm font-medium">Manual Controls</h3>
+              </div>
+
+              {/* Motor Controls */}
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Dosing Motor</Label>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={testDosingForward}
+                      className="h-7 flex-1 text-xs"
+                    >
+                      FWD
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={testDosingBackward}
+                      className="h-7 flex-1 text-xs"
+                    >
+                      BWD
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={testDosingStop}
+                      className="h-7 px-2 text-xs"
+                    >
+                      STOP
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Elevator</Label>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={testElevatorUp}
+                      className="h-7 flex-1 text-xs"
+                    >
+                      UP
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={testElevatorDown}
+                      className="h-7 flex-1 text-xs"
+                    >
+                      DOWN
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={testElevatorStop}
+                      className="h-7 px-2 text-xs"
+                    >
+                      STOP
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Grinder</Label>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={testGrinderOn}
+                      className="h-7 flex-1 text-xs"
+                    >
+                      ON
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={testGrinderOff}
+                      className="h-7 flex-1 text-xs"
+                    >
+                      OFF
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Transfer</Label>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={testTransferOpen}
+                      className="h-7 flex-1 text-xs"
+                    >
+                      OPEN
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={testTransferClose}
+                      className="h-7 flex-1 text-xs"
+                    >
+                      CLOSE
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Cap</Label>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={testCapPush}
+                      className="h-7 flex-1 text-xs"
+                    >
+                      PUSH
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={testCapRetract}
+                      className="h-7 flex-1 text-xs"
+                    >
+                      RETRACT
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Load Cell</Label>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={testLoadCell}
+                      className="h-7 flex-1 text-xs"
+                    >
+                      TEST
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={tareLoadCell}
+                      className="h-7 flex-1 text-xs"
+                    >
+                      TARE
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+        <ModeSwitcher />
       </div>
     </div>
   )

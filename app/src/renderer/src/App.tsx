@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
-import { CommandPanel } from './components/CommandPanel'
+import { useCallback, useEffect } from 'react'
 import { ConnectionScreen } from './components/ConnectionScreen'
-import { Console } from './components/Console'
 import { Dashboard3D } from './components/Dashboard3D'
+import { FloatingActionBar } from './components/FloatingActionBar'
 import { Layout } from './components/Layout'
 import { LeftSidebar } from './components/LeftSidebar'
 import { ProcessStepper } from './components/ProcessStepper'
-import { useAppStore } from './store/appStore'
+import { RightPanel } from './components/RightPanel'
+import { useConnectionStore } from './store/connectionStore'
+import { useControllerStateStore } from './store/controllerStateStore'
+import { useSettingsStore } from './store/settingsStore'
+import { useUIStore } from './store/uiStore'
 import { SerialMessageParser } from './utils/serialParser'
 
 function App(): React.JSX.Element {
@@ -15,12 +18,7 @@ function App(): React.JSX.Element {
     selectedPort,
     isConnected,
     serialData,
-    showConsole,
-    systemStatus,
-    currentView,
     connectionError,
-    commandQueue,
-    isProcessingCommand,
     setPorts,
     setSelectedPort,
     setConnected,
@@ -28,198 +26,64 @@ function App(): React.JSX.Element {
     setLastMessageTime,
     addSerialData,
     clearSerialData,
-    updateSystemStatus,
-    setShowConsole,
-    setCurrentDelays,
-    setCurrentDosing,
-    dequeueCommand,
-    setProcessingCommand,
-    addPendingConfirmation,
-    removePendingConfirmation,
-  } = useAppStore()
+  } = useConnectionStore()
 
-  const [showSettings, setShowSettings] = useState<boolean>(false)
+  const { updateFromSystemStatus, machineState, setError } = useControllerStateStore()
 
-  // Define sendCommandDirect early so it can be used in useEffect
-  const sendCommandDirect = useCallback(
-    async (cmd: string): Promise<void> => {
-      if (!selectedPort || !cmd) return
-      try {
-        await window.serial.write({ path: selectedPort, data: cmd })
-      } catch (error) {
-        console.error('Failed to send command:', error)
-      }
-    },
-    [selectedPort]
-  )
+  const { currentView, showSettings, setShowSettings } = useUIStore()
 
-  // Command queue processor
+  const { setDelays, setDosing } = useSettingsStore()
+
+  // Handle serial data
   useEffect(() => {
-    if (!isConnected || isProcessingCommand || commandQueue.length === 0) return
-
-    const processNextCommand = async () => {
-      const cmd = dequeueCommand()
-      if (!cmd) return
-
-      setProcessingCommand(true)
-
-      // Track pending confirmations for settings commands
-      if (cmd.startsWith('SET:')) {
-        const key = cmd.split(':').slice(0, 2).join(':')
-        addPendingConfirmation(key, {
-          command: cmd,
-          timestamp: Date.now(),
-          timeoutMs: 3000,
-          onTimeout: () => {
-            console.warn(`Command timeout: ${cmd}`)
-            // Could revert optimistic update here if needed
-          },
-        })
-      }
-
-      await sendCommandDirect(cmd)
-
-      // Wait a bit before processing next command to avoid buffer overflow
-      await new Promise((resolve) => setTimeout(resolve, 100))
-      setProcessingCommand(false)
-    }
-
-    processNextCommand()
-  }, [
-    isConnected,
-    isProcessingCommand,
-    commandQueue,
-    selectedPort,
-    dequeueCommand,
-    setProcessingCommand,
-    addPendingConfirmation,
-    sendCommandDirect,
-  ])
-
-  // Check for confirmation timeouts
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const store = useAppStore.getState()
-      const now = Date.now()
-
-      store.pendingConfirmations.forEach((pending, key) => {
-        const elapsed = now - pending.timestamp
-        if (pending.timeoutMs && elapsed > pending.timeoutMs) {
-          console.warn(`Confirmation timeout for ${key}`)
-          if (pending.onTimeout) pending.onTimeout()
-          removePendingConfirmation(key)
-        }
-      })
-    }, 500)
-
-    return () => clearInterval(interval)
-  }, [removePendingConfirmation])
-
-  useEffect(() => {
-    // Keyboard shortcut for console (Ctrl/Cmd + `)
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '`' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault()
-        const store = useAppStore.getState()
-        setShowConsole(!store.showConsole)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-
-    // Load available serial ports
-    window.serial.list().then(setPorts)
-
-    // Load settings from localStorage
-    const savedDelays = localStorage.getItem('delaySettings')
-    if (savedDelays) {
-      setCurrentDelays(JSON.parse(savedDelays))
-    }
-
-    const savedDosing = localStorage.getItem('dosingSettings')
-    if (savedDosing) {
-      setCurrentDosing(JSON.parse(savedDosing))
-    }
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [setPorts, setCurrentDelays, setCurrentDosing, setShowConsole])
-
-  useEffect(() => {
-    // Set up serial data listener
     const handleData = ({ path, line }: { path: string; line: string }) => {
       console.log(`[${path}] ${line}`)
 
-      // Update last message time
+      // Update connection health
       setLastMessageTime(Date.now())
       setConnectionError(null)
-
-      // Update serial console
       addSerialData(line)
 
-      // Check if it's a delays response
+      // Parse delays
       const delays = SerialMessageParser.parseDelays(line)
       if (delays) {
-        const store = useAppStore.getState()
-        const currentDelays = store.currentDelays
-
-        // Check if this is a confirmation for a pending command
-        if (line.startsWith('SET:DELAY:')) {
-          const key = line.split(':').slice(0, 2).join(':')
-          removePendingConfirmation(key)
-        }
-
-        // Merge with current delays (for individual updates)
         const newDelays = {
-          settle: delays.settle ?? currentDelays.settle,
-          weight: delays.weight ?? currentDelays.weight,
-          transfer: delays.transfer ?? currentDelays.transfer,
-          grind: delays.grind ?? currentDelays.grind,
-          cap: delays.cap ?? currentDelays.cap,
-          elevUp: delays.elevup ?? delays.up ?? currentDelays.elevUp,
-          elevDown: delays.elevdown ?? delays.down ?? currentDelays.elevDown,
+          settle: delays.settle ?? 0,
+          weight: delays.weight ?? 0,
+          transfer: delays.transfer ?? 0,
+          grind: delays.grind ?? 0,
+          cap: delays.cap ?? 0,
+          elevUp: delays.elevup ?? delays.up ?? 0,
+          elevDown: delays.elevdown ?? delays.down ?? 0,
         }
-
-        // Update store with confirmed values from device
-        setCurrentDelays(newDelays)
-
-        // Save to localStorage
-        localStorage.setItem('delaySettings', JSON.stringify(newDelays))
+        setDelays(newDelays)
         return
       }
 
-      // Check if it's a dosing response
+      // Parse dosing
       const dosing = SerialMessageParser.parseDosing(line)
       if (dosing) {
-        const store = useAppStore.getState()
-        const currentDosing = store.currentDosing
-
-        // Check if this is a confirmation for a pending command
-        if (line.startsWith('SET:DIVISIONS:') || line.startsWith('SET:LOT_SIZE:')) {
-          const key = line.split(':').slice(0, 2).join(':')
-          removePendingConfirmation(key)
-        }
-
-        // Merge with current dosing (for individual updates)
         const newDosing = {
-          wheelDivisions: dosing.divisions ?? currentDosing.wheelDivisions,
-          lotSize: dosing.lot_size ?? currentDosing.lotSize,
+          wheelDivisions: dosing.divisions ?? 0,
+          lotSize: dosing.lot_size ?? 0,
         }
-
-        // Update store with confirmed values from device
-        setCurrentDosing(newDosing)
-
-        // Save to localStorage
-        localStorage.setItem('dosingSettings', JSON.stringify(newDosing))
+        setDosing(newDosing)
         return
       }
 
-      // Parse the message and update system status
-      const store = useAppStore.getState()
+      // Parse system status
       try {
-        const update = SerialMessageParser.parseMessage(line, store.systemStatus)
-        if (update) {
-          updateSystemStatus(update)
+        const currentStatus = useControllerStateStore.getState()
+        const statusUpdate = SerialMessageParser.parseMessage(line, {
+          state: currentStatus.machineState,
+          pillCount: currentStatus.pillCount,
+          weight: currentStatus.currentWeight,
+          sensors: currentStatus.sensorReadings,
+          hardware: currentStatus.hardwareStatus,
+        })
+
+        if (statusUpdate) {
+          updateFromSystemStatus(statusUpdate)
         }
       } catch (error) {
         console.error('Error parsing message:', error, 'Line:', line)
@@ -229,22 +93,25 @@ function App(): React.JSX.Element {
     const handleError = ({ path, error }: { path: string; error: string }) => {
       console.error(`Serial error on ${path}:`, error)
       setConnectionError(error)
+      setError(error)
       addSerialData(`ERROR: ${error}`)
     }
 
     const removeDataListener = window.serial.onData(handleData)
     const removeErrorListener = window.serial.onError(handleError)
 
-    // Monitor connection health
+    // Connection health monitoring
     const healthCheckInterval = setInterval(() => {
-      const store = useAppStore.getState()
-      if (store.isConnected) {
-        const timeSinceLastMessage = Date.now() - store.lastMessageTime
+      const { isConnected, lastMessageTime } = useConnectionStore.getState()
+      if (isConnected) {
+        const timeSinceLastMessage = Date.now() - lastMessageTime
         if (timeSinceLastMessage > 5000) {
           setConnectionError('No data received for 5 seconds')
         }
       }
     }, 1000)
+
+    // Controller sends status updates automatically - no need to poll
 
     return () => {
       removeDataListener?.()
@@ -255,31 +122,60 @@ function App(): React.JSX.Element {
     setLastMessageTime,
     setConnectionError,
     addSerialData,
-    setCurrentDelays,
-    setCurrentDosing,
-    updateSystemStatus,
-    removePendingConfirmation,
+    setDelays,
+    setDosing,
+    updateFromSystemStatus,
+    setError,
   ])
+
+  // Keyboard shortcuts
+  // useEffect(() => {
+  //   const handleKeyDown = (e: KeyboardEvent) => {
+  //     if (e.key === '`' && (e.ctrlKey || e.metaKey)) {
+  //       e.preventDefault()
+  //       setShowConsole(!showConsole)
+  //     }
+  //   }
+  //   window.addEventListener('keydown', handleKeyDown)
+  //   return () => window.removeEventListener('keydown', handleKeyDown)
+  // }, [showConsole, setShowConsole])
+
+  // Load ports on mount
+  useEffect(() => {
+    window.serial.list().then(setPorts)
+  }, [setPorts])
+
+  const sendCommand = useCallback(
+    async (cmd: string): Promise<void> => {
+      if (!selectedPort || !cmd) return
+      try {
+        await window.serial.write({ path: selectedPort, data: cmd + '\n' })
+        addSerialData(`> ${cmd}`)
+      } catch (error) {
+        console.error('Failed to send command:', error)
+      }
+    },
+    [selectedPort, addSerialData]
+  )
 
   const connect = async (): Promise<void> => {
     if (!selectedPort) return
     try {
       const success = await window.serial.open({ path: selectedPort, baudRate: 9600 })
-
       setConnected(success)
       setConnectionError(null)
       setLastMessageTime(Date.now())
 
       if (success) {
-        // Wait a bit for the controller to be ready
+        // Wait for controller to be ready
         await new Promise((resolve) => setTimeout(resolve, 500))
 
-        // Send initial commands directly (not queued) to get current state
-        await sendCommandDirect('STATUS')
+        // Request initial status
+        await sendCommand('STATUS')
         await new Promise((resolve) => setTimeout(resolve, 100))
-        await sendCommandDirect('GET:DELAYS')
+        await sendCommand('GET:DELAYS')
         await new Promise((resolve) => setTimeout(resolve, 100))
-        await sendCommandDirect('GET:DOSING')
+        await sendCommand('GET:DOSING')
       }
     } catch (error) {
       console.error('Failed to connect:', error)
@@ -300,13 +196,6 @@ function App(): React.JSX.Element {
     }
   }
 
-  // Queue command for sequential processing
-  const sendCommand = (cmd: string): void => {
-    if (!cmd) return
-    const store = useAppStore.getState()
-    store.queueCommand(cmd)
-  }
-
   // Show connection screen if not connected
   if (!isConnected) {
     return (
@@ -322,41 +211,40 @@ function App(): React.JSX.Element {
 
   // Main application UI
   return (
-    <Layout
-      leftSidebar={<LeftSidebar onDisconnect={disconnect} onSendCommand={sendCommand} />}
-      rightSidebar={
-        <div className="flex h-full flex-col">
-          <div className="border-border border-b p-4">
-            <h3 className="text-sm font-semibold">Serial Console</h3>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <Console serialData={serialData} onSendCommand={sendCommand} />
-          </div>
-        </div>
-      }
-      showLeftSidebar={showSettings}
-      showRightSidebar={showConsole}
-      onToggleLeftSidebar={() => setShowSettings(!showSettings)}
-      onToggleRightSidebar={() => setShowConsole(!showConsole)}
-    >
-      <div className="h-full items-center overflow-auto">
-        {currentView === '3d' ? (
-          <>
-            <Dashboard3D systemStatus={systemStatus} onSendCommand={sendCommand} />
-            <CommandPanel onSendCommand={sendCommand} floating />
-          </>
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center space-y-6">
-            <ProcessStepper
-              currentState={systemStatus.state}
-              stateProgress={systemStatus.stateProgress}
-              pillCount={systemStatus.pillCount}
+    <>
+      <Layout
+        leftSidebar={<LeftSidebar onConnect={connect} onDisconnect={disconnect} />}
+        rightSidebar={<RightPanel />}
+        showLeftSidebar={showSettings}
+        showRightSidebar={true}
+        onToggleLeftSidebar={() => setShowSettings(!showSettings)}
+        onToggleRightSidebar={() => setShowSettings(!showSettings)}
+      >
+        <div className="h-full items-center overflow-auto">
+          {currentView === '3d' ? (
+            <Dashboard3D
+              systemStatus={{
+                state: machineState,
+                pillCount: useControllerStateStore.getState().pillCount,
+                weight: useControllerStateStore.getState().currentWeight,
+                sensors: useControllerStateStore.getState().sensorReadings,
+                hardware: useControllerStateStore.getState().hardwareStatus,
+              }}
+              onSendCommand={sendCommand}
             />
-            <CommandPanel onSendCommand={sendCommand} />
-          </div>
-        )}
-      </div>
-    </Layout>
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center space-y-6">
+              <ProcessStepper
+                currentState={machineState}
+                stateProgress={useControllerStateStore.getState().stateProgress ?? undefined}
+                pillCount={useControllerStateStore.getState().pillCount}
+              />
+            </div>
+          )}
+        </div>
+      </Layout>
+      <FloatingActionBar />
+    </>
   )
 }
 

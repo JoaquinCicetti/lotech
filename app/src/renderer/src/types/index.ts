@@ -15,6 +15,11 @@ export enum MachineState {
   RETIRO = '8_RETIRO',
 }
 
+export interface ProximitySettings {
+  minProximity: number
+  maxProximity: number
+}
+
 export interface DelaySettings {
   settle: number
   weight: number

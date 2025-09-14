@@ -1,5 +1,5 @@
 import { useAppStore } from '@renderer/store/appStore'
-import { Activity, CheckCircle, Circle, Settings, Save, X } from 'lucide-react'
+import { Activity, CheckCircle, Circle, Save, Settings, X } from 'lucide-react'
 
 import { useState } from 'react'
 
@@ -11,7 +11,7 @@ export function SensorStatus({ onSendCommand }: SensorStatusProps) {
   const { systemStatus, isConnected } = useAppStore()
   const { sensors, proximityDistance } = systemStatus
   const [editingThresholds, setEditingThresholds] = useState(false)
-  
+
   // Use fixed thresholds for now - these could be stored in the app store later
   const upThreshold = 100
   const downThreshold = 20
@@ -99,7 +99,11 @@ export function SensorStatus({ onSendCommand }: SensorStatusProps) {
               <div className="flex items-center gap-3">
                 <span className="text-2xl font-bold text-blue-600">{proximityDistance}</span>
                 <span className="text-xs text-gray-500">
-                  {proximityDistance > upThreshold ? 'TOP' : proximityDistance <= downThreshold ? 'BOTTOM' : 'MIDDLE'}
+                  {proximityDistance > upThreshold
+                    ? 'TOP'
+                    : proximityDistance <= downThreshold
+                      ? 'BOTTOM'
+                      : 'MIDDLE'}
                 </span>
               </div>
             </div>
@@ -165,7 +169,10 @@ export function SensorStatus({ onSendCommand }: SensorStatusProps) {
                   }}
                 />
                 {/* Position markers */}
-                <div className="absolute h-full w-0.5 bg-gray-600" style={{ left: `${(downThreshold / 1024) * 100}%` }} />
+                <div
+                  className="absolute h-full w-0.5 bg-gray-600"
+                  style={{ left: `${(downThreshold / 1024) * 100}%` }}
+                />
                 <div
                   className="absolute h-full w-0.5 bg-gray-600"
                   style={{ left: `${(upThreshold / 1024) * 100}%` }}
