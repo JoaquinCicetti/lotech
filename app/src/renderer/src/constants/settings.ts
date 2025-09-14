@@ -1,4 +1,10 @@
-import { DelaySettings, DosingSettings, ViewMode, ViewSettings } from '@renderer/types'
+import {
+  DelaySettings,
+  DosingSettings,
+  ProximitySettings,
+  ViewMode,
+  ViewSettings,
+} from '@renderer/types'
 
 export const DEFAULT_DELAYS: DelaySettings = {
   settle: 1500,
@@ -13,6 +19,11 @@ export const DEFAULT_DELAYS: DelaySettings = {
 export const DEFAULT_DOSING: DosingSettings = {
   wheelDivisions: 20,
   lotSize: 10,
+}
+
+export const DEFAULT_PROXIMITY: ProximitySettings = {
+  minProximity: 10,
+  maxProximity: 100,
 }
 
 export const DEFAULT_VIEW: ViewSettings = {

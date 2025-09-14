@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { PROCESS_STATES } from '../constants/states'
-import { SystemStatus } from '../types'
 import { useAppStore } from '../store/appStore'
+import { SystemStatus } from '../types'
 import { Card } from './ui/card'
 import { Progress } from './ui/progress'
 

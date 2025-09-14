@@ -54,36 +54,49 @@ export class SerialMessageParser {
       }
     }
 
-    // PROX: Proximity sensor reading (0-1024 scale) with optional position
+    // PROX: Proximity sensor reading (0-1024 scale) with optional RAW value and position
+    // Format: PROX:123 or PROX:123,RAW:456,POS:UP
     if (cleanLine.startsWith('PROX:')) {
       const proximityStr = cleanLine.substring(5).trim()
-      
+
       // Skip status messages
-      if (proximityStr === 'OK' || proximityStr === 'FAIL' || proximityStr === 'NA') {
+      if (proximityStr === 'INIT_OK' || proximityStr === 'INIT_FAIL' || proximityStr === 'OK' || proximityStr === 'FAIL' || proximityStr === 'NA') {
         return null
       }
-      
-      // Parse proximity value and optional position
+
+      // Parse proximity value and optional RAW/position
       const parts = proximityStr.split(',')
       const proximity = parseInt(parts[0])
-      
+
+
       if (!isNaN(proximity) && proximity >= 0 && proximity <= 1024) {
         const sensors = { ...currentStatus.sensors }
-        
-        // Check if position is included in message
-        if (parts.length > 1 && parts[1].startsWith('POS:')) {
-          const position = parts[1].substring(4)
-          sensors.posAlta = position === 'UP'
-          sensors.posBaja = position === 'DOWN'
-        } else {
-          // Fallback to default thresholds if position not included
-          sensors.posAlta = proximity > 100  // Top when proximity > 100
-          sensors.posBaja = proximity <= 20   // Bottom when proximity <= 20
+
+        // Parse additional parts (RAW value and position)
+        for (let i = 1; i < parts.length; i++) {
+          const part = parts[i].trim()
+          if (part.startsWith('POS:')) {
+            const position = part.substring(4)
+            sensors.posAlta = position === 'UP'
+            sensors.posBaja = position === 'DOWN'
+          }
+          // RAW value is for debugging, we can ignore it or log it
+          else if (part.startsWith('RAW:')) {
+            // Optional: could store raw value if needed for debugging
+            console.debug(`Proximity RAW: ${part.substring(4)}`)
+          }
         }
-        
-        return { 
+
+        // If no position was provided, use default thresholds
+        if (!parts.some(p => p.trim().startsWith('POS:'))) {
+          sensors.posAlta = proximity > 100 // Top when proximity > 100
+          sensors.posBaja = proximity <= 20 // Bottom when proximity <= 20
+        }
+
+
+        return {
           proximityDistance: proximity,
-          sensors 
+          sensors,
         }
       } else {
         console.warn(`Invalid proximity reading: ${proximityStr}`)
@@ -242,9 +255,9 @@ export class SerialMessageParser {
 
         if (component === 'ELEVATOR') {
           if (status === 'MOVING_UP') {
-            hardware.elevator = 'MOVING_UP' as any
+            hardware.elevator = 'MOVING_UP'
           } else if (status === 'MOVING_DOWN') {
-            hardware.elevator = 'MOVING_DOWN' as any
+            hardware.elevator = 'MOVING_DOWN'
           } else {
             hardware.elevator = status as 'UP' | 'DOWN' | 'MOVING' | 'MIDDLE' | 'IDLE'
           }
@@ -282,13 +295,9 @@ export class SerialMessageParser {
       const downPart = parts[1]?.split(':')
       if (downPart && downPart[0] === 'DOWN') {
         const downThreshold = parseInt(downPart[1])
-        // Store thresholds - could be added to SystemStatus if needed
-        return {
-          proximityThresholds: {
-            up: upThreshold,
-            down: downThreshold
-          }
-        }
+        // Store thresholds for potential future use
+        console.log('Proximity thresholds:', { up: upThreshold, down: downThreshold })
+        return {}
       }
     }
 

@@ -2,14 +2,14 @@
 #include "hardware.h"
 #include "state_machine.h"
 #include "config.h"
-#include "test_mode.h"
+#include "manual_mode.h"
 
 CommandProcessor commands;
 
 void CommandProcessor::processSerialInput() {
   while (Serial.available() > 0) {
     char incomingChar = Serial.read();
-    
+
     if (incomingChar == '\n' || incomingChar == '\r') {
       if (bufferIndex > 0) {
         inputBuffer[bufferIndex] = '\0';
@@ -26,241 +26,327 @@ void CommandProcessor::processCommand(const char* command) {
   // Skip whitespace
   while (*command == ' ') command++;
   if (*command == '\0') return;
-  
-  // Mode commands
-  if (strcmp(command, "MODE:REAL") == 0) {
-    TestMode::setActive(false);
-    setGlobalMode(MODE_REAL);
-  } 
-  else if (strcmp(command, "MODE:SIM") == 0) {
-    TestMode::setActive(false);
-    setGlobalMode(MODE_SIMULATION);
-  } 
-  else if (strcmp(command, "MODE:TEST") == 0) {
-    TestMode::setActive(true);
-  } 
-  else if (TestMode::isActive()) {
-    TestMode::processCommand(command);
+
+  // ========================================
+  // SETTINGS - ALWAYS WORK REGARDLESS OF MODE
+  // ========================================
+  if (strncmp(command, "SET_DELAYS:", 11) == 0) {
+    parseDelaySettings(command + 11);
     return;
   }
-  
-  // Button commands
-  else if (strcmp(command, "BTN:START") == 0) {
-    inputs.simulateStart(true);
-    Serial.println(F("BTN:START:PRESSED"));
-  } 
-  else if (strcmp(command, "BTN:RESET") == 0) {
-    inputs.simulateReset(true);
-    Serial.println(F("BTN:RESET:PRESSED"));
-  } 
-  else if (strcmp(command, "RESET:ALL") == 0) {
-    stateMachine.resetPillCount();
-    stateMachine.changeState(ESTADO0_INICIO);
+  else if (strncmp(command, "SET_DOSING:", 11) == 0) {
+    parseDosingSettings(command + 11);
+    return;
+  }
+  else if (strncmp(command, "SET_PROXIMITY:", 14) == 0) {
+    parseProximitySettings(command + 14);
+    return;
+  }
+
+  // ========================================
+  // STATUS QUERIES - ALWAYS WORK
+  // ========================================
+  else if (strcmp(command, "STATUS") == 0) {
+    sendStatus();
+    return;
+  }
+  else if (strcmp(command, "GET:DELAYS") == 0) {
+    sendDelays();
+    return;
+  }
+  else if (strcmp(command, "GET:DOSING") == 0) {
+    sendDosing();
+    return;
+  }
+
+  // ========================================
+  // MODE SWITCHING - ALWAYS WORKS
+  // ========================================
+  else if (strcmp(command, "MODE:MANUAL") == 0) {
+    ManualMode::setMode(MODE_MANUAL);
+    return;
+  }
+  else if (strcmp(command, "MODE:AUTO") == 0) {
+    ManualMode::setMode(MODE_AUTO);
+    return;
+  }
+
+  // ========================================
+  // PHYSICAL RESTRICTIONS - ALWAYS WORKS
+  // ========================================
+  else if (strcmp(command, "RESTRICTIONS:ON") == 0 || strcmp(command, "RESTRICTIONS:ENABLE") == 0) {
+    ManualMode::setPhysicalRestrictions(true);
+    return;
+  }
+  else if (strcmp(command, "RESTRICTIONS:OFF") == 0 || strcmp(command, "RESTRICTIONS:DISABLE") == 0) {
+    ManualMode::setPhysicalRestrictions(false);
+    return;
+  }
+
+  // ========================================
+  // EMERGENCY STOP - ALWAYS WORKS
+  // ========================================
+  else if (strcmp(command, "EMERGENCY_STOP") == 0) {
     elevator.stop();
-    elevator.simulatePosition(false, true);
+    dosingWheel.stop();
     grinder.stop();
     transferSolenoid.deactivate();
     capSolenoid.deactivate();
-    dosingWheel.stop();
-    loadCell.simulateWeight(false);
-    inputs.simulateFrasco(true);
-    inputs.simulatePastillas(true);
-    inputs.clearButtons();
-    Serial.println(F("SISTEMA:REINICIADO"));
+    stateMachine.changeState(ESTADO0_INICIO);
+    Serial.println(F("EMERGENCY:STOPPED"));
+    return;
   }
-  
-  // Simulation commands
-  else if (strcmp(command, "SIM:POS_ALTA:1") == 0) {
-    elevator.simulatePosition(true, false);
-    Serial.println(F("SIM:POS_ALTA:ON"));
-  } 
-  else if (strcmp(command, "SIM:POS_ALTA:0") == 0) {
-    elevator.simulatePosition(false, elevator.isAtBottom());
-    Serial.println(F("SIM:POS_ALTA:OFF"));
-  } 
-  else if (strcmp(command, "SIM:POS_BAJA:1") == 0) {
-    elevator.simulatePosition(false, true);
-    Serial.println(F("SIM:POS_BAJA:ON"));
-  } 
-  else if (strcmp(command, "SIM:POS_BAJA:0") == 0) {
-    elevator.simulatePosition(elevator.isAtTop(), false);
-    Serial.println(F("SIM:POS_BAJA:OFF"));
-  }
-  else if (strcmp(command, "SIM:WEIGHT_STABLE:1") == 0) {
-    loadCell.simulateWeight(true);
-    Serial.println(F("SIM:WEIGHT_STABLE:ON"));
-  } 
-  else if (strcmp(command, "SIM:WEIGHT_STABLE:0") == 0) {
-    loadCell.simulateWeight(false);
-    Serial.println(F("SIM:WEIGHT_STABLE:OFF"));
-  }
-  else if (strcmp(command, "SIM:FRASCO_VACIO:1") == 0) {
-    inputs.simulateFrasco(true);
-    Serial.println(F("SIM:FRASCO_VACIO:ON"));
-  } 
-  else if (strcmp(command, "SIM:FRASCO_VACIO:0") == 0) {
-    inputs.simulateFrasco(false);
-    Serial.println(F("SIM:FRASCO_VACIO:OFF"));
-  } 
-  else if (strcmp(command, "SIM:PASTILLAS_CARGADAS:1") == 0) {
-    inputs.simulatePastillas(true);
-    Serial.println(F("SIM:PASTILLAS_CARGADAS:ON"));
-  } 
-  else if (strcmp(command, "SIM:PASTILLAS_CARGADAS:0") == 0) {
-    inputs.simulatePastillas(false);
-    Serial.println(F("SIM:PASTILLAS_CARGADAS:OFF"));
-  }
-  
-  // Parameter commands - simplified parsing
-  else if (strncmp(command, "SET:LOT_SIZE:", 13) == 0) {
-    int size = atoi(command + 13);
-    if (size > 0 && size <= wheel_divisions) {
-      lot_size = size;
-      Serial.print(F("SET:LOT_SIZE:"));
-      Serial.println(lot_size);
+
+  // ========================================
+  // MOTOR CONTROL - WORKS IN ANY MODE
+  // Direct control commands for motors/solenoids
+  // ========================================
+
+  // Dosing motor
+  else if (strcmp(command, "DOSING_FWD") == 0) {
+    if (ManualMode::isAuto()) {
+      Serial.println(F("WARNING:MANUAL_CMD_IN_AUTO"));
     }
+    dosingWheel.startContinuous(true);
+    Serial.println(F("DOSING:FWD"));
+    return;
   }
-  else if (strncmp(command, "SET:DIVISIONS:", 14) == 0) {
-    int divisions = atoi(command + 14);
-    if (divisions > 0 && divisions <= 50) {
-      wheel_divisions = divisions;
-      Serial.print(F("SET:DIVISIONS:"));
-      Serial.println(wheel_divisions);
+  else if (strcmp(command, "DOSING_BWD") == 0) {
+    if (ManualMode::isAuto()) {
+      Serial.println(F("WARNING:MANUAL_CMD_IN_AUTO"));
     }
+    dosingWheel.startContinuous(false);
+    Serial.println(F("DOSING:BWD"));
+    return;
   }
-  
-  // Delay commands
-  else if (strncmp(command, "SET:DELAY:SETTLE:", 17) == 0) {
-    t_step_settle = atoi(command + 17);
-    Serial.print(F("SET:DELAY:SETTLE:"));
-    Serial.println(t_step_settle);
+  else if (strcmp(command, "DOSING_STOP") == 0) {
+    dosingWheel.stopContinuous();
+    Serial.println(F("DOSING:STOPPED"));
+    return;
   }
-  else if (strncmp(command, "SET:DELAY:WEIGHT:", 17) == 0) {
-    t_weight_settle = atoi(command + 17);
-    Serial.print(F("SET:DELAY:WEIGHT:"));
-    Serial.println(t_weight_settle);
-  }
-  else if (strncmp(command, "SET:DELAY:TRANSFER:", 19) == 0) {
-    t_transfer = atoi(command + 19);
-    Serial.print(F("SET:DELAY:TRANSFER:"));
-    Serial.println(t_transfer);
-  }
-  else if (strncmp(command, "SET:DELAY:GRIND:", 16) == 0) {
-    t_grind = atoi(command + 16);
-    Serial.print(F("SET:DELAY:GRIND:"));
-    Serial.println(t_grind);
-  }
-  else if (strncmp(command, "SET:DELAY:CAP:", 14) == 0) {
-    t_cap_push = atoi(command + 14);
-    Serial.print(F("SET:DELAY:CAP:"));
-    Serial.println(t_cap_push);
-  }
-  else if (strncmp(command, "SET:DELAY:UP:", 13) == 0) {
-    t_elev_up = atoi(command + 13);
-    Serial.print(F("SET:DELAY:UP:"));
-    Serial.println(t_elev_up);
-  }
-  else if (strncmp(command, "SET:DELAY:DOWN:", 15) == 0) {
-    t_elev_down = atoi(command + 15);
-    Serial.print(F("SET:DELAY:DOWN:"));
-    Serial.println(t_elev_down);
-  }
-  
-  // Proximity threshold commands
-  else if (strncmp(command, "SET:PROX:UP:", 12) == 0) {
-    uint16_t threshold = atoi(command + 12);
-    if (threshold >= 0 && threshold <= 1024) {
-      prox_threshold_up = threshold;
-      Serial.print(F("SET:PROX:UP:"));
-      Serial.println(prox_threshold_up);
+
+  // Elevator
+  else if (strcmp(command, "ELEVATOR_UP") == 0) {
+    if (ManualMode::isAuto()) {
+      Serial.println(F("WARNING:MANUAL_CMD_IN_AUTO"));
     }
-  }
-  else if (strncmp(command, "SET:PROX:DOWN:", 14) == 0) {
-    uint16_t threshold = atoi(command + 14);
-    if (threshold >= 0 && threshold <= 1024) {
-      prox_threshold_down = threshold;
-      Serial.print(F("SET:PROX:DOWN:"));
-      Serial.println(prox_threshold_down);
-    }
-  }
-  
-  // Query commands
-  else if (strcmp(command, "GET:DOSING") == 0) {
-    Serial.print(F("DOSING:DIVISIONS:"));
-    Serial.print(wheel_divisions);
-    Serial.print(F(",LOT_SIZE:"));
-    Serial.println(lot_size);
-  }
-  else if (strcmp(command, "GET:DELAYS") == 0) {
-    Serial.print(F("DELAYS:SETTLE:"));
-    Serial.print(t_step_settle);
-    Serial.print(F(",WEIGHT:"));
-    Serial.print(t_weight_settle);
-    Serial.print(F(",TRANSFER:"));
-    Serial.print(t_transfer);
-    Serial.print(F(",GRIND:"));
-    Serial.print(t_grind);
-    Serial.print(F(",CAP:"));
-    Serial.print(t_cap_push);
-    Serial.print(F(",UP:"));
-    Serial.print(t_elev_up);
-    Serial.print(F(",DOWN:"));
-    Serial.println(t_elev_down);
-  }
-  else if (strcmp(command, "GET:PROX") == 0) {
-    Serial.print(F("PROX:UP:"));
-    Serial.print(prox_threshold_up);
-    Serial.print(F(",DOWN:"));
-    Serial.println(prox_threshold_down);
-  }
-  else if (strcmp(command, "STATUS") == 0) {
-    printStatus();
-  } 
-  else if (strcmp(command, "HELP") == 0) {
-    printHelp();
-  }
-  else if (strcmp(command, "PROX") == 0) {
-    // Manual proximity read
-    if (proxSensor.isAvailable()) {
-      uint16_t prox = proxSensor.read();
-      Serial.print(F("PROX:"));
-      Serial.println(prox);
+    if (ManualMode::canMoveElevatorUp()) {
+      elevator.moveUp();
+      Serial.println(F("ELEVATOR:UP"));
     } else {
-      Serial.println(F("PROX:NA"));
+      Serial.println(F("ELEVATOR:BLOCKED_TOP"));
     }
+    return;
   }
-  else {
-    Serial.print(F("UNKNOWN:"));
-    Serial.println(command);
+  else if (strcmp(command, "ELEVATOR_DOWN") == 0) {
+    if (ManualMode::isAuto()) {
+      Serial.println(F("WARNING:MANUAL_CMD_IN_AUTO"));
+    }
+    if (ManualMode::canMoveElevatorDown()) {
+      elevator.moveDown();
+      Serial.println(F("ELEVATOR:DOWN"));
+    } else {
+      Serial.println(F("ELEVATOR:BLOCKED_BOTTOM"));
+    }
+    return;
+  }
+  else if (strcmp(command, "ELEVATOR_STOP") == 0) {
+    elevator.stop();
+    Serial.println(F("ELEVATOR:STOPPED"));
+    return;
+  }
+
+  // Grinder
+  else if (strcmp(command, "GRINDER_ON") == 0) {
+    if (ManualMode::isAuto()) {
+      Serial.println(F("WARNING:MANUAL_CMD_IN_AUTO"));
+    }
+    grinder.start();
+    Serial.println(F("GRINDER:ON"));
+    return;
+  }
+  else if (strcmp(command, "GRINDER_OFF") == 0) {
+    grinder.stop();
+    Serial.println(F("GRINDER:OFF"));
+    return;
+  }
+
+  // Transfer solenoid
+  else if (strcmp(command, "TRANSFER_OPEN") == 0) {
+    if (ManualMode::isAuto()) {
+      Serial.println(F("WARNING:MANUAL_CMD_IN_AUTO"));
+    }
+    transferSolenoid.activate();
+    Serial.println(F("TRANSFER:OPEN"));
+    return;
+  }
+  else if (strcmp(command, "TRANSFER_CLOSE") == 0) {
+    transferSolenoid.deactivate();
+    Serial.println(F("TRANSFER:CLOSED"));
+    return;
+  }
+
+  // Cap solenoid
+  else if (strcmp(command, "CAP_PUSH") == 0) {
+    if (ManualMode::isAuto()) {
+      Serial.println(F("WARNING:MANUAL_CMD_IN_AUTO"));
+    }
+    capSolenoid.activate();
+    Serial.println(F("CAP:PUSHED"));
+    return;
+  }
+  else if (strcmp(command, "CAP_RETRACT") == 0) {
+    capSolenoid.deactivate();
+    Serial.println(F("CAP:RETRACTED"));
+    return;
+  }
+
+  // Load cell
+  else if (strcmp(command, "LOADCELL_TEST") == 0) {
+    float weight = loadCell.readWeight();
+    Serial.print(F("WEIGHT:"));
+    Serial.println(weight);
+    return;
+  }
+  else if (strcmp(command, "LOADCELL_TARE") == 0) {
+    loadCell.tare();
+    Serial.println(F("LOADCELL:TARED"));
+    return;
+  }
+
+  // Home command
+  else if (strcmp(command, "HOME") == 0) {
+    if (ManualMode::canMoveElevatorDown()) {
+      elevator.moveDown();
+      Serial.println(F("HOMING:STARTED"));
+    } else if (!ManualMode::hasPhysicalRestrictions()) {
+      elevator.moveDown();
+      Serial.println(F("HOMING:FORCED"));
+    } else {
+      Serial.println(F("HOMING:BLOCKED"));
+    }
+    return;
+  }
+
+  // ========================================
+  // AUTO MODE PRODUCTION CONTROL
+  // ========================================
+  else if (strcmp(command, "START") == 0) {
+    if (ManualMode::isAuto()) {
+      inputs.simulateStart(true);
+      Serial.println(F("AUTO:STARTED"));
+    } else {
+      Serial.println(F("ERROR:START_REQUIRES_AUTO"));
+    }
+    return;
+  }
+  else if (strcmp(command, "STOP") == 0) {
+    if (ManualMode::isAuto()) {
+      stateMachine.changeState(ESTADO0_INICIO);
+      elevator.stop();
+      dosingWheel.stop();
+      grinder.stop();
+      transferSolenoid.deactivate();
+      capSolenoid.deactivate();
+      inputs.clearButtons();
+      Serial.println(F("AUTO:STOPPED"));
+    } else {
+      Serial.println(F("ERROR:STOP_REQUIRES_AUTO"));
+    }
+    return;
+  }
+
+  // Unknown command
+  Serial.print(F("ERROR:UNKNOWN_CMD:"));
+  Serial.println(command);
+}
+
+// ========================================
+// HELPER FUNCTIONS
+// ========================================
+
+void CommandProcessor::parseDelaySettings(const char* params) {
+  // Parse format: "settle:1000,weight:2000,..."
+  char buffer[128];
+  strncpy(buffer, params, sizeof(buffer) - 1);
+  buffer[sizeof(buffer) - 1] = '\0';
+
+  char* token = strtok(buffer, ",");
+  while (token != NULL) {
+    char* separator = strchr(token, ':');
+    if (separator != NULL) {
+      *separator = '\0';
+      const char* key = token;
+      int value = atoi(separator + 1);
+
+      if (strcmp(key, "settle") == 0) t_step_settle = value;
+      else if (strcmp(key, "weight") == 0) t_weight_settle = value;
+      else if (strcmp(key, "transfer") == 0) t_transfer = value;
+      else if (strcmp(key, "grind") == 0) t_grind = value;
+      else if (strcmp(key, "cap") == 0) t_cap_push = value;
+      else if (strcmp(key, "elevUp") == 0) t_elev_up = value;
+      else if (strcmp(key, "elevDown") == 0) t_elev_down = value;
+    }
+    token = strtok(NULL, ",");
+  }
+  Serial.println(F("DELAYS:UPDATED"));
+}
+
+void CommandProcessor::parseDosingSettings(const char* params) {
+  // Parse format: "wheelDivisions,lotSize"
+  int divisions = 0;
+  int lot = 0;
+  if (sscanf(params, "%d,%d", &divisions, &lot) == 2) {
+    wheel_divisions = divisions;
+    lot_size = lot;
+    dosingWheel.updateStepsPerDivision();
+    Serial.println(F("DOSING:UPDATED"));
   }
 }
 
-void CommandProcessor::printStatus() {
+void CommandProcessor::parseProximitySettings(const char* params) {
+  // Parse format: "min,max"
+  int min = 0;
+  int max = 0;
+  if (sscanf(params, "%d,%d", &min, &max) == 2) {
+    prox_threshold_down = min;
+    prox_threshold_up = max;
+    Serial.println(F("PROXIMITY:UPDATED"));
+  }
+}
+
+void CommandProcessor::sendStatus() {
   Serial.print(F("STATUS:"));
-  Serial.print(F("ESTADO:"));
+  Serial.print(F("MODE:"));
+  Serial.print(ManualMode::isManual() ? F("MANUAL") : F("AUTO"));
+  Serial.print(F(",STATE:"));
   Serial.print(stateMachine.getStateName());
-  Serial.print(F(",PASTILLAS:"));
-  Serial.print(stateMachine.getPillCount());
-  Serial.print(F("/"));
-  Serial.print(lot_size);
-  Serial.print(F(",MODO:"));
-  Serial.print(globalMode == MODE_REAL ? F("REAL") : F("SIM"));
-  Serial.print(F(",PESO:"));
-  Serial.print(loadCell.readWeight());
-  Serial.print(F(",FRASCO_VACIO:"));
-  Serial.print(inputs.isFrascoVacio() ? '1' : '0');
-  Serial.print(F(",PASTILLAS_CARGADAS:"));
-  Serial.print(inputs.isPastillasCargadas() ? '1' : '0');
-  Serial.println();
+  Serial.print(F(",PILLS:"));
+  Serial.println(stateMachine.getPillCount());
 }
 
-void CommandProcessor::printHelp() {
-  Serial.println(F("Commands: MODE:REAL/SIM, BTN:START/RESET"));
-  Serial.println(F("SIM:POS_ALTA/BAJA:1/0"));
-  Serial.println(F("SIM:WEIGHT_STABLE:1/0"));
-  Serial.println(F("SIM:FRASCO_VACIO:1/0"));
-  Serial.println(F("SIM:PASTILLAS_CARGADAS:1/0"));
-  Serial.println(F("SET:LOT_SIZE:n, SET:DIVISIONS:n"));
-  Serial.println(F("SET:DELAY:type:value"));
-  Serial.println(F("GET:DELAYS, GET:DOSING, STATUS"));
+void CommandProcessor::sendDelays() {
+  Serial.print(F("DELAYS:"));
+  Serial.print(F("settle:"));
+  Serial.print(t_step_settle);
+  Serial.print(F(",weight:"));
+  Serial.print(t_weight_settle);
+  Serial.print(F(",transfer:"));
+  Serial.print(t_transfer);
+  Serial.print(F(",grind:"));
+  Serial.print(t_grind);
+  Serial.print(F(",cap:"));
+  Serial.print(t_cap_push);
+  Serial.print(F(",elevUp:"));
+  Serial.print(t_elev_up);
+  Serial.print(F(",elevDown:"));
+  Serial.println(t_elev_down);
+}
+
+void CommandProcessor::sendDosing() {
+  Serial.print(F("DOSING:"));
+  Serial.print(F("divisions:"));
+  Serial.print(wheel_divisions);
+  Serial.print(F(",lot_size:"));
+  Serial.println(lot_size);
 }
