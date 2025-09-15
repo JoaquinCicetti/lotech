@@ -8,6 +8,7 @@ interface ControllerState {
   isPaused: boolean
   isSimulating: boolean
   error: string | null
+  physicalRestrictions: boolean
 
   sensorReadings: {
     loadCell: number
@@ -67,6 +68,7 @@ export const useControllerStateStore = create<ControllerState>()(
     isPaused: false,
     isSimulating: false,
     error: null,
+    physicalRestrictions: true,
 
     sensorReadings: INITIAL_SENSORS,
     hardwareStatus: INITIAL_HARDWARE,
@@ -126,6 +128,10 @@ export const useControllerStateStore = create<ControllerState>()(
 
         if (status.stateProgress !== undefined) {
           newState.stateProgress = status.stateProgress
+        }
+
+        if (status.physicalRestrictions !== undefined) {
+          newState.physicalRestrictions = status.physicalRestrictions
         }
 
         return { ...state, ...newState }

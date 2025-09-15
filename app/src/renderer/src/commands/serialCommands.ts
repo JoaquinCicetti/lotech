@@ -25,6 +25,10 @@ const sendSerial = async (command: string): Promise<boolean> => {
 export const setManualMode = () => sendSerial('MODE:MANUAL')
 export const setAutoMode = () => sendSerial('MODE:AUTO')
 
+// Safety restrictions
+export const enableRestrictions = () => sendSerial('RESTRICTIONS:ON')
+export const disableRestrictions = () => sendSerial('RESTRICTIONS:OFF')
+
 // Production/Auto mode commands
 export const startProduction = () => sendSerial('START')
 export const stopProduction = () => sendSerial('STOP')

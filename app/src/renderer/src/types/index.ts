@@ -59,6 +59,7 @@ export interface SystemStatus {
   weight?: number
   proximityDistance?: number
   lastHeartbeat?: number
+  physicalRestrictions?: boolean
   stateProgress?: {
     state: string
     expectedDuration: number
