@@ -17,7 +17,6 @@ function App(): React.JSX.Element {
     ports,
     selectedPort,
     isConnected,
-    serialData,
     connectionError,
     setPorts,
     setSelectedPort,

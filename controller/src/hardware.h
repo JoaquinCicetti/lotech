@@ -38,11 +38,12 @@ public:
   void moveDown();
   void stop();
   void run();  // Call in loop
-  
+  void updatePosition(); // Update position from proximity sensor
+
   bool isAtTop() const;
   bool isAtBottom() const;
   bool isMoving() const { return movingUp || movingDown; }
-  
+
   void setMode(ControlMode m) { mode = m; }
   void simulatePosition(bool top, bool bottom);
 };
@@ -179,8 +180,9 @@ public:
     simPastillasCargadas = true;
   }
   
+  void init();  // Initialize pins
   void setMode(ControlMode m) { mode = m; }
-  
+
   // Button functions
   bool isStartPressed();
   bool isResetPressed();

@@ -1,5 +1,6 @@
 #include "serial_protocol.h"
 #include "hardware.h"
+#include "manual_mode.h"
 
 void SerialProtocol::sendState(const char* state) {
   Serial.print(F("ESTADO:"));
@@ -55,7 +56,9 @@ void SerialProtocol::sendHeartbeat(const char* state, unsigned long timestamp) {
   Serial.print(F("HB:"));
   Serial.print(state);
   Serial.print(F(","));
-  Serial.println(timestamp);
+  Serial.print(timestamp);
+  Serial.print(F(",R:"));
+  Serial.println(ManualMode::hasPhysicalRestrictions() ? F("ON") : F("OFF"));
   Serial.flush();
 }
 

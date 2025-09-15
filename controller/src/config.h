@@ -14,8 +14,8 @@
 // Motor 2 - Dosing wheel (stepper)
 #define MOTOR2_STEP_PIN 5
 #define MOTOR2_DIR_PIN 4
-#define MOTOR2_MS1_PIN 9
-#define MOTOR2_MS2_PIN 8
+// #define MOTOR2_MS1_PIN 9
+// #define MOTOR2_MS2_PIN 8
 
 // Motor 3 - Grinder (relay control for AC motor)
 #define MOTOR3_RELAY_PIN 12
@@ -29,6 +29,14 @@
 #define HX711_SCK_PIN A1   // Clock pin
 
 // Proximity sensor uses I2C (A4/SDA, A5/SCL) - no need to define pins
+
+// Buttons - Use pins that are not conflicting with motors
+#define START_BUTTON_PIN 22  // Digital pin 22 (safe, not used by motors)
+#define RESET_BUTTON_PIN 23  // Digital pin 23 (safe, not used by motors)
+
+// Optional sensor pins (for future use)
+#define FRASCO_SENSOR_PIN 24  // Digital pin 24 for container sensor
+#define PILLS_LOADED_SENSOR_PIN 25  // Digital pin 25 for pills loaded sensor
 
 // =====================================================
 // TIMING PARAMETERS (milliseconds)
@@ -74,10 +82,10 @@
 
 #define STEPS_PER_REVOLUTION 200
 #define MICROSTEPS 2
-#define ELEVATOR_SPEED 400
-#define DOSING_SPEED 800
-#define ELEVATOR_MAX_SPEED 1000
-#define DOSING_MAX_SPEED 800
+#define ELEVATOR_SPEED 800
+#define DOSING_SPEED 500
+#define ELEVATOR_MAX_SPEED 2000
+#define DOSING_MAX_SPEED 1000
 #define ELEVATOR_ACCELERATION 500
 #define DOSING_ACCELERATION 400
 

@@ -60,14 +60,19 @@ export class SerialMessageParser {
       const proximityStr = cleanLine.substring(5).trim()
 
       // Skip status messages
-      if (proximityStr === 'INIT_OK' || proximityStr === 'INIT_FAIL' || proximityStr === 'OK' || proximityStr === 'FAIL' || proximityStr === 'NA') {
+      if (
+        proximityStr === 'INIT_OK' ||
+        proximityStr === 'INIT_FAIL' ||
+        proximityStr === 'OK' ||
+        proximityStr === 'FAIL' ||
+        proximityStr === 'NA'
+      ) {
         return null
       }
 
       // Parse proximity value and optional RAW/position
       const parts = proximityStr.split(',')
       const proximity = parseInt(parts[0])
-
 
       if (!isNaN(proximity) && proximity >= 0 && proximity <= 1024) {
         const sensors = { ...currentStatus.sensors }
@@ -88,11 +93,10 @@ export class SerialMessageParser {
         }
 
         // If no position was provided, use default thresholds
-        if (!parts.some(p => p.trim().startsWith('POS:'))) {
+        if (!parts.some((p) => p.trim().startsWith('POS:'))) {
           sensors.posAlta = proximity > 100 // Top when proximity > 100
           sensors.posBaja = proximity <= 20 // Bottom when proximity <= 20
         }
-
 
         return {
           proximityDistance: proximity,
@@ -325,6 +329,26 @@ export class SerialMessageParser {
     // MODO: Mode changes
     if (cleanLine.startsWith('MODO:')) {
       // Just log information, no state change needed
+      return null
+    }
+
+    // RESTRICTIONS: Physical restrictions state
+    if (cleanLine.startsWith('RESTRICTIONS:')) {
+      const state = cleanLine.substring(13).trim()
+      return {
+        physicalRestrictions: state === 'ON' || state === 'ENABLED',
+      }
+    }
+
+    // MANUAL: Manual mode messages including restrictions
+    if (cleanLine.startsWith('MANUAL:')) {
+      const parts = cleanLine.split(':')
+      if (parts.length >= 3 && parts[1] === 'RESTRICTIONS') {
+        const state = parts[2].trim()
+        return {
+          physicalRestrictions: state === 'ON' || state === 'ENABLED',
+        }
+      }
       return null
     }
 

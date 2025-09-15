@@ -1,3 +1,4 @@
+
 #include <Arduino.h>
 #include "config.h"
 #include "hardware.h"
@@ -12,7 +13,7 @@ uint16_t lastProxValue = 9999; // Set to impossible value to force first report
 
 void setup() {
   Serial.begin(9600);
-  delay(100);  // Small delay for serial init
+  // delay(100);  // Small delay for serial init
 
   // Initialize all hardware modules
   Serial.println(F("Inicializando"));
@@ -34,11 +35,17 @@ void setup() {
   grinder.init();
   transferSolenoid.init();
   capSolenoid.init();
-  
+  inputs.init();  // Initialize input pins
+
   // Initialize manual mode (default)
   ManualMode::init();
-  
-  Serial.println(F("Escribe HELP para listar los comandos"));
+
+  Serial.println(F("========================================"));
+  Serial.println(F("LOTECH Controller v1.0"));
+  Serial.println(F("Starting in MANUAL mode"));
+  Serial.println(F("Physical restrictions: ENABLED"));
+  Serial.println(F("Type HELP for commands"));
+  Serial.println(F("========================================"));
 
   Serial.print(F("Estado actual: "));
   Serial.println(stateMachine.getStateName());
@@ -53,6 +60,7 @@ void loop() {
     // Manual mode - just run hardware updates, no state machine
     elevator.run();
     dosingWheel.run();
+
     // Motors respond directly to manual commands
   }
   else if (ManualMode::isAuto()) {
@@ -69,8 +77,8 @@ void loop() {
     stateMachine.processTransitions();
 
     // Also run hardware updates for state machine
-    elevator.run();
-    dosingWheel.run();
+    // elevator.run();
+    // dosingWheel.run();
   }
   
   // Send heartbeat
@@ -79,21 +87,28 @@ void loop() {
     lastHeartbeat = millis();
   }
   
+  // Update elevator position from proximity sensor (even when not moving)
+  static unsigned long lastPositionUpdate = 0;
+  if (millis() - lastPositionUpdate > 100) { // Update every 100ms
+    lastPositionUpdate = millis();
+    elevator.updatePosition(); // Update internal position state
+  }
+
   // Read and report proximity if available - but not too often!
-  if (proxSensor.isAvailable() && (millis() - lastProxReport > 1000)) { // Check every 1 second
+  if (proxSensor.isAvailable() && (millis() - lastProxReport > 250)) { // Check every 250ms for better responsiveness
     uint16_t prox = proxSensor.read();
-    
-    // Only report if value changed significantly (by more than 10) or timeout
+
+    // Only report if value changed significantly (by more than 5) or timeout
     int proxDiff = abs((int)prox - (int)lastProxValue);
-    if (proxDiff > 10 || millis() - lastProxReport > 5000) {
+    if (proxDiff > 5 || millis() - lastProxReport > 2000) {
       Serial.print(F("PROX:"));
       Serial.print(prox);
       Serial.print(F(",RAW:"));
       Serial.print(proxSensor.getLastRawValue());  // Add raw value for debugging
-      // Also report position based on thresholds
-      if (prox > prox_threshold_up) {
+      // Report actual elevator position based on internal state
+      if (elevator.isAtTop()) {
         Serial.print(F(",POS:UP"));
-      } else if (prox <= prox_threshold_down) {
+      } else if (elevator.isAtBottom()) {
         Serial.print(F(",POS:DOWN"));
       } else {
         Serial.print(F(",POS:MID"));

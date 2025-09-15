@@ -1,14 +1,19 @@
-import { setAutoMode, setManualMode } from '@renderer/commands/serialCommands'
+import {
+  disableRestrictions,
+  enableRestrictions,
+  setAutoMode,
+  setManualMode,
+} from '@renderer/commands/serialCommands'
 import { Button } from '@renderer/components/ui/button'
 import { cn } from '@renderer/lib/utils'
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
 import { useUIStore } from '@renderer/store/uiStore'
-import { Activity, Hand, Zap } from 'lucide-react'
+import { Activity, Hand, Shield, ShieldOff, Zap } from 'lucide-react'
 import React from 'react'
 
 export const ModeSwitcher: React.FC = () => {
   const { currentMode, setMode } = useUIStore()
-  const { isSimulating, setSimulating } = useControllerStateStore()
+  const { isSimulating, setSimulating, physicalRestrictions, setPhysicalRestrictions } = useControllerStateStore()
 
   return (
     <div className="flex w-full items-center gap-2">
@@ -48,6 +53,35 @@ export const ModeSwitcher: React.FC = () => {
         >
           <Activity className="h-4 w-4" />
           {isSimulating ? 'Stop Sim' : 'Simulate'}
+        </Button>
+      )}
+
+      {currentMode === 'manual' && (
+        <Button
+          size="sm"
+          variant={physicalRestrictions ? 'default' : 'destructive'}
+          onClick={() => {
+            const newState = !physicalRestrictions
+            setPhysicalRestrictions(newState) // Update local state immediately
+            if (newState) {
+              enableRestrictions()
+            } else {
+              disableRestrictions()
+            }
+          }}
+          className="gap-2"
+          title={
+            physicalRestrictions
+              ? 'Safety restrictions are ON - motors stop at sensor limits'
+              : 'Safety restrictions are OFF - motors can move freely (WARNING!)'
+          }
+        >
+          {physicalRestrictions ? (
+            <Shield className="h-4 w-4" />
+          ) : (
+            <ShieldOff className="h-4 w-4" />
+          )}
+          {physicalRestrictions ? 'Safe' : 'Override'}
         </Button>
       )}
     </div>

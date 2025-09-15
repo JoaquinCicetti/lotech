@@ -24,7 +24,15 @@ function createWindow(): void {
   ipcMain.handle('serial:list', async () => SerialPort.list())
 
   ipcMain.handle('serial:open', (_e, { path, baudRate }) => {
-    const port = new SerialPort({ path, baudRate, lock: false })
+    const port = new SerialPort({
+      path,
+      baudRate,
+      lock: false,
+      // Disable DTR to prevent Arduino reset on connection
+      dtr: false,
+      // Also set RTS to false
+      rts: false
+    })
     messageBuffers[path] = ''
 
     console.log('Opening serial port:', path, 'at', baudRate, 'baud')

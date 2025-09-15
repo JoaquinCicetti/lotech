@@ -45,7 +45,7 @@ export const SettingsPanel: React.FC = () => {
   }
 
   const applySettings = async () => {
-    await updateDelays(delays as unknown as Record<string, number>)
+    await updateDelays(delays)
     await updateDosing(dosing.wheelDivisions, dosing.lotSize)
     await updateProximity(proximity.minProximity, proximity.maxProximity)
   }

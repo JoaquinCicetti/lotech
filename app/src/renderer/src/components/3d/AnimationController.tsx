@@ -1,5 +1,7 @@
 import { useFrame } from '@react-three/fiber'
 import { useAppStore } from '@renderer/store/appStore'
+import { useControllerStateStore } from '@renderer/store/controllerStateStore'
+import { useSettingsStore } from '@renderer/store/settingsStore'
 import React, { useRef } from 'react'
 import * as THREE from 'three'
 import { MachineState, SystemStatus } from '../../types'
@@ -15,8 +17,8 @@ interface AnimationControllerProps {
   solenoidRef: React.RefObject<THREE.Object3D | null>
   loadCellRef: React.RefObject<THREE.Object3D | null>
 }
-const baseColor = new THREE.Color(0x344496)
-const pulseColor = new THREE.Color(0xbef264)
+const baseColor = new THREE.Color(0xfafafa)
+const pulseColor = new THREE.Color(0x344496)
 
 export const AnimationController: React.FC<AnimationControllerProps> = (props) => {
   const {
@@ -46,7 +48,12 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
 
   const testMode = useAppStore((state) => state.testMode)
   const currentDosing = useAppStore((state) => state.currentDosing)
+  const proximityDistance = useControllerStateStore(
+    (state) => state.sensorReadings.proximityDistance
+  )
+  const proximity = useSettingsStore((state) => state.proximity)
 
+  console.log({ proximity, proximityDistance })
   useFrame((state, delta) => {
     const { state: currentState, hardware } = systemStatus
 
@@ -62,6 +69,22 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
           '->',
           hardware.dosing
         )
+      }
+    }
+
+    // Calculate elevator position based on proximity sensor
+    const calculateElevatorPosition = () => {
+      const { minProximity, maxProximity } = proximity
+
+      if (proximityDistance <= minProximity) {
+        return 0 // Bottom position
+      } else if (proximityDistance >= maxProximity) {
+        return 70 // Top position
+      } else {
+        // Map the distance to elevator position (0 to 70)
+        // minProximity maps to 0 (bottom), maxProximity maps to 70 (top)
+        const ratio = (proximityDistance - minProximity) / (maxProximity - minProximity)
+        return ratio * 70
       }
     }
 
@@ -93,43 +116,34 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
       })
 
       // Position based on hardware status or state
-      if (useHardwareStatus) {
-        let targetZ = animationState.current.containerZ // Keep current position by default
-        if (hardware.elevator === 'UP') {
-          targetZ = -70
-        } else if (hardware.elevator === 'DOWN') {
-          targetZ = 0
-        } else if (hardware.elevator === 'MOVING_UP') {
-          targetZ = -70 // Move to up position
-        } else if (hardware.elevator === 'MOVING_DOWN') {
-          targetZ = 0 // Move to down position
-        }
-        // For IDLE or MIDDLE, keep current position
+      // if (useHardwareStatus) {
+      // Use proximity sensor to determine elevator position
+      const targetZ = -calculateElevatorPosition() // Negative because container moves opposite to elevator
 
-        animationState.current.containerZ = THREE.MathUtils.lerp(
-          animationState.current.containerZ,
-          targetZ,
-          delta * 0.6
-        )
-        containerRef.current.position.z = animationState.current.containerZ
-      } else {
-        if (currentState === MachineState.ASCENSOR) {
-          animationState.current.containerZ = THREE.MathUtils.lerp(
-            animationState.current.containerZ,
-            -70,
-            delta * 0.6
-          )
-          containerRef.current.position.z = animationState.current.containerZ
-        }
-        if (currentState === MachineState.DESCARGA) {
-          animationState.current.containerZ = THREE.MathUtils.lerp(
-            animationState.current.containerZ,
-            0,
-            delta * 0.6
-          )
-          containerRef.current.position.z = animationState.current.containerZ
-        }
-      }
+      animationState.current.containerZ = THREE.MathUtils.lerp(
+        animationState.current.containerZ,
+        targetZ,
+        delta * 0.6
+      )
+      containerRef.current.position.z = animationState.current.containerZ
+      // } else {
+      //   if (currentState === MachineState.ASCENSOR) {
+      //     animationState.current.containerZ = THREE.MathUtils.lerp(
+      //       animationState.current.containerZ,
+      //       -70,
+      //       delta * 0.6
+      //     )
+      //     containerRef.current.position.z = animationState.current.containerZ
+      //   }
+      //   if (currentState === MachineState.DESCARGA) {
+      //     animationState.current.containerZ = THREE.MathUtils.lerp(
+      //       animationState.current.containerZ,
+      //       0,
+      //       delta * 0.6
+      //     )
+      //     containerRef.current.position.z = animationState.current.containerZ
+      //   }
+      // }
     }
 
     if (elevatorRef.current) {
@@ -158,17 +172,8 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
 
       // Position based on hardware status or state
       if (useHardwareStatus) {
-        let targetY = animationState.current.elevatorY // Keep current position by default
-        if (hardware.elevator === 'UP') {
-          targetY = 70
-        } else if (hardware.elevator === 'DOWN') {
-          targetY = 0
-        } else if (hardware.elevator === 'MOVING_UP') {
-          targetY = 70 // Move to up position
-        } else if (hardware.elevator === 'MOVING_DOWN') {
-          targetY = 0 // Move to down position
-        }
-        // For IDLE or MIDDLE, keep current position
+        // Use proximity sensor to determine elevator position
+        const targetY = calculateElevatorPosition()
 
         animationState.current.elevatorY = THREE.MathUtils.lerp(
           animationState.current.elevatorY,

@@ -132,7 +132,6 @@ void CommandProcessor::processCommand(const char* command) {
     }
     if (ManualMode::canMoveElevatorUp()) {
       elevator.moveUp();
-      Serial.println(F("ELEVATOR:UP"));
     } else {
       Serial.println(F("ELEVATOR:BLOCKED_TOP"));
     }
@@ -144,7 +143,6 @@ void CommandProcessor::processCommand(const char* command) {
     }
     if (ManualMode::canMoveElevatorDown()) {
       elevator.moveDown();
-      Serial.println(F("ELEVATOR:DOWN"));
     } else {
       Serial.println(F("ELEVATOR:BLOCKED_BOTTOM"));
     }
@@ -152,7 +150,6 @@ void CommandProcessor::processCommand(const char* command) {
   }
   else if (strcmp(command, "ELEVATOR_STOP") == 0) {
     elevator.stop();
-    Serial.println(F("ELEVATOR:STOPPED"));
     return;
   }
 

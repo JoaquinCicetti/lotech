@@ -8,6 +8,7 @@ interface ControllerState {
   isPaused: boolean
   isSimulating: boolean
   error: string | null
+  physicalRestrictions: boolean
 
   sensorReadings: {
     loadCell: number
@@ -37,6 +38,7 @@ interface ControllerState {
   setPaused: (paused: boolean) => void
   setSimulating: (simulating: boolean) => void
   setError: (error: string | null) => void
+  setPhysicalRestrictions: (enabled: boolean) => void
   updateSensorReading: (sensor: string, value: number) => void
   resetState: () => void
 }
@@ -67,6 +69,7 @@ export const useControllerStateStore = create<ControllerState>()(
     isPaused: false,
     isSimulating: false,
     error: null,
+    physicalRestrictions: true,
 
     sensorReadings: INITIAL_SENSORS,
     hardwareStatus: INITIAL_HARDWARE,
@@ -104,10 +107,12 @@ export const useControllerStateStore = create<ControllerState>()(
         }
 
         if (status.sensors) {
-          updatedSensorReadings = {
-            ...status.sensors,
-            ...updatedSensorReadings,
-          }
+          // Only update the sensor boolean values, not proximity or loadCell
+          updatedSensorReadings.posAlta = status.sensors.posAlta ?? updatedSensorReadings.posAlta
+          updatedSensorReadings.posBaja = status.sensors.posBaja ?? updatedSensorReadings.posBaja
+          updatedSensorReadings.weightStable = status.sensors.weightStable ?? updatedSensorReadings.weightStable
+          updatedSensorReadings.frascoVacio = status.sensors.frascoVacio ?? updatedSensorReadings.frascoVacio
+          updatedSensorReadings.pastillasCargadas = status.sensors.pastillasCargadas ?? updatedSensorReadings.pastillasCargadas
           sensorChanged = true
         }
 
@@ -128,6 +133,10 @@ export const useControllerStateStore = create<ControllerState>()(
           newState.stateProgress = status.stateProgress
         }
 
+        if (status.physicalRestrictions !== undefined) {
+          newState.physicalRestrictions = status.physicalRestrictions
+        }
+
         return { ...state, ...newState }
       }),
 
@@ -136,6 +145,7 @@ export const useControllerStateStore = create<ControllerState>()(
     setPaused: (isPaused) => set({ isPaused }),
     setSimulating: (isSimulating) => set({ isSimulating }),
     setError: (error) => set({ error }),
+    setPhysicalRestrictions: (physicalRestrictions) => set({ physicalRestrictions }),
 
     updateSensorReading: (sensor, value) =>
       set((state) => ({

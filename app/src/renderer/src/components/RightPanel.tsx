@@ -26,7 +26,7 @@ const SensorIndicator: React.FC<SensorIndicatorProps> = ({ label, active }) => (
 export const RightPanel: React.FC = () => {
   const { sensorReadings, hardwareStatus, pillCount } = useControllerStateStore()
   const { serialData } = useConnectionStore()
-
+  console.log({ alta: sensorReadings.posAlta, baja: sensorReadings.posBaja })
   return (
     <div className="flex h-full flex-col space-y-4 p-4">
       {/* Sensor Readings */}
@@ -45,7 +45,7 @@ export const RightPanel: React.FC = () => {
             </div>
             <div className="flex items-center justify-between text-xs">
               <span>Proximity</span>
-              <span className="font-mono">{sensorReadings.proximityDistance}mm</span>
+              <span className="font-mono">{sensorReadings.proximityDistance}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span>Pill Count</span>
