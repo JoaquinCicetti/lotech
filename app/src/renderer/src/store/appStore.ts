@@ -1,4 +1,5 @@
 import { DEFAULT_DELAYS, DEFAULT_DOSING, DEFAULT_VIEW } from '@renderer/constants/settings'
+import { CapStatus, DosingStatus, ElevatorStatus, GrinderStatus, TransferStatus } from '@renderer/serial/commands'
 import {
   DelaySettings,
   DosingSettings,
@@ -83,11 +84,11 @@ const INITIAL_STATUS: SystemStatus = {
     pastillasCargadas: true,
   },
   hardware: {
-    elevator: 'DOWN',
-    dosing: 'IDLE',
-    grinder: 'OFF',
-    transfer: 'CLOSED',
-    cap: 'RETRACTED',
+    elevator: ElevatorStatus.DOWN,
+    dosing: DosingStatus.IDLE,
+    grinder: GrinderStatus.OFF,
+    transfer: TransferStatus.CLOSED,
+    cap: CapStatus.RETRACTED,
     weight: 0,
   },
 }

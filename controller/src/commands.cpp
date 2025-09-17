@@ -1,14 +1,20 @@
 #include "commands.h"
 #include "hardware.h"
 #include "state_machine.h"
+#include "state_persistence.h"
 #include "config.h"
 #include "manual_mode.h"
 
 CommandProcessor commands;
 
 void CommandProcessor::processSerialInput() {
-  while (Serial.available() > 0) {
+  // Process max 10 chars per loop to prevent blocking
+  int charsProcessed = 0;
+  const int MAX_CHARS_PER_LOOP = 10;
+
+  while (Serial.available() > 0 && charsProcessed < MAX_CHARS_PER_LOOP) {
     char incomingChar = Serial.read();
+    charsProcessed++;
 
     if (incomingChar == '\n' || incomingChar == '\r') {
       if (bufferIndex > 0) {
@@ -80,6 +86,25 @@ void CommandProcessor::processCommand(const char* command) {
   }
   else if (strcmp(command, "RESTRICTIONS:OFF") == 0 || strcmp(command, "RESTRICTIONS:DISABLE") == 0) {
     ManualMode::setPhysicalRestrictions(false);
+    return;
+  }
+
+  // ========================================
+  // STATE RECOVERY COMMANDS - ALWAYS WORK
+  // ========================================
+  else if (strcmp(command, "CLEAR_STATE") == 0) {
+    StatePersistence::clearState();
+    stateMachine.resetPillCount();
+    stateMachine.changeState(ESTADO0_INICIO);
+    Serial.println(F("STATE:CLEARED"));
+    return;
+  }
+  else if (strcmp(command, "RECOVER_STATE") == 0) {
+    if (stateMachine.recoverStateFromEEPROM()) {
+      Serial.println(F("STATE:RECOVERED"));
+    } else {
+      Serial.println(F("STATE:NO_SAVED_STATE"));
+    }
     return;
   }
 

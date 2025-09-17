@@ -13,7 +13,8 @@ import React from 'react'
 
 export const ModeSwitcher: React.FC = () => {
   const { currentMode, setMode } = useUIStore()
-  const { isSimulating, setSimulating, physicalRestrictions, setPhysicalRestrictions } = useControllerStateStore()
+  const { isSimulating, setSimulating, physicalRestrictions, setPhysicalRestrictions } =
+    useControllerStateStore()
 
   return (
     <div className="flex w-full items-center gap-2">

@@ -95,7 +95,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
       const newPorts = await window.serial.list()
       useConnectionStore.getState().setPorts(newPorts)
     } catch (error) {
-      console.error('Failed to refresh ports:', error)
+      console.error('Error al actualizar puertos:', error)
     } finally {
       setIsRefreshing(false)
     }
@@ -119,7 +119,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
           <div className="flex gap-2">
             <Select value={selectedPort} onValueChange={setSelectedPort} disabled={isConnected}>
               <SelectTrigger className="h-8 flex-1 text-xs">
-                <SelectValue placeholder="Select port..." />
+                <SelectValue placeholder="Seleccionar puerto..." />
               </SelectTrigger>
               <SelectContent>
                 {ports.map((port) => (
@@ -148,7 +148,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
             onClick={isConnected ? onDisconnect : onConnect}
             disabled={!selectedPort && !isConnected}
           >
-            {isConnected ? 'Disconnect' : 'Connect'}
+            {isConnected ? 'Desconectar' : 'Conectar'}
           </Button>
         </CardContent>
       </Card>
@@ -159,12 +159,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
-            <h3 className="text-sm font-medium">Delays (ms)</h3>
+            <h3 className="text-sm font-medium">Retardos (ms)</h3>
           </div>
 
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="text-xs">Settle: {delays.settle}ms</Label>
+              <Label className="text-xs">Estabilización: {delays.settle}ms</Label>
               <Slider
                 value={[delays.settle]}
                 onValueChange={([v]) => handleDelayChange('settle', v)}
@@ -175,7 +175,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Weight: {delays.weight}ms</Label>
+              <Label className="text-xs">Pesaje: {delays.weight}ms</Label>
               <Slider
                 value={[delays.weight]}
                 onValueChange={([v]) => handleDelayChange('weight', v)}
@@ -186,7 +186,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Transfer: {delays.transfer}ms</Label>
+              <Label className="text-xs">Transferencia: {delays.transfer}ms</Label>
               <Slider
                 value={[delays.transfer]}
                 onValueChange={([v]) => handleDelayChange('transfer', v)}
@@ -197,7 +197,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Grind: {delays.grind}ms</Label>
+              <Label className="text-xs">Molienda: {delays.grind}ms</Label>
               <Slider
                 value={[delays.grind]}
                 onValueChange={([v]) => handleDelayChange('grind', v)}
@@ -208,7 +208,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Cap: {delays.cap}ms</Label>
+              <Label className="text-xs">Tapado: {delays.cap}ms</Label>
               <Slider
                 value={[delays.cap]}
                 onValueChange={([v]) => handleDelayChange('cap', v)}
@@ -219,7 +219,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Elevator Up: {delays.elevUp}ms</Label>
+              <Label className="text-xs">Elevador Subida: {delays.elevUp}ms</Label>
               <Slider
                 value={[delays.elevUp]}
                 onValueChange={([v]) => handleDelayChange('elevUp', v)}
@@ -230,7 +230,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Elevator Down: {delays.elevDown}ms</Label>
+              <Label className="text-xs">Elevador Bajada: {delays.elevDown}ms</Label>
               <Slider
                 value={[delays.elevDown]}
                 onValueChange={([v]) => handleDelayChange('elevDown', v)}
@@ -246,12 +246,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4" />
-            <h3 className="text-sm font-medium">Dosing</h3>
+            <h3 className="text-sm font-medium">Dosificación</h3>
           </div>
 
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="text-xs">Wheel Divisions: {dosing.wheelDivisions}</Label>
+              <Label className="text-xs">Divisiones de Rueda: {dosing.wheelDivisions}</Label>
               <Slider
                 value={[dosing.wheelDivisions]}
                 onValueChange={([v]) => handleDosingChange('wheelDivisions', v)}
@@ -263,7 +263,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Lot Size: {dosing.lotSize}</Label>
+              <Label className="text-xs">Tamaño de Lote: {dosing.lotSize}</Label>
               <Slider
                 value={[dosing.lotSize]}
                 onValueChange={([v]) => handleDosingChange('lotSize', v)}
@@ -280,12 +280,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Ruler className="h-4 w-4" />
-            <h3 className="text-sm font-medium">Proximity</h3>
+            <h3 className="text-sm font-medium">Proximidad</h3>
           </div>
 
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="text-xs">Min Distance: {proximity.minProximity}mm</Label>
+              <Label className="text-xs">Distancia Mín: {proximity.minProximity}mm</Label>
               <Slider
                 value={[proximity.minProximity]}
                 onValueChange={([v]) => handleProximityChange('minProximity', v)}
@@ -296,7 +296,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({ onConnect, onDisconnec
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs">Max Distance: {proximity.maxProximity}mm</Label>
+              <Label className="text-xs">Distancia Máx: {proximity.maxProximity}mm</Label>
               <Slider
                 value={[proximity.maxProximity]}
                 onValueChange={([v]) => handleProximityChange('maxProximity', v)}

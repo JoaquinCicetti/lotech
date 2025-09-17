@@ -5,7 +5,7 @@
 void SerialProtocol::sendState(const char* state) {
   Serial.print(F("ESTADO:"));
   Serial.println(state);
-  Serial.flush();
+  // Removed Serial.flush() - blocking operation
 }
 
 void SerialProtocol::sendPillCount(int count, int target) {
@@ -13,19 +13,19 @@ void SerialProtocol::sendPillCount(int count, int target) {
   Serial.print(count);
   Serial.print(F("/"));
   Serial.println(target);
-  Serial.flush();
+  // Removed Serial.flush() - blocking operation
 }
 
 void SerialProtocol::sendWeight(float weight) {
   Serial.print(F("PESO:"));
   Serial.println(weight, 2);
-  Serial.flush();
+  // Removed Serial.flush() - blocking operation
 }
 
 void SerialProtocol::sendElevatorPosition(bool isUp) {
   Serial.print(F("ELEVADOR:"));
   Serial.println(isUp ? F("ARRIBA") : F("ABAJO"));
-  Serial.flush();
+  // Removed Serial.flush() - blocking operation
 }
 
 void SerialProtocol::sendSimSensor(const char* sensor, bool state) {
@@ -33,7 +33,7 @@ void SerialProtocol::sendSimSensor(const char* sensor, bool state) {
   Serial.print(sensor);
   Serial.print(F(":"));
   Serial.println(state ? F("ON") : F("OFF"));
-  Serial.flush();
+  // Removed Serial.flush() - blocking operation
 }
 
 void SerialProtocol::sendSensor(const char* sensor, bool state) {
@@ -41,7 +41,7 @@ void SerialProtocol::sendSensor(const char* sensor, bool state) {
   Serial.print(sensor);
   Serial.print(F(":"));
   Serial.println(state ? F("1") : F("0"));
-  Serial.flush();
+  // Removed Serial.flush() - blocking operation
 }
 
 void SerialProtocol::sendProgress(const char* state, unsigned long duration) {
@@ -49,7 +49,7 @@ void SerialProtocol::sendProgress(const char* state, unsigned long duration) {
   Serial.print(state);
   Serial.print(F(","));
   Serial.println(duration);
-  Serial.flush();
+  // Removed Serial.flush() - blocking operation
 }
 
 void SerialProtocol::sendHeartbeat(const char* state, unsigned long timestamp) {
@@ -59,13 +59,13 @@ void SerialProtocol::sendHeartbeat(const char* state, unsigned long timestamp) {
   Serial.print(timestamp);
   Serial.print(F(",R:"));
   Serial.println(ManualMode::hasPhysicalRestrictions() ? F("ON") : F("OFF"));
-  Serial.flush();
+  // Removed Serial.flush() - blocking operation
 }
 
 void SerialProtocol::sendError(const char* error) {
   Serial.print(F("ERROR:"));
   Serial.println(error);
-  Serial.flush();
+  // Removed Serial.flush() - blocking operation
 }
 
 void SerialProtocol::sendButton(const char* button, const char* action) {
@@ -73,18 +73,18 @@ void SerialProtocol::sendButton(const char* button, const char* action) {
   Serial.print(button);
   Serial.print(F(":"));
   Serial.println(action);
-  Serial.flush();
+  // Removed Serial.flush() - blocking operation
 }
 
 void SerialProtocol::sendAction(const char* action) {
   Serial.print(F("ACCION:"));
   Serial.println(action);
-  Serial.flush();
+  // Removed Serial.flush() - blocking operation
 }
 
 void SerialProtocol::sendInfo(const char* info) {
   Serial.println(info);
-  Serial.flush();
+  // Removed Serial.flush() - blocking operation
 }
 
 void SerialProtocol::sendTestHeartbeat() {
@@ -126,5 +126,5 @@ void SerialProtocol::sendTestHeartbeat() {
   Serial.print(F(",MS:"));
   Serial.println(millis());
   
-  Serial.flush();
+  // Removed Serial.flush() - blocking operation
 }

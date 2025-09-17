@@ -36,14 +36,14 @@ export const FloatingActionBar: React.FC = () => {
         <div className="bg-background flex gap-2 rounded-lg border p-2 shadow-lg">
           <Button size="lg" variant="outline" onClick={handleHome} className="min-w-[100px]">
             <Home className="mr-2 h-5 w-5" />
-            Home
+            Inicio
           </Button>
 
           <div className="bg-border mx-2 w-px" />
 
           <Button size="lg" variant="destructive" onClick={emergencyStop} className="min-w-[140px]">
             <AlertTriangle className="mr-2 h-5 w-5" />
-            Emergency Stop
+            Parada de Emergencia
           </Button>
         </div>
       </div>
@@ -64,12 +64,12 @@ export const FloatingActionBar: React.FC = () => {
           {isPaused ? (
             <>
               <RotateCcw className="mr-2 h-5 w-5" />
-              Resume
+              Reanudar
             </>
           ) : (
             <>
               <Play className="mr-2 h-5 w-5" />
-              Start
+              Iniciar
             </>
           )}
         </Button>
@@ -82,7 +82,7 @@ export const FloatingActionBar: React.FC = () => {
           className="min-w-[100px]"
         >
           <Pause className="mr-2 h-5 w-5" />
-          Pause
+          Pausar
         </Button>
 
         <Button
@@ -93,14 +93,14 @@ export const FloatingActionBar: React.FC = () => {
           className="min-w-[100px]"
         >
           <Square className="mr-2 h-5 w-5" />
-          Stop
+          Detener
         </Button>
 
         <div className="bg-border mx-2 w-px" />
 
         <Button size="lg" variant="destructive" onClick={emergencyStop} className="min-w-[140px]">
           <AlertTriangle className="mr-2 h-5 w-5" />
-          Emergency Stop
+          Parada de Emergencia
         </Button>
       </div>
     </div>

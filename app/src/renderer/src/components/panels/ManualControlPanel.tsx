@@ -32,21 +32,21 @@ export const ManualControlPanel: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <RotateCw className="h-5 w-5" />
-            Motor Controls
+            Controles de Motor
           </CardTitle>
-          <CardDescription>Test individual motors</CardDescription>
+          <CardDescription>Probar motores individualmente</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h4 className="mb-2 text-sm font-medium">Dosing Motor</h4>
+            <h4 className="mb-2 text-sm font-medium">Motor de Dosificación</h4>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={testDosingForward} className="flex-1">
                 <ArrowUp className="mr-1 h-4 w-4" />
-                Forward
+                Adelante
               </Button>
               <Button size="sm" variant="outline" onClick={testDosingBackward} className="flex-1">
                 <ArrowDown className="mr-1 h-4 w-4" />
-                Backward
+                Atrás
               </Button>
               <Button size="sm" variant="destructive" onClick={testDosingStop}>
                 <Square className="h-4 w-4" />
@@ -55,15 +55,15 @@ export const ManualControlPanel: React.FC = () => {
           </div>
 
           <div>
-            <h4 className="mb-2 text-sm font-medium">Elevator Motor</h4>
+            <h4 className="mb-2 text-sm font-medium">Motor del Elevador</h4>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={testElevatorUp} className="flex-1">
                 <ArrowUp className="mr-1 h-4 w-4" />
-                Up
+                Subir
               </Button>
               <Button size="sm" variant="outline" onClick={testElevatorDown} className="flex-1">
                 <ArrowDown className="mr-1 h-4 w-4" />
-                Down
+                Bajar
               </Button>
               <Button size="sm" variant="destructive" onClick={testElevatorStop}>
                 <Square className="h-4 w-4" />
@@ -72,15 +72,15 @@ export const ManualControlPanel: React.FC = () => {
           </div>
 
           <div>
-            <h4 className="mb-2 text-sm font-medium">Grinder Motor</h4>
+            <h4 className="mb-2 text-sm font-medium">Motor del Molino</h4>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={testGrinderOn} className="flex-1">
                 <RotateCw className="mr-1 h-4 w-4" />
-                On
+                Encender
               </Button>
               <Button size="sm" variant="outline" onClick={testGrinderOff} className="flex-1">
                 <Square className="mr-1 h-4 w-4" />
-                Off
+                Apagar
               </Button>
             </div>
           </div>
@@ -91,31 +91,31 @@ export const ManualControlPanel: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5" />
-            Solenoid Controls
+            Controles de Solenoide
           </CardTitle>
-          <CardDescription>Test solenoid actuators</CardDescription>
+          <CardDescription>Probar actuadores solenoide</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h4 className="mb-2 text-sm font-medium">Transfer Solenoid</h4>
+            <h4 className="mb-2 text-sm font-medium">Solenoide de Transferencia</h4>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={testTransferOpen} className="flex-1">
-                Open
+                Abrir
               </Button>
               <Button size="sm" variant="outline" onClick={testTransferClose} className="flex-1">
-                Close
+                Cerrar
               </Button>
             </div>
           </div>
 
           <div>
-            <h4 className="mb-2 text-sm font-medium">Cap Solenoid</h4>
+            <h4 className="mb-2 text-sm font-medium">Solenoide de Tapado</h4>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={testCapPush} className="flex-1">
-                Push
+                Empujar
               </Button>
               <Button size="sm" variant="outline" onClick={testCapRetract} className="flex-1">
-                Retract
+                Retraer
               </Button>
             </div>
           </div>
@@ -126,17 +126,17 @@ export const ManualControlPanel: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Scale className="h-5 w-5" />
-            Load Cell
+            Celda de Carga
           </CardTitle>
-          <CardDescription>Test weight sensor</CardDescription>
+          <CardDescription>Probar sensor de peso</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={testLoadCell} className="flex-1">
-              Test Reading
+              Probar Lectura
             </Button>
             <Button size="sm" variant="outline" onClick={tareLoadCell} className="flex-1">
-              Tare
+              Tarar
             </Button>
           </div>
         </CardContent>

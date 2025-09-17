@@ -26,7 +26,6 @@ const SensorIndicator: React.FC<SensorIndicatorProps> = ({ label, active }) => (
 export const RightPanel: React.FC = () => {
   const { sensorReadings, hardwareStatus, pillCount } = useControllerStateStore()
   const { serialData } = useConnectionStore()
-  console.log({ alta: sensorReadings.posAlta, baja: sensorReadings.posBaja })
   return (
     <div className="flex h-full flex-col space-y-4 p-4">
       {/* Sensor Readings */}
@@ -34,27 +33,27 @@ export const RightPanel: React.FC = () => {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Gauge className="h-4 w-4" />
-            Sensors
+            Sensores
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span>Load Cell</span>
+              <span>Celda de Carga</span>
               <span className="font-mono">{sensorReadings.loadCell.toFixed(1)}g</span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span>Proximity</span>
+              <span>Proximidad</span>
               <span className="font-mono">{sensorReadings.proximityDistance}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span>Pill Count</span>
+              <span>Contador de Píldoras</span>
               <span className="font-mono">{pillCount}</span>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-1">
               <SensorIndicator label="Pos Alta" active={sensorReadings.posAlta} />
               <SensorIndicator label="Pos Baja" active={sensorReadings.posBaja} />
-              <SensorIndicator label="Weight OK" active={sensorReadings.weightStable} />
+              <SensorIndicator label="Peso OK" active={sensorReadings.weightStable} />
               <SensorIndicator label="Frasco" active={sensorReadings.frascoVacio} />
             </div>
           </div>
@@ -72,14 +71,14 @@ export const RightPanel: React.FC = () => {
         <CardContent>
           <div className="grid grid-cols-2 gap-1">
             <SensorIndicator
-              label="Elevator"
+              label="Elevador"
               active={hardwareStatus.elevator !== 'IDLE' && hardwareStatus.elevator !== 'MIDDLE'}
             />
-            <SensorIndicator label="Dosing" active={hardwareStatus.dosing === 'ACTIVE'} />
-            <SensorIndicator label="Grinder" active={hardwareStatus.grinder === 'ON'} />
-            <SensorIndicator label="Transfer" active={hardwareStatus.transfer === 'CLOSED'} />
-            <SensorIndicator label="Cap" active={hardwareStatus.cap === 'PUSHED'} />
-            <SensorIndicator label="Load Cell" active={true} />
+            <SensorIndicator label="Dosificación" active={hardwareStatus.dosing === 'ACTIVE'} />
+            <SensorIndicator label="Molino" active={hardwareStatus.grinder === 'ON'} />
+            <SensorIndicator label="Transferencia" active={hardwareStatus.transfer === 'CLOSED'} />
+            <SensorIndicator label="Tapado" active={hardwareStatus.cap === 'PUSHED'} />
+            <SensorIndicator label="Celda de Carga" active={true} />
           </div>
         </CardContent>
       </Card>
@@ -89,7 +88,7 @@ export const RightPanel: React.FC = () => {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Terminal className="h-4 w-4" />
-            Console
+            Consola
           </CardTitle>
         </CardHeader>
         <CardContent className="h-[calc(100%-4rem)] p-0">

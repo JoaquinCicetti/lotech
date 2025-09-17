@@ -31,7 +31,7 @@ function createWindow(): void {
       // Disable DTR to prevent Arduino reset on connection
       dtr: false,
       // Also set RTS to false
-      rts: false
+      rts: false,
     })
     messageBuffers[path] = ''
 

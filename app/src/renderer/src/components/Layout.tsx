@@ -58,13 +58,13 @@ export const Layout: React.FC<LayoutProps> = (props) => {
               className="gap-1 shadow-lg"
             >
               <Settings2 className="h-4 w-4" />
-              <span className="hidden sm:inline">{showLeftSidebar ? '◀' : 'Settings'}</span>
+              <span className="hidden sm:inline">{showLeftSidebar ? '◀' : 'Configuración'}</span>
             </Button>
 
             {/* Connection Status */}
             <Badge variant={isConnected ? 'default' : 'destructive'} className="gap-1">
               {isConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-              {isConnected ? selectedPort : 'Disconnected'}
+              {isConnected ? selectedPort : 'Desconectado'}
             </Badge>
           </div>
 

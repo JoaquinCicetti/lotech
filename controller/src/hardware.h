@@ -87,7 +87,16 @@ private:
   float calibrationFactor;
   float weightThreshold;
   unsigned long weightStableTime;
-  
+
+  // Weight stabilization
+  static const uint8_t WEIGHT_BUFFER_SIZE = 10;
+  float weightBuffer[WEIGHT_BUFFER_SIZE];
+  uint8_t weightBufferIndex;
+  bool bufferFilled;
+  unsigned long lastWeightRead;
+  float stableWeight;
+  unsigned long stableStartTime;
+
   // Simulation variables
   bool simWeightStable;
   
@@ -148,9 +157,17 @@ private:
   uint8_t lastRawValue;     // Raw sensor value 0-255
   bool available;
   static const uint8_t CHANGE_THRESHOLD = 5;  // Only report if raw value changes by 5+
+
+  // Moving average filter for stability
+  static const uint8_t FILTER_SIZE = 10;
+  uint8_t filterBuffer[FILTER_SIZE];
+  uint8_t filterIndex;
+  bool filterInitialized;
   
 public:
-  ProximitySensor() : lastProximity(0), lastRawValue(0), available(false) {}
+  ProximitySensor() : lastProximity(0), lastRawValue(0), available(false), filterIndex(0), filterInitialized(false) {
+    memset(filterBuffer, 0, sizeof(filterBuffer));
+  }
   bool init();
   uint16_t read();  // Returns scaled 0-1024
   bool hasSignificantChange();

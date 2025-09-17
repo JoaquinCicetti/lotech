@@ -1,15 +1,19 @@
 # ADR: Layout and Store Refactor
 
 ## Status
+
 Proposed
 
 ## Context
+
 The current appStore is chaotic and mixes different concerns:
+
 - Settings (persisted values like times, dosing, min/max proximity)
 - Controller state (real-time readings from hardware)
 - UI state (modes, views)
 
 This causes:
+
 - Render loops when reading controller state
 - Unclear data flow
 - Difficult testing
@@ -20,7 +24,9 @@ This causes:
 ### 1. Store Architecture - Split into Domain Stores
 
 #### settingsStore
+
 **Purpose**: Persistent configuration values
+
 ```typescript
 - dosingSettings:
   - dosingTime
@@ -36,7 +42,9 @@ This causes:
 ```
 
 #### controllerStateStore
+
 **Purpose**: Real-time hardware state (READ-ONLY from controller)
+
 ```typescript
 - sensorReadings:
   - loadCell values
@@ -52,7 +60,9 @@ This causes:
 ```
 
 #### uiStore
+
 **Purpose**: UI-only state
+
 ```typescript
 - currentMode: 'production' | 'test'
 - activeView: string
@@ -90,6 +100,7 @@ const testLoadCell = () => sendSerial('LOADCELL_TEST')
 ### 3. Layout Changes
 
 #### Header
+
 - Mode selector (Production/Test)
 - Connection status indicator
 - Settings button
@@ -97,6 +108,7 @@ const testLoadCell = () => sendSerial('LOADCELL_TEST')
 #### Main Content Area
 
 **Production Mode:**
+
 ```
 +----------------------------------+
 |     State Machine Visualization  |
@@ -109,6 +121,7 @@ const testLoadCell = () => sendSerial('LOADCELL_TEST')
 ```
 
 **Test Mode:**
+
 ```
 +----------------------------------+
 |     State Machine Visualization  |
@@ -130,12 +143,14 @@ const testLoadCell = () => sendSerial('LOADCELL_TEST')
 ```
 
 #### Floating Action Bar (Bottom Center)
+
 ```
 +----------------------------------+
 |    [Start] [Stop] [Pause]        |
 |    (Changes based on mode)       |
 +----------------------------------+
 ```
+
 - Position: fixed bottom, centered
 - Elevation: high z-index with shadow
 - Content changes based on mode:
@@ -145,27 +160,29 @@ const testLoadCell = () => sendSerial('LOADCELL_TEST')
 ### 4. Data Flow Rules
 
 #### Preventing Render Loops
+
 1. Controller state updates via event subscription, not polling
 2. Use debouncing/throttling for high-frequency updates
 3. Separate read streams from write commands
 4. Use React.memo and useMemo for expensive computations
 
 #### State Update Pattern
+
 ```typescript
 // BAD - causes loops
 useEffect(() => {
-  const data = readFromSerial();
-  setState(data);
-}, [state]); // dependency on state!
+  const data = readFromSerial()
+  setState(data)
+}, [state]) // dependency on state!
 
 // GOOD - event driven
 useEffect(() => {
   const handler = (data) => {
-    setState(data);
-  };
-  serialPort.on('data', handler);
-  return () => serialPort.off('data', handler);
-}, []); // no dependencies
+    setState(data)
+  }
+  serialPort.on('data', handler)
+  return () => serialPort.off('data', handler)
+}, []) // no dependencies
 ```
 
 ### 5. Test Mode Motor Controls
@@ -217,6 +234,7 @@ NO settings needed - just immediate motor control for circuit testing.
 ## Consequences
 
 ### Positive
+
 - Clear separation of concerns
 - No render loops from controller state
 - Direct motor control for testing
@@ -225,11 +243,13 @@ NO settings needed - just immediate motor control for circuit testing.
 - Cleaner component code
 
 ### Negative
+
 - Initial refactoring effort
 - Need to update all components
 - More files to manage
 
 ## Next Steps
+
 1. Review and approve this ADR
 2. Create store files
 3. Create commands.ts with all serial commands

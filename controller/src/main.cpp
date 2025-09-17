@@ -1,8 +1,10 @@
 
 #include <Arduino.h>
+#include <avr/wdt.h>  // Watchdog timer for safety
 #include "config.h"
 #include "hardware.h"
 #include "state_machine.h"
+#include "state_persistence.h"
 #include "commands.h"
 #include "serial_protocol.h"
 #include "manual_mode.h"
@@ -12,11 +14,20 @@ unsigned long lastProxReport = 0;
 uint16_t lastProxValue = 9999; // Set to impossible value to force first report
 
 void setup() {
+  // Disable watchdog on startup (in case of reset)
+  wdt_disable();
+
   Serial.begin(9600);
   // delay(100);  // Small delay for serial init
 
   // Initialize all hardware modules
   Serial.println(F("Inicializando"));
+
+  // Initialize state persistence
+  StatePersistence::init();
+
+  // Enable watchdog with 2 second timeout - will reset if frozen
+  wdt_enable(WDTO_2S);
   
   // Try to init proximity sensor (don't block if fails)
   if (proxSensor.init()) {
@@ -42,6 +53,15 @@ void setup() {
 
   Serial.println(F("========================================"));
   Serial.println(F("LOTECH Controller v1.0"));
+
+  // Try to recover previous state
+  if (stateMachine.recoverStateFromEEPROM()) {
+    Serial.println(F("Previous state recovered from EEPROM"));
+    Serial.println(F("Use CLEAR_STATE to reset if needed"));
+  } else {
+    Serial.println(F("Starting fresh - no previous state"));
+  }
+
   Serial.println(F("Starting in MANUAL mode"));
   Serial.println(F("Physical restrictions: ENABLED"));
   Serial.println(F("Type HELP for commands"));
@@ -52,6 +72,9 @@ void setup() {
 }
 
 void loop() {
+  // Reset watchdog timer - proves we're not frozen
+  wdt_reset();
+
   // Process serial commands
   commands.processSerialInput();
 
@@ -97,6 +120,18 @@ void loop() {
   // Read and report proximity if available - but not too often!
   if (proxSensor.isAvailable() && (millis() - lastProxReport > 250)) { // Check every 250ms for better responsiveness
     uint16_t prox = proxSensor.read();
+
+    // Filter out sudden 0 values - only accept 0 if we get it consistently
+    static uint8_t zeroCount = 0;
+    if (prox == 0) {
+      zeroCount++;
+      // Only accept 0 after 3 consecutive readings
+      if (zeroCount < 3) {
+        prox = lastProxValue; // Use last valid value
+      }
+    } else {
+      zeroCount = 0; // Reset counter for non-zero values
+    }
 
     // Only report if value changed significantly (by more than 5) or timeout
     int proxDiff = abs((int)prox - (int)lastProxValue);

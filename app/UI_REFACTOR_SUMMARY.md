@@ -1,32 +1,38 @@
 # UI Refactor Summary: Manual/Auto Modes
 
 ## Overview
+
 The UI has been refactored from the confusing test/production/simulation states to a cleaner **Manual** and **Auto** mode architecture.
 
 ## Key Changes
 
 ### 1. Mode Structure
+
 - **Manual Mode**: Direct hardware control for testing and maintenance
 - **Auto Mode**: Automated production with optional simulation
 
 ### 2. Store Updates
 
 #### UIStore
+
 - Changed from `production | test` to `manual | auto` modes
 - Default mode is now `manual`
 
 #### ControllerStateStore
+
 - Added `isSimulating` flag for simulation state
 - Simulation only available in Auto mode
 
 ### 3. Component Changes
 
 #### ModeSwitcher
+
 - Manual/Auto toggle buttons
 - Separate "Simulate" button (only visible in Auto mode)
 - Clear visual separation between mode and simulation
 
 #### LeftSidebar (Refactored)
+
 - **Top Section**: Serial connection management (always visible)
 - **Manual Mode**: Shows direct hardware controls
 - **Auto Mode**: Shows two tabs:
@@ -34,11 +40,13 @@ The UI has been refactored from the confusing test/production/simulation states 
   - Simulation tab: Simulation parameters
 
 #### FloatingActionBar
+
 - **Manual Mode**: Home button + Emergency Stop
 - **Auto Mode**: Start/Pause/Stop/Resume + Emergency Stop
 - Position: Fixed bottom center
 
 #### ManualControlPanel (formerly TestControlPanel)
+
 - Motor controls with Forward/Backward/Stop buttons
 - Solenoid controls for actuators
 - Load cell testing functions
@@ -73,6 +81,7 @@ The UI has been refactored from the confusing test/production/simulation states 
 ### 5. Behavior
 
 #### Manual Mode
+
 - Direct control over all hardware components
 - No automated sequences
 - Ideal for:
@@ -82,6 +91,7 @@ The UI has been refactored from the confusing test/production/simulation states 
   - Troubleshooting
 
 #### Auto Mode
+
 - Automated production sequences
 - Optional simulation for testing without hardware
 - When simulating:
@@ -91,6 +101,7 @@ The UI has been refactored from the confusing test/production/simulation states 
   - Auto-advance through states
 
 ### 6. Connection Management
+
 - Connection panel integrated into left sidebar
 - Always accessible regardless of mode
 - Shows port selection and connection status

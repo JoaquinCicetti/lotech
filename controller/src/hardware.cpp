@@ -163,6 +163,10 @@ void DosingWheel::dispenseOne() {
     int stepsPerDivision = STEPS_PER_REVOLUTION / wheel_divisions;
     motor.move(stepsPerDivision);  // Positive for forward
     dosingInProgress = true;
+    Serial.print(F("DOSING:STEPS:"));
+    Serial.println(stepsPerDivision);
+  } else {
+    Serial.println(F("DOSING:ALREADY_IN_PROGRESS"));
   }
 }
 
@@ -251,19 +255,69 @@ LoadCell::LoadCell() : scale() {
   weightThreshold = 1.0;
   weightStableTime = 0;
   simWeightStable = false;
+
+  // Initialize weight buffer
+  weightBufferIndex = 0;
+  bufferFilled = false;
+  lastWeightRead = 0;
+  stableWeight = 0;
+  stableStartTime = 0;
+  for (int i = 0; i < WEIGHT_BUFFER_SIZE; i++) {
+    weightBuffer[i] = 0;
+  }
 }
 
 void LoadCell::init() {
   scale.begin(HX711_DOUT_PIN, HX711_SCK_PIN);
-  scale.set_scale(2280.f);  // Default calibration factor
-  scale.tare();
+
+  if (scale.is_ready()) {
+    scale.set_scale(2280.f);  // Default calibration factor
+    scale.tare();
+    isReady = true;
+    Serial.println(F("LOADCELL:INIT_OK"));
+  } else {
+    isReady = false;
+    Serial.println(F("LOADCELL:INIT_FAIL"));
+  }
 }
 
 float LoadCell::readWeight() {
-  if (scale.is_ready()) {
-    return scale.get_units(10);  // Average of 10 readings
+  // Non-blocking weight reading with filtering
+  if (!isReady) {
+    return 0.0;  // Load cell not initialized
   }
-  return 0.0;
+
+  unsigned long now = millis();
+
+  // Read new weight every 100ms
+  if (now - lastWeightRead >= 100) {
+    if (scale.is_ready()) {
+      float newWeight = scale.get_units(3);  // Faster reading with 3 samples
+
+      // Add to circular buffer
+      weightBuffer[weightBufferIndex] = newWeight;
+      weightBufferIndex = (weightBufferIndex + 1) % WEIGHT_BUFFER_SIZE;
+
+      if (!bufferFilled && weightBufferIndex == 0) {
+        bufferFilled = true;
+      }
+
+      // Calculate moving average
+      float sum = 0;
+      int count = bufferFilled ? WEIGHT_BUFFER_SIZE : weightBufferIndex;
+      for (int i = 0; i < count; i++) {
+        sum += weightBuffer[i];
+      }
+      currentWeight = sum / count;
+
+      lastWeightRead = now;
+    } else {
+      // Load cell not ready - might have disconnected
+      isReady = false;
+    }
+  }
+
+  return currentWeight;
 }
 
 void LoadCell::tare() {
@@ -271,12 +325,43 @@ void LoadCell::tare() {
 }
 
 bool LoadCell::isWeightStable() {
-  // Take two readings and check if they're close
-  float reading1 = readWeight();
-  delay(50);
-  float reading2 = readWeight();
+  // Simpler weight stability check
+  if (!scale.is_ready()) {
+    return false;  // Load cell not ready
+  }
 
-  return abs(reading1 - reading2) < 0.5;  // Within 0.5g
+  // Need at least a few samples
+  if (!bufferFilled && weightBufferIndex < 3) {
+    return false;
+  }
+
+  // Calculate variance of recent samples
+  float mean = currentWeight;
+  float variance = 0;
+  int count = bufferFilled ? WEIGHT_BUFFER_SIZE : weightBufferIndex;
+
+  for (int i = 0; i < count; i++) {
+    float diff = weightBuffer[i] - mean;
+    variance += diff * diff;
+  }
+  variance /= count;
+
+  // More lenient stability threshold
+  bool isCurrentlyStable = variance < 1.0;  // Increased from 0.25 to 1.0
+
+  unsigned long now = millis();
+
+  if (isCurrentlyStable) {
+    if (stableStartTime == 0) {
+      stableStartTime = now;
+      stableWeight = currentWeight;
+    }
+    // Require only 300ms of stability (reduced from 500ms)
+    return (now - stableStartTime) >= 300;
+  } else {
+    stableStartTime = 0;  // Reset stability timer
+    return false;
+  }
 }
 
 void LoadCell::calibrate(float knownWeight) {
@@ -365,15 +450,31 @@ uint16_t ProximitySensor::read() {
     int proximity = APDS.readProximity();
 
     // Check for valid reading
-    if (proximity >= 0) {
-      // Store raw value
-      lastRawValue = (uint8_t)proximity;
+    if (proximity >= 0 && proximity <= 255) {
+      uint8_t rawValue = (uint8_t)proximity;
 
-      // APDS9960 gives higher values when objects are closer
-      // For elevator: UP position = closer to sensor = higher value
-      // For elevator: DOWN position = farther from sensor = lower value
+      // Add to filter buffer
+      filterBuffer[filterIndex] = rawValue;
+      filterIndex = (filterIndex + 1) % FILTER_SIZE;
+
+      // Mark filter as initialized after first full cycle
+      if (filterIndex == 0) {
+        filterInitialized = true;
+      }
+
+      // Calculate moving average
+      uint16_t sum = 0;
+      uint8_t count = filterInitialized ? FILTER_SIZE : (filterIndex > 0 ? filterIndex : 1);
+
+      for (uint8_t i = 0; i < count; i++) {
+        sum += filterBuffer[i];
+      }
+
+      // Store filtered raw value
+      lastRawValue = sum / count;
+
       // Scale to 0-1024 range for compatibility
-      lastProximity = (uint16_t)proximity * 4;
+      lastProximity = (uint16_t)lastRawValue * 4;
 
       return lastProximity;
     }

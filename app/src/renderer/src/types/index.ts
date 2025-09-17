@@ -44,12 +44,14 @@ export interface ViewSettings {
   viewMode: ViewMode
 }
 
+import type { CapStatus, DosingStatus, ElevatorStatus, GrinderStatus, TransferStatus } from '../serial/commands'
+
 export interface HardwareStatus {
-  elevator: 'UP' | 'DOWN' | 'MOVING' | 'MOVING_UP' | 'MOVING_DOWN' | 'MIDDLE' | 'IDLE'
-  dosing: 'ACTIVE' | 'IDLE'
-  grinder: 'ON' | 'OFF'
-  transfer: 'OPEN' | 'CLOSED'
-  cap: 'PUSHED' | 'RETRACTED'
+  elevator: Exclude<ElevatorStatus, ElevatorStatus.BLOCKED_TOP | ElevatorStatus.BLOCKED_BOTTOM>
+  dosing: DosingStatus.ACTIVE | DosingStatus.IDLE
+  grinder: GrinderStatus
+  transfer: TransferStatus
+  cap: CapStatus
   weight: number
 }
 

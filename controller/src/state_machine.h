@@ -2,6 +2,7 @@
 #define STATE_MACHINE_H
 
 #include <Arduino.h>
+#include "state_persistence.h"
 
 // =====================================================
 // STATE MACHINE DEFINITIONS (FROM ADR-003)
@@ -73,6 +74,11 @@ public:
   
   // Helper functions
   unsigned long getExpectedStateDelay(State state) const;
+
+  // State persistence
+  void saveStateToEEPROM();
+  bool recoverStateFromEEPROM();
+  void setPillCount(int count) { pastillasCount = count; }
 };
 
 extern StateMachine stateMachine;

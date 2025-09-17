@@ -14,8 +14,8 @@
 // Motor 2 - Dosing wheel (stepper)
 #define MOTOR2_STEP_PIN 5
 #define MOTOR2_DIR_PIN 4
-// #define MOTOR2_MS1_PIN 9
-// #define MOTOR2_MS2_PIN 8
+#define MOTOR2_MS1_PIN 9
+#define MOTOR2_MS2_PIN 8
 
 // Motor 3 - Grinder (relay control for AC motor)
 #define MOTOR3_RELAY_PIN 12

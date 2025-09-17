@@ -1,0 +1,351 @@
+import { isValidMachineState } from '@renderer/constants/states'
+import { SystemStatus } from '../types'
+import {
+  CapStatus,
+  CommandPrefix,
+  DelayKeyMap,
+  DosingStatus,
+  ElevatorStatus,
+  getMessageType,
+  GrinderStatus,
+  isValidProximityStatus,
+  RestrictionStatus,
+  SensorName,
+  TransferStatus,
+} from './commands'
+
+export class SerialMessageParser {
+  static parseMessage(line: string, currentStatus: SystemStatus): Partial<SystemStatus> | null {
+    // Remove any trailing/leading whitespace and control characters
+    // eslint-disable-next-line no-control-regex
+    const cleanLine = line.trim().replace(/[\r\x00-\x1F\x7F]/g, '')
+
+    // Skip empty or too short messages
+    if (cleanLine.length < 3) {
+      return null
+    }
+
+    // STATE: Machine state changes
+    if (cleanLine.startsWith(CommandPrefix.STATE)) {
+      const newState = cleanLine.substring(CommandPrefix.STATE.length).trim()
+      if (newState && isValidMachineState(newState)) {
+        return { state: newState }
+      }
+    }
+
+    // PILLS: Pill counter
+    if (cleanLine.startsWith(CommandPrefix.PILLS)) {
+      const match = cleanLine.match(/^PILLS:(\d+)\/(\d+)/)
+      if (match) {
+        const count = parseInt(match[1])
+        const lotSize = parseInt(match[2])
+        if (!isNaN(count) && !isNaN(lotSize) && count >= 0 && lotSize > 0) {
+          return { pillCount: count }
+        }
+      }
+    }
+
+    // WEIGHT: Weight reading
+    if (cleanLine.startsWith(CommandPrefix.WEIGHT)) {
+      const weightStr = cleanLine.substring(CommandPrefix.WEIGHT.length).trim()
+      const weight = parseFloat(weightStr)
+      if (!isNaN(weight) && weight >= -100 && weight <= 10000) {
+        return { weight }
+      }
+    }
+
+    // PROX: Proximity sensor reading
+    if (cleanLine.startsWith(CommandPrefix.PROX)) {
+      const proximityStr = cleanLine.substring(CommandPrefix.PROX.length).trim()
+
+      // Skip status messages
+      if (isValidProximityStatus(proximityStr)) {
+        return null
+      }
+
+      const parts = proximityStr.split(',')
+      const proximity = parseInt(parts[0])
+
+      if (!isNaN(proximity) && proximity >= 0 && proximity <= 1024) {
+        const sensors = { ...currentStatus.sensors }
+
+        // Parse position if provided
+        for (let i = 1; i < parts.length; i++) {
+          const part = parts[i].trim()
+          if (part.startsWith('POS:')) {
+            const position = part.substring(4)
+            sensors.posAlta = position === ElevatorStatus.UP
+            sensors.posBaja = position === ElevatorStatus.DOWN
+          }
+        }
+
+        // Default thresholds if no position provided
+        if (!parts.some((p) => p.trim().startsWith('POS:'))) {
+          sensors.posAlta = proximity > 100
+          sensors.posBaja = proximity <= 20
+        }
+
+        return {
+          proximityDistance: proximity,
+          sensors,
+        }
+      }
+    }
+
+    // HB: Heartbeat with state
+    if (cleanLine.startsWith(CommandPrefix.HB)) {
+      const parts = cleanLine.substring(CommandPrefix.HB.length).split(',')
+      if (parts.length >= 1) {
+        const state = parts[0].trim()
+        if (state && isValidMachineState(state)) {
+          return { state, lastHeartbeat: Date.now() }
+        }
+      }
+    }
+
+    // ELEVATOR: Position updates
+    if (cleanLine.startsWith(CommandPrefix.ELEVATOR)) {
+      const position = cleanLine.substring(CommandPrefix.ELEVATOR.length).trim()
+
+      if (position === ElevatorStatus.BLOCKED_TOP || position === ElevatorStatus.BLOCKED_BOTTOM) {
+        return null
+      }
+
+      const hardware = {
+        elevator: currentStatus.hardware?.elevator || ElevatorStatus.IDLE,
+        dosing: currentStatus.hardware?.dosing || DosingStatus.IDLE,
+        grinder: currentStatus.hardware?.grinder || GrinderStatus.OFF,
+        transfer: currentStatus.hardware?.transfer || TransferStatus.CLOSED,
+        cap: currentStatus.hardware?.cap || CapStatus.RETRACTED,
+        weight: currentStatus.hardware?.weight || 0,
+      }
+
+      // Map the position string to the correct elevator status
+      switch (position) {
+        case ElevatorStatus.UP:
+          hardware.elevator = ElevatorStatus.UP
+          break
+        case ElevatorStatus.DOWN:
+          hardware.elevator = ElevatorStatus.DOWN
+          break
+        case ElevatorStatus.MOVING_UP:
+          hardware.elevator = ElevatorStatus.MOVING_UP
+          break
+        case ElevatorStatus.MOVING_DOWN:
+          hardware.elevator = ElevatorStatus.MOVING_DOWN
+          break
+        case ElevatorStatus.MIDDLE:
+          hardware.elevator = ElevatorStatus.MIDDLE
+          break
+        case ElevatorStatus.IDLE:
+          hardware.elevator = ElevatorStatus.IDLE
+          break
+        default:
+          hardware.elevator = ElevatorStatus.IDLE
+      }
+
+      return { hardware }
+    }
+
+    // DOSING: Motor status
+    if (cleanLine.startsWith(CommandPrefix.DOSING)) {
+      const status = cleanLine.substring(CommandPrefix.DOSING.length).trim()
+      const hardware = {
+        elevator: currentStatus.hardware?.elevator || ElevatorStatus.IDLE,
+        dosing: currentStatus.hardware?.dosing || DosingStatus.IDLE,
+        grinder: currentStatus.hardware?.grinder || GrinderStatus.OFF,
+        transfer: currentStatus.hardware?.transfer || TransferStatus.CLOSED,
+        cap: currentStatus.hardware?.cap || CapStatus.RETRACTED,
+        weight: currentStatus.hardware?.weight || 0,
+      }
+
+      if (
+        status === DosingStatus.FWD ||
+        status === DosingStatus.BWD ||
+        status === DosingStatus.STEP
+      ) {
+        hardware.dosing = DosingStatus.ACTIVE
+      } else if (status === DosingStatus.STOPPED || status === DosingStatus.COMPLETE) {
+        hardware.dosing = DosingStatus.IDLE
+      } else {
+        hardware.dosing = DosingStatus.IDLE
+      }
+
+      return { hardware }
+    }
+
+    // GRINDER: Motor status
+    if (cleanLine.startsWith(CommandPrefix.GRINDER)) {
+      const status = cleanLine.substring(CommandPrefix.GRINDER.length).trim()
+      const hardware = {
+        elevator: currentStatus.hardware?.elevator || ElevatorStatus.IDLE,
+        dosing: currentStatus.hardware?.dosing || DosingStatus.IDLE,
+        grinder: currentStatus.hardware?.grinder || GrinderStatus.OFF,
+        transfer: currentStatus.hardware?.transfer || TransferStatus.CLOSED,
+        cap: currentStatus.hardware?.cap || CapStatus.RETRACTED,
+        weight: currentStatus.hardware?.weight || 0,
+      }
+
+      hardware.grinder = status === GrinderStatus.ON ? GrinderStatus.ON : GrinderStatus.OFF
+
+      return { hardware }
+    }
+
+    // TRANSFER: Solenoid status
+    if (cleanLine.startsWith(CommandPrefix.TRANSFER)) {
+      const status = cleanLine.substring(CommandPrefix.TRANSFER.length).trim()
+      const hardware = {
+        elevator: currentStatus.hardware?.elevator || ElevatorStatus.IDLE,
+        dosing: currentStatus.hardware?.dosing || DosingStatus.IDLE,
+        grinder: currentStatus.hardware?.grinder || GrinderStatus.OFF,
+        transfer: currentStatus.hardware?.transfer || TransferStatus.CLOSED,
+        cap: currentStatus.hardware?.cap || CapStatus.RETRACTED,
+        weight: currentStatus.hardware?.weight || 0,
+      }
+
+      hardware.transfer =
+        status === TransferStatus.OPEN ? TransferStatus.OPEN : TransferStatus.CLOSED
+
+      return { hardware }
+    }
+
+    // CAP: Solenoid status
+    if (cleanLine.startsWith(CommandPrefix.CAP)) {
+      const status = cleanLine.substring(CommandPrefix.CAP.length).trim()
+      const hardware = {
+        elevator: currentStatus.hardware?.elevator || ElevatorStatus.IDLE,
+        dosing: currentStatus.hardware?.dosing || DosingStatus.IDLE,
+        grinder: currentStatus.hardware?.grinder || GrinderStatus.OFF,
+        transfer: currentStatus.hardware?.transfer || TransferStatus.CLOSED,
+        cap: currentStatus.hardware?.cap || CapStatus.RETRACTED,
+        weight: currentStatus.hardware?.weight || 0,
+      }
+
+      hardware.cap = status === CapStatus.PUSHED ? CapStatus.PUSHED : CapStatus.RETRACTED
+
+      return { hardware }
+    }
+
+    // SENSORS: Direct sensor updates
+    if (cleanLine.startsWith(CommandPrefix.SENSORS)) {
+      const sensors = { ...currentStatus.sensors }
+      const parts = cleanLine.split(':')
+
+      if (parts.length >= 3) {
+        const sensorName = parts[1] as SensorName
+        const value = parts[2] === '1' || parts[2] === 'ON'
+
+        switch (sensorName) {
+          case SensorName.CONTAINER:
+            sensors.frascoVacio = value
+            break
+          case SensorName.PILLS:
+            sensors.pastillasCargadas = value
+            break
+          case SensorName.WEIGHT_STABLE:
+            sensors.weightStable = value
+            break
+          case SensorName.POS_ALTA:
+            sensors.posAlta = value
+            break
+          case SensorName.POS_BAJA:
+            sensors.posBaja = value
+            break
+        }
+
+        return { sensors }
+      }
+    }
+
+    // MODE: Mode changes
+    if (cleanLine.startsWith(CommandPrefix.MODE)) {
+      // Mode is stored in UIStore, not SystemStatus
+      // Just ignore mode messages here
+      return null
+    }
+
+    // RESTRICTIONS: Physical restrictions
+    if (cleanLine.startsWith(CommandPrefix.RESTRICTIONS)) {
+      const state = cleanLine.substring(CommandPrefix.RESTRICTIONS.length).trim()
+      return {
+        physicalRestrictions: state === RestrictionStatus.ON || state === RestrictionStatus.ENABLED,
+      }
+    }
+
+    // PROGRESS: State progress
+    if (cleanLine.startsWith(CommandPrefix.PROGRESS)) {
+      const match = cleanLine.match(/PROGRESS:([^,]+),(\d+)/)
+      if (match) {
+        return {
+          stateProgress: {
+            state: match[1],
+            expectedDuration: parseInt(match[2]),
+            startTime: Date.now(),
+          },
+        }
+      }
+    }
+
+    // Ignore confirmation messages
+    const ignorePrefixes = [
+      CommandPrefix.BTN,
+      CommandPrefix.SET,
+      CommandPrefix.CMD,
+      CommandPrefix.LOADCELL,
+      CommandPrefix.HOMING,
+      CommandPrefix.AUTO,
+      CommandPrefix.MANUAL,
+      CommandPrefix.WARNING,
+      CommandPrefix.ERROR,
+      CommandPrefix.EMERGENCY,
+      CommandPrefix.DEBUG,
+    ]
+
+    if (ignorePrefixes.some((prefix) => cleanLine.startsWith(prefix))) {
+      return null
+    }
+
+    return null
+  }
+
+  static getMessageType = getMessageType
+
+  static parseDelays(line: string): Record<string, number> | null {
+    // Handle DELAYS response from GET:DELAYS
+    if (line.startsWith(CommandPrefix.DELAYS)) {
+      const result: Record<string, number> = {}
+      const parts = line.substring(CommandPrefix.DELAYS.length).split(',')
+
+      parts.forEach((part) => {
+        const [key, value] = part.split(':')
+        if (key && value) {
+          const mappedKey = DelayKeyMap[key.toLowerCase()] || key.toLowerCase()
+          result[mappedKey] = parseInt(value)
+        }
+      })
+
+      return Object.keys(result).length > 0 ? result : null
+    }
+
+    return null
+  }
+
+  static parseDosing(line: string): Record<string, number> | null {
+    // Handle DOSING response from GET:DOSING
+    if (line.startsWith(CommandPrefix.DOSING)) {
+      const result: Record<string, number> = {}
+      const parts = line.substring(CommandPrefix.DOSING.length).split(',')
+
+      parts.forEach((part) => {
+        const [key, value] = part.split(':')
+        if (key && value) {
+          result[key.toLowerCase()] = parseInt(value)
+        }
+      })
+
+      return Object.keys(result).length > 0 ? result : null
+    }
+
+    return null
+  }
+}

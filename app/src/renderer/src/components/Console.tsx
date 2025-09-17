@@ -1,6 +1,6 @@
 import { Send } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
-import { SerialMessageParser } from '../utils/serialParser'
+import { SerialMessageParser } from '../serial'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { ScrollArea } from './ui/scroll-area'
@@ -110,7 +110,7 @@ export const Console: React.FC<ConsoleProps> = (props) => {
               value={command}
               onChange={(e) => setCommand(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Enter command (e.g., STATUS, GET:DELAYS, SET:DELAY:SETTLE:1500)"
+              placeholder="Ingrese comando (ej. STATUS, GET:DELAYS, SET:DELAY:SETTLE:1500)"
               className="flex-1 font-mono text-xs"
             />
             <Button onClick={handleSendCommand} size="sm" disabled={!command.trim()}>
@@ -118,7 +118,7 @@ export const Console: React.FC<ConsoleProps> = (props) => {
             </Button>
           </div>
           <div className="text-muted-foreground mt-1 text-xs">
-            Use ↑↓ for command history • Enter to send
+            Use ↑↓ para historial • Enter para enviar
           </div>
         </div>
       )}

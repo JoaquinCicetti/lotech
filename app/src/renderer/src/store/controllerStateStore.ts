@@ -1,3 +1,4 @@
+import { CapStatus, DosingStatus, ElevatorStatus, GrinderStatus, TransferStatus } from '@renderer/serial/commands'
 import { HardwareStatus, MachineState, SystemStatus } from '@renderer/types'
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
@@ -44,11 +45,11 @@ interface ControllerState {
 }
 
 const INITIAL_HARDWARE: HardwareStatus = {
-  elevator: 'DOWN',
-  dosing: 'IDLE',
-  grinder: 'OFF',
-  transfer: 'CLOSED',
-  cap: 'RETRACTED',
+  elevator: ElevatorStatus.DOWN,
+  dosing: DosingStatus.IDLE,
+  grinder: GrinderStatus.OFF,
+  transfer: TransferStatus.CLOSED,
+  cap: CapStatus.RETRACTED,
   weight: 0,
 }
 
@@ -84,7 +85,7 @@ export const useControllerStateStore = create<ControllerState>()(
         const newState: Partial<ControllerState> = {}
 
         // Initialize sensorReadings with current state
-        let updatedSensorReadings = { ...state.sensorReadings }
+        const updatedSensorReadings = { ...state.sensorReadings }
         let sensorChanged = false
 
         if (status.state !== undefined) {
@@ -110,9 +111,12 @@ export const useControllerStateStore = create<ControllerState>()(
           // Only update the sensor boolean values, not proximity or loadCell
           updatedSensorReadings.posAlta = status.sensors.posAlta ?? updatedSensorReadings.posAlta
           updatedSensorReadings.posBaja = status.sensors.posBaja ?? updatedSensorReadings.posBaja
-          updatedSensorReadings.weightStable = status.sensors.weightStable ?? updatedSensorReadings.weightStable
-          updatedSensorReadings.frascoVacio = status.sensors.frascoVacio ?? updatedSensorReadings.frascoVacio
-          updatedSensorReadings.pastillasCargadas = status.sensors.pastillasCargadas ?? updatedSensorReadings.pastillasCargadas
+          updatedSensorReadings.weightStable =
+            status.sensors.weightStable ?? updatedSensorReadings.weightStable
+          updatedSensorReadings.frascoVacio =
+            status.sensors.frascoVacio ?? updatedSensorReadings.frascoVacio
+          updatedSensorReadings.pastillasCargadas =
+            status.sensors.pastillasCargadas ?? updatedSensorReadings.pastillasCargadas
           sensorChanged = true
         }
 
