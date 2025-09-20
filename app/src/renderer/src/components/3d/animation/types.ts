@@ -1,3 +1,4 @@
+import { DosingStatus } from '@renderer/serial'
 import * as THREE from 'three'
 import { MachineState, SystemStatus } from '../../../types'
 
@@ -61,7 +62,7 @@ export interface AnimationState {
   grinderKnifeRotation: number
   capperPosition: number
   solenoidScale: number
-  lastDosingState: 'ACTIVE' | 'IDLE'
+  lastDosingState: DosingStatus
   elevatorTarget: number
   lastProximityDistance: number
   isDosingMotorMoving: boolean

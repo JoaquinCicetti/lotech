@@ -33,6 +33,19 @@ export interface DelaySettings {
 export interface DosingSettings {
   wheelDivisions: number
   lotSize: number
+  motorSpeed?: number // Radians per second for animation sync
+}
+
+export interface ElevatorSettings {
+  speed: number // Steps per second
+  minSpeed: number
+  maxSpeed: number
+}
+
+export interface HardwareTimeouts {
+  transferMax: number  // Maximum time transfer solenoid can be ON (ms)
+  capMax: number       // Maximum time cap solenoid can be ON (ms)
+  grinderMax: number   // Maximum time grinder can run (ms)
 }
 
 export enum ViewMode {
@@ -40,19 +53,31 @@ export enum ViewMode {
   MODEL = '3d',
 }
 
+export enum AppMode {
+  AUTO = 'auto',
+  MANUAL = 'manual',
+}
+
 export interface ViewSettings {
   viewMode: ViewMode
 }
 
-import type { CapStatus, DosingStatus, ElevatorStatus, GrinderStatus, TransferStatus } from '../serial/commands'
+import type {
+  CapStatus,
+  DosingStatus,
+  ElevatorStatus,
+  GrinderStatus,
+  TransferStatus,
+} from '../serial/commands'
 
 export interface HardwareStatus {
   elevator: Exclude<ElevatorStatus, ElevatorStatus.BLOCKED_TOP | ElevatorStatus.BLOCKED_BOTTOM>
-  dosing: DosingStatus.ACTIVE | DosingStatus.IDLE
+  dosing: DosingStatus // Allow all dosing statuses for proper animation
   grinder: GrinderStatus
   transfer: TransferStatus
   cap: CapStatus
   weight: number
+  dosingSteps?: number // Optional: number of steps for single pill dispense
 }
 
 export interface SystemStatus {

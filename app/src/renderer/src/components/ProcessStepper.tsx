@@ -1,19 +1,14 @@
+import { useControllerStateStore } from '@renderer/store/controllerStateStore'
+import { useSettingsStore } from '@renderer/store/settingsStore'
 import React, { useEffect, useState } from 'react'
 import { PROCESS_STATES } from '../constants/states'
-import { useAppStore } from '../store/appStore'
-import { SystemStatus } from '../types'
-import { Card } from './ui/card'
 import { Progress } from './ui/progress'
 
-interface ProcessStepperProps {
-  currentState: string
-  pillCount: number
-  stateProgress?: SystemStatus['stateProgress']
-}
+export const ProcessStepper: React.FC = () => {
+  const { machineState, pillCount, stateProgress } = useControllerStateStore()
 
-export const ProcessStepper: React.FC<ProcessStepperProps> = (props) => {
-  const { currentState, pillCount, stateProgress } = props
-  const { currentDosing } = useAppStore()
+  const { dosing } = useSettingsStore()
+
   const [progressPercent, setProgressPercent] = useState(0)
 
   useEffect(() => {
@@ -34,15 +29,15 @@ export const ProcessStepper: React.FC<ProcessStepperProps> = (props) => {
   }, [stateProgress])
 
   const getCurrentStateIndex = (): number => {
-    return PROCESS_STATES.findIndex((s) => s.id === currentState)
+    return PROCESS_STATES.findIndex((s) => s.id === machineState)
   }
 
   const currentIndex = getCurrentStateIndex()
   const progressPercentage = (currentIndex / (PROCESS_STATES.length - 1)) * 100
 
   return (
-    <Card className="bg-card mb-8 p-8">
-      <div className="relative mb-10 flex justify-between">
+    <div className="space-y-4 p-8">
+      <div className="relative flex justify-between">
         {/* Progress Line Background */}
         <div className="bg-muted absolute top-6 right-10 left-10 z-0 h-0.5" />
 
@@ -56,11 +51,11 @@ export const ProcessStepper: React.FC<ProcessStepperProps> = (props) => {
 
         {/* State Steps */}
         {PROCESS_STATES.map((state, index) => {
-          const isActive = state.id === currentState
+          const isActive = state.id === machineState
           const isPast = index < currentIndex
 
           return (
-            <div key={state.id} className="z-10 flex flex-col items-center gap-2 px-4">
+            <div key={state.id} className="z-10 flex flex-col items-center gap-2 px-2">
               <div className="relative h-12 w-12">
                 <div
                   className={`flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300 ${
@@ -117,12 +112,12 @@ export const ProcessStepper: React.FC<ProcessStepperProps> = (props) => {
       <div className="py-5 text-center">
         <div className="text-muted-foreground mb-2 text-sm">Progreso del lote</div>
         <div className="text-5xl font-light">
-          {pillCount} <span className="text-muted-foreground">/ {currentDosing.lotSize}</span>
+          {pillCount} <span className="text-muted-foreground">/ {dosing.lotSize}</span>
         </div>
         <div className="mt-4">
-          <Progress value={(pillCount / currentDosing.lotSize) * 100} className="h-1" />
+          <Progress value={(pillCount / dosing.lotSize) * 100} className="h-1" />
         </div>
       </div>
-    </Card>
+    </div>
   )
 }

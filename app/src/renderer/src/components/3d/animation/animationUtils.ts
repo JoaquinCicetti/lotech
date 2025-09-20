@@ -87,36 +87,36 @@ export function shouldAnimateElevator(params: AnimationCheckParams): boolean {
 }
 
 export function shouldAnimateDosing(params: AnimationCheckParams): boolean {
-  const { systemStatus, testMode, currentState } = params
+  const { systemStatus, currentState } = params
 
-  if (testMode && systemStatus.hardware) {
+  if (systemStatus.hardware) {
     return systemStatus.hardware.dosing === 'ACTIVE'
   }
   return currentState === MachineState.DOSIFICACION
 }
 
 export function shouldAnimateGrinder(params: AnimationCheckParams): boolean {
-  const { systemStatus, testMode, currentState } = params
+  const { systemStatus, currentState } = params
 
-  if (testMode && systemStatus.hardware) {
+  if (systemStatus.hardware) {
     return systemStatus.hardware.grinder === 'ON'
   }
   return currentState === MachineState.MOLIENDA
 }
 
 export function shouldAnimateCapper(params: AnimationCheckParams): boolean {
-  const { systemStatus, testMode, currentState } = params
+  const { systemStatus, currentState } = params
 
-  if (testMode && systemStatus.hardware) {
+  if (systemStatus.hardware) {
     return systemStatus.hardware.cap === 'PUSHED'
   }
   return currentState === MachineState.CIERRE
 }
 
 export function shouldAnimateTransfer(params: AnimationCheckParams): boolean {
-  const { systemStatus, testMode, currentState } = params
+  const { systemStatus, currentState } = params
 
-  if (testMode && systemStatus.hardware) {
+  if (systemStatus.hardware) {
     return systemStatus.hardware.transfer === 'OPEN'
   }
   return currentState === MachineState.TRASPASO

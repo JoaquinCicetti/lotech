@@ -17,10 +17,11 @@ enum State {
   ESTADO5_MOLIENDA,      // Grinding
   ESTADO6_DESCARGA,      // Elevator moving down
   ESTADO7_CIERRE,        // Cap closing
-  ESTADO8_RETIRO         // Ready for removal
+  ESTADO8_RETIRO,        // Ready for removal
+  ESTADO_ERROR           // Error state - requires manual intervention
 };
 
-// Global delay variables (extern declarations)
+// Global delay variables for state transitions (extern declarations)
 extern unsigned long t_step_settle;
 extern unsigned long t_weight_settle;
 extern unsigned long t_transfer;
@@ -29,9 +30,18 @@ extern unsigned long t_cap_push;
 extern unsigned long t_elev_up;
 extern unsigned long t_elev_down;
 
+// Global hardware protection timeouts (extern declarations)
+extern unsigned long t_transfer_max;   // Maximum time transfer solenoid can be active
+extern unsigned long t_cap_max;         // Maximum time cap solenoid can be active
+extern unsigned long t_grinder_max;     // Maximum time grinder can run
+
 // Global dosing parameters (extern declarations)
 extern int wheel_divisions;
 extern int lot_size;
+extern int dosing_speed;
+
+// Global elevator parameters (extern declarations)
+extern int elevator_speed;
 
 // Global proximity thresholds (extern declarations)
 extern uint16_t prox_threshold_up;
@@ -44,9 +54,12 @@ private:
   State previousState;
   bool stateJustChanged;
   unsigned long stateTimer;
-  
+
   // Process variables
   int pastillasCount;
+
+  // Error tracking
+  const char* currentErrorMessage;
   
 public:
   StateMachine();
@@ -79,6 +92,10 @@ public:
   void saveStateToEEPROM();
   bool recoverStateFromEEPROM();
   void setPillCount(int count) { pastillasCount = count; }
+
+  // Error handling
+  void setErrorMessage(const char* message) { currentErrorMessage = message; }
+  const char* getErrorMessage() const { return currentErrorMessage; }
 };
 
 extern StateMachine stateMachine;

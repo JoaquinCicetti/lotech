@@ -1,5 +1,6 @@
 import { useConnectionStore } from '@renderer/store/connectionStore'
-import { DelaySettings } from '@renderer/types'
+import { DelaySettings, ElevatorSettings, HardwareTimeouts } from '@renderer/types'
+import { toast } from 'sonner'
 import {
   CapCommand,
   DosingCommand,
@@ -19,6 +20,9 @@ const sendSerial = async (command: string): Promise<boolean> => {
 
   if (!isConnected || !selectedPort) {
     console.error('Not connected to serial port')
+    toast.error('No conectado al puerto serial', {
+      duration: 3000,
+    })
     return false
   }
 
@@ -30,6 +34,10 @@ const sendSerial = async (command: string): Promise<boolean> => {
     return success
   } catch (error) {
     console.error('Error al enviar comando:', error)
+    toast.error('Error al enviar comando', {
+      duration: 3000,
+      description: error instanceof Error ? error.message : 'Error desconocido',
+    })
     return false
   }
 }
@@ -49,6 +57,7 @@ export const pauseProduction = () => sendSerial(ProductionCommand.PAUSE)
 export const resumeProduction = () => sendSerial(ProductionCommand.RESUME)
 export const emergencyStop = () => sendSerial(ProductionCommand.EMERGENCY_STOP)
 export const homePosition = () => sendSerial(ProductionCommand.HOME)
+export const resetSystem = () => sendSerial(ProductionCommand.RESET)
 
 // Test mode commands - Motor controls
 export const testMotorForward = (motorId: string) => sendSerial(`MOTOR_FWD:${motorId}`)
@@ -59,6 +68,7 @@ export const testMotorStop = (motorId: string) => sendSerial(`MOTOR_STOP:${motor
 export const testDosingForward = () => sendSerial(DosingCommand.FORWARD)
 export const testDosingBackward = () => sendSerial(DosingCommand.BACKWARD)
 export const testDosingStop = () => sendSerial(DosingCommand.STOP)
+export const dispenseOnePill = () => sendSerial('DISPENSE_ONE')
 
 // Elevator motor commands
 export const testElevatorUp = () => sendSerial(ElevatorCommand.UP)
@@ -102,11 +112,20 @@ export const updateDelays = (delays: DelaySettings) => {
   return sendSerial(SettingsCommands.buildDelaysCommand(delaysObj))
 }
 
-export const updateDosing = (wheelDivisions: number, lotSize: number) =>
-  sendSerial(SettingsCommands.buildDosingCommand(wheelDivisions, lotSize))
+export const updateDosing = (wheelDivisions: number, lotSize: number, motorSpeed?: number) => {
+  // Convert rad/s to steps/s if motorSpeed provided
+  const speedSteps = motorSpeed ? Math.round(motorSpeed * 400) : undefined
+  return sendSerial(SettingsCommands.buildDosingCommand(wheelDivisions, lotSize, speedSteps))
+}
 
 export const updateProximity = (min: number, max: number) =>
   sendSerial(SettingsCommands.buildProximityCommand(min, max))
+
+export const updateElevator = (speed: number) =>
+  sendSerial(SettingsCommands.buildElevatorCommand(speed))
+
+export const updateTimeouts = (timeouts: HardwareTimeouts) =>
+  sendSerial(SettingsCommands.buildTimeoutsCommand(timeouts))
 
 // Status request
 export const requestStatus = () => sendSerial(StatusCommand.STATUS)

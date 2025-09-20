@@ -4,9 +4,9 @@ import { Dashboard3D } from './components/Dashboard3D'
 import { FloatingActionBar } from './components/FloatingActionBar'
 import { Layout } from './components/Layout'
 import { LeftSidebar } from './components/LeftSidebar'
-import { ProcessStepper } from './components/ProcessStepper'
 import { RightPanel } from './components/RightPanel'
 import { SensorCards } from './components/SensorCards'
+import { Toaster } from './components/ui/toaster'
 import { useSerialConnection } from './serial'
 import { useConnectionStore } from './store/connectionStore'
 import { useControllerStateStore } from './store/controllerStateStore'
@@ -14,8 +14,9 @@ import { useUIStore } from './store/uiStore'
 
 function App(): React.JSX.Element {
   const { ports, selectedPort, setPorts, setSelectedPort } = useConnectionStore()
-  const { machineState } = useControllerStateStore()
-  const { currentView, showSettings, setShowSettings } = useUIStore()
+  const { machineState, pillCount, currentWeight, sensorReadings, hardwareStatus } =
+    useControllerStateStore()
+  const { currentView, showSettings, setShowSettings, showConsole, setShowConsole } = useUIStore()
   const { connect, disconnect, sendCommand, isConnected, connectionError } = useSerialConnection()
 
   // Load ports on mount
@@ -43,35 +44,31 @@ function App(): React.JSX.Element {
         leftSidebar={<LeftSidebar onConnect={connect} onDisconnect={disconnect} />}
         rightSidebar={<RightPanel />}
         showLeftSidebar={showSettings}
-        showRightSidebar={true}
+        showRightSidebar={showConsole}
         onToggleLeftSidebar={() => setShowSettings(!showSettings)}
-        onToggleRightSidebar={() => setShowSettings(!showSettings)}
+        onToggleRightSidebar={() => setShowConsole(!showConsole)}
       >
         <div className="h-full items-center overflow-auto">
           {currentView === '3d' ? (
             <Dashboard3D
               systemStatus={{
                 state: machineState,
-                pillCount: useControllerStateStore.getState().pillCount,
-                weight: useControllerStateStore.getState().currentWeight,
-                sensors: useControllerStateStore.getState().sensorReadings,
-                hardware: useControllerStateStore.getState().hardwareStatus,
+                pillCount: pillCount,
+                weight: currentWeight,
+                sensors: sensorReadings,
+                hardware: hardwareStatus,
               }}
               onSendCommand={sendCommand}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center space-y-6 overflow-auto p-6">
-              <ProcessStepper
-                currentState={machineState}
-                stateProgress={useControllerStateStore.getState().stateProgress ?? undefined}
-                pillCount={useControllerStateStore.getState().pillCount}
-              />
               <SensorCards />
             </div>
           )}
         </div>
       </Layout>
       <FloatingActionBar />
+      <Toaster />
     </>
   )
 }

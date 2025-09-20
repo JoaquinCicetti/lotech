@@ -13,11 +13,15 @@ private:
   void parseDelaySettings(const char* params);
   void parseDosingSettings(const char* params);
   void parseProximitySettings(const char* params);
+  void parseElevatorSettings(const char* params);
+  void parseTimeoutSettings(const char* params);
 
   // Helper functions for sending status
   void sendStatus();
   void sendDelays();
   void sendDosing();
+  void sendElevator();
+  void sendTimeouts();
 
 public:
   CommandProcessor() : bufferIndex(0) {

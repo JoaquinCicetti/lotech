@@ -1,4 +1,5 @@
 import { useFrame } from '@react-three/fiber'
+import { DosingStatus } from '@renderer/serial'
 import { useAppStore } from '@renderer/store/appStore'
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
 import { useSettingsStore } from '@renderer/store/settingsStore'
@@ -56,7 +57,7 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
     grinderKnifeRotation: 0,
     capperPosition: 0,
     solenoidScale: 1,
-    lastDosingState: 'IDLE',
+    lastDosingState: DosingStatus.IDLE,
     elevatorTarget: 0,
     lastProximityDistance: 0,
     isDosingMotorMoving: false,
@@ -69,6 +70,7 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
     (state) => state.sensorReadings.proximityDistance
   )
   const proximity = useSettingsStore((state) => state.proximity)
+  const dosingSettings = useSettingsStore((state) => state.dosing)
 
   // Set initial elevator position on mount
   React.useEffect(() => {
@@ -161,25 +163,59 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
       }
       applyPulseEffect(pulseParams)
 
-      // In manual/test mode with hardware status
-      if (testMode && hardware) {
-        // Check if dosing motor is moving (manual control)
-        const isMotorMoving = hardware.dosing === 'ACTIVE'
+      // Calculate rotation based on wheel settings
+      const degreesPerDivision = 360 / currentDosing.wheelDivisions
+      const radiansPerDivision = (degreesPerDivision * Math.PI) / 180
 
-        if (isMotorMoving) {
-          // Continuous rotation while motor is active in manual mode
-          animationState.current.wheelRotation += delta * 2
-          animationState.current.isDosingMotorMoving = true
-        } else if (animationState.current.isDosingMotorMoving) {
-          // Motor just stopped
-          animationState.current.isDosingMotorMoving = false
+      // Handle different dosing states
+      if (hardware) {
+        // Check dosing status
+        const dosingStatus = hardware.dosing
+
+        if (dosingStatus === DosingStatus.FWD) {
+          // Continuous forward rotation
+          // Speed matches motor speed setting (default 2.0 rad/s)
+          const motorSpeed = dosingSettings.motorSpeed || 1.0
+          animationState.current.wheelRotation += delta * motorSpeed
+          animationState.current.lastDosingState = DosingStatus.FWD
+        } else if (dosingStatus === DosingStatus.BWD) {
+          // Continuous backward rotation
+          const motorSpeed = dosingSettings.motorSpeed || 1.0
+          animationState.current.wheelRotation -= delta * motorSpeed
+          animationState.current.lastDosingState = DosingStatus.BWD
+        } else if (dosingStatus === DosingStatus.STEP || dosingStatus === DosingStatus.ONE_PILL) {
+          // Single step rotation for one pill
+          if (
+            animationState.current.lastDosingState !== DosingStatus.STEP &&
+            animationState.current.lastDosingState !== DosingStatus.ONE_PILL
+          ) {
+            // New pill dispense - set target
+            animationState.current.wheelTargetRotation =
+              animationState.current.wheelRotation + radiansPerDivision
+            animationState.current.lastDosingState = dosingStatus
+          }
+
+          // Smoothly rotate to target
+          if (
+            Math.abs(
+              animationState.current.wheelRotation - animationState.current.wheelTargetRotation
+            ) > 0.01
+          ) {
+            const lerpParams: LerpParams = {
+              current: animationState.current.wheelRotation,
+              target: animationState.current.wheelTargetRotation,
+              delta,
+              speed: 2.0, // Faster for single pill
+            }
+            animationState.current.wheelRotation = smoothLerp(lerpParams)
+          }
+        } else if (dosingStatus === DosingStatus.IDLE || dosingStatus === DosingStatus.STOPPED) {
+          // Motor stopped - maintain position
+          animationState.current.lastDosingState = DosingStatus.IDLE
         }
       } else if (currentState === MachineState.DOSIFICACION) {
-        // In automatic dosing state, rotate one step per pill
-        const degreesPerDivision = 360 / currentDosing.wheelDivisions
-        const radiansPerDivision = (degreesPerDivision * Math.PI) / 180
-
-        // Check if we need to advance to next pill position
+        // In automatic dosing state (no hardware status)
+        // Rotate one step per state entry
         const currentStep = Math.floor(animationState.current.wheelRotation / radiansPerDivision)
         if (currentStep < animationState.current.dosingStepCount + 1) {
           // Rotate to next position

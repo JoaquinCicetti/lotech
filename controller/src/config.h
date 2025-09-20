@@ -20,6 +20,7 @@
 // Motor 3 - Grinder (relay control for AC motor)
 #define MOTOR3_RELAY_PIN 12
 
+
 // Solenoids
 #define SOLENOID1_PIN 10  // Transfer solenoid
 #define SOLENOID2_PIN 11  // Cap push solenoid
@@ -38,18 +39,37 @@
 #define FRASCO_SENSOR_PIN 24  // Digital pin 24 for container sensor
 #define PILLS_LOADED_SENSOR_PIN 25  // Digital pin 25 for pills loaded sensor
 
+// OLED Display - 0.96" SPI 4-wire Display
+// Uses hardware SPI on Arduino Mega:
+// MOSI = pin 51 (hardware SPI)
+// SCK = pin 52 (hardware SPI)
+// Using higher pins to avoid conflicts
+#define OLED_DC_PIN 30      // Data/Command select (was 13)
+#define OLED_CS_PIN 31      // Chip Select (was 14)
+#define OLED_RESET_PIN 32   // Reset pin (was 15)
+#define OLED_WIDTH 128
+#define OLED_HEIGHT 64
+
+// If display shows wrong colors, it might be SSD1331 (color) instead of SSD1306
+// #define USE_SSD1331  // Uncomment if you have a color OLED
+
 // =====================================================
 // TIMING PARAMETERS (milliseconds)
 // =====================================================
 
-// Default values - can be changed at runtime
+// Default values for state transitions - can be changed at runtime
 #define T_STEP_SETTLE_DEFAULT 1500      // Time for pill to settle after dosing
 #define T_WEIGHT_SETTLE_DEFAULT 2000    // Time for weight to stabilize
-#define T_TRANSFER_DEFAULT 1200         // Time for transfer solenoid action
-#define T_GRIND_DEFAULT 5000           // Grinding time
-#define T_CAP_PUSH_DEFAULT 2500         // Cap pushing time
+#define T_TRANSFER_DEFAULT 1200         // Time for transfer solenoid action (state duration)
+#define T_GRIND_DEFAULT 5000           // Grinding time (state duration)
+#define T_CAP_PUSH_DEFAULT 2500         // Cap pushing time (state duration)
 #define T_ELEV_UP_DEFAULT 4000          // Elevator up time (fallback if no sensor)
 #define T_ELEV_DOWN_DEFAULT 4000        // Elevator down time (fallback if no sensor)
+
+// Hardware protection timeouts - maximum time hardware can be active
+#define T_TRANSFER_MAX_DEFAULT 10000    // Maximum time transfer solenoid can be ON (10s)
+#define T_CAP_MAX_DEFAULT 10000          // Maximum time cap solenoid can be ON (10s)
+#define T_GRINDER_MAX_DEFAULT 30000      // Maximum time grinder can run continuously (30s)
 
 // Keep old names for backward compatibility
 #define T_STEP_SETTLE t_step_settle
@@ -80,14 +100,21 @@
 // MOTOR PARAMETERS
 // =====================================================
 
-#define STEPS_PER_REVOLUTION 200
-#define MICROSTEPS 2
-#define ELEVATOR_SPEED 800
-#define DOSING_SPEED 500
-#define ELEVATOR_MAX_SPEED 2000
-#define DOSING_MAX_SPEED 1000
-#define ELEVATOR_ACCELERATION 500
-#define DOSING_ACCELERATION 400
+// Standard stepper has 200 steps, but with microstepping we get more precision
+// Common microstep settings: 1, 2, 4, 8, 16
+// 200 * 8 = 1600 steps per revolution (typical for 1/8 microstepping)
+#define STEPS_PER_REVOLUTION 1600  // Adjust based on your driver microstepping
+#define MICROSTEPS 8  // Must match your driver MS1/MS2 pin settings
+#define ELEVATOR_SPEED_DEFAULT 800   // Default elevator speed (steps per second)
+#define DOSING_SPEED_DEFAULT 800     // Default steps per second for dosing
+#define ELEVATOR_MAX_SPEED 2000      // Maximum elevator speed (steps per second)
+#define DOSING_MAX_SPEED 2000        // Maximum steps per second
+#define ELEVATOR_MIN_SPEED 100       // Minimum elevator speed (steps per second)
+#define ELEVATOR_ACCELERATION 500    // Steps per second^2
+#define DOSING_ACCELERATION 800      // Steps per second^2
+
+// Keep old names for backward compatibility but make them variables
+#define DOSING_SPEED dosing_speed
 
 // =====================================================
 // PROXIMITY SENSOR PARAMETERS

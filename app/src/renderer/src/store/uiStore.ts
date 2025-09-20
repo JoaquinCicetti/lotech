@@ -1,8 +1,6 @@
 import { DEFAULT_VIEW } from '@renderer/constants/settings'
-import { ViewMode } from '@renderer/types'
+import { AppMode, ViewMode } from '@renderer/types'
 import { create } from 'zustand'
-
-type AppMode = 'manual' | 'auto'
 
 interface Notification {
   id: string
@@ -11,7 +9,7 @@ interface Notification {
   timestamp: number
 }
 
-interface UIState {
+export interface UIStore {
   currentMode: AppMode
   currentView: ViewMode
   showConsole: boolean
@@ -32,11 +30,11 @@ interface UIState {
   clearNotifications: () => void
 }
 
-export const useUIStore = create<UIState>((set) => ({
-  currentMode: 'manual',
+export const useUIStore = create<UIStore>((set) => ({
+  currentMode: AppMode.MANUAL,
   currentView: DEFAULT_VIEW.viewMode,
-  showConsole: true,
-  showSettings: false,
+  showConsole: false,
+  showSettings: true,
   activeModal: null,
   notifications: [],
 

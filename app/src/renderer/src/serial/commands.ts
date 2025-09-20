@@ -48,6 +48,7 @@ export enum ProductionCommand {
   RESUME = 'RESUME',
   EMERGENCY_STOP = 'EMERGENCY_STOP',
   HOME = 'HOME',
+  RESET = 'RESET',
 }
 
 // Dosing motor commands
@@ -93,6 +94,8 @@ export enum StatusCommand {
   STATUS = 'STATUS',
   GET_DELAYS = 'GET:DELAYS',
   GET_DOSING = 'GET:DOSING',
+  GET_ELEVATOR = 'GET:ELEVATOR',
+  GET_TIMEOUTS = 'GET:TIMEOUTS',
   SENSORS = 'SENSORS',
 }
 
@@ -112,6 +115,7 @@ export enum DosingStatus {
   FWD = 'FWD',
   BWD = 'BWD',
   STEP = 'STEP',
+  ONE_PILL = 'ONE_PILL',
   STOPPED = 'STOPPED',
   COMPLETE = 'COMPLETE',
   ACTIVE = 'ACTIVE',
@@ -170,7 +174,10 @@ export class SettingsCommands {
     return `SET_DELAYS:${delayString}`
   }
 
-  static buildDosingCommand(wheelDivisions: number, lotSize: number): string {
+  static buildDosingCommand(wheelDivisions: number, lotSize: number, motorSpeed?: number): string {
+    if (motorSpeed !== undefined) {
+      return `SET_DOSING:${wheelDivisions},${lotSize},${motorSpeed}`
+    }
     return `SET_DOSING:${wheelDivisions},${lotSize}`
   }
 
@@ -180,6 +187,14 @@ export class SettingsCommands {
 
   static buildCalibrationCommand(weight: number): string {
     return `LOADCELL_CAL:${weight}`
+  }
+
+  static buildElevatorCommand(speed: number): string {
+    return `SET_ELEVATOR:speed:${speed}`
+  }
+
+  static buildTimeoutsCommand(timeouts: { transferMax: number; capMax: number; grinderMax: number }): string {
+    return `SET_TIMEOUTS:transfer_max:${timeouts.transferMax},cap_max:${timeouts.capMax},grinder_max:${timeouts.grinderMax}`
   }
 }
 
@@ -243,6 +258,6 @@ export const DelayKeyMap: Record<string, string> = {
   transfer: 'transfer',
   grind: 'grind',
   cap: 'cap',
-  up: 'elevUp',
-  down: 'elevDown',
+  elevup: 'elevUp',
+  elevdown: 'elevDown',
 }

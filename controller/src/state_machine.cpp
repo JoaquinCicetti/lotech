@@ -1,11 +1,12 @@
 #include "state_machine.h"
 #include "hardware.h"
 #include "config.h"
+#include "serial_protocol.h"
 
 // Global instance
 StateMachine stateMachine;
 
-// Global delay variables (definitions with default values)
+// Global delay variables for state transitions (definitions with default values)
 unsigned long t_step_settle = T_STEP_SETTLE_DEFAULT;
 unsigned long t_weight_settle = T_WEIGHT_SETTLE_DEFAULT;
 unsigned long t_transfer = T_TRANSFER_DEFAULT;
@@ -14,9 +15,18 @@ unsigned long t_cap_push = T_CAP_PUSH_DEFAULT;
 unsigned long t_elev_up = T_ELEV_UP_DEFAULT;
 unsigned long t_elev_down = T_ELEV_DOWN_DEFAULT;
 
+// Global hardware protection timeouts (definitions with default values)
+unsigned long t_transfer_max = T_TRANSFER_MAX_DEFAULT;
+unsigned long t_cap_max = T_CAP_MAX_DEFAULT;
+unsigned long t_grinder_max = T_GRINDER_MAX_DEFAULT;
+
 // Global dosing parameters
 int wheel_divisions = WHEEL_DIVISIONS_DEFAULT;
 int lot_size = LOT_SIZE_DEFAULT;
+int dosing_speed = DOSING_SPEED_DEFAULT;  // Steps per second for dosing motor
+
+// Global elevator parameters
+int elevator_speed = ELEVATOR_SPEED_DEFAULT;  // Steps per second for elevator motor
 
 // Global proximity thresholds
 uint16_t prox_threshold_up = PROX_THRESHOLD_UP_DEFAULT;
@@ -28,6 +38,7 @@ StateMachine::StateMachine() {
   stateJustChanged = false;
   stateTimer = 0;
   pastillasCount = 0;
+  currentErrorMessage = nullptr;
 }
 
 void StateMachine::changeState(State newState) {
@@ -36,14 +47,19 @@ void StateMachine::changeState(State newState) {
     currentState = newState;
     stateTimer = millis();
     stateJustChanged = true;
-    
-    Serial.print("ESTADO:");
+
+    Serial.print("STATE:");
     Serial.println(getStateName(newState));
     // Removed Serial.flush() - blocking operation
-    
+
+    // Update OLED display
+    if (oledDisplay.isInitialized()) {
+      oledDisplay.showState(getStateName(newState), pastillasCount, lot_size);
+    }
+
     // Send pill count for relevant states
     if (newState == ESTADO2_DOSIFICACION || newState == ESTADO4_TRASPASO || newState == ESTADO3_PESAJE) {
-      Serial.print("PASTILLAS:");
+      Serial.print("PILLS:");
       Serial.print(pastillasCount);
       Serial.print("/");
       Serial.println(lot_size);
@@ -53,10 +69,16 @@ void StateMachine::changeState(State newState) {
     // Report expected delay for new state (for loading animation)
     unsigned long expectedDelay = getExpectedStateDelay(newState);
     if (expectedDelay > 0) {
-      Serial.print("PROGRESO:");
+      Serial.print("PROGRESS:");
       Serial.print(getStateName(newState));
       Serial.print(",");
       Serial.println(expectedDelay);
+
+      // Debug: Show actual variable values
+      if (newState == ESTADO1_ASCENSOR) {
+        Serial.print(F("DEBUG:t_elev_up="));
+        Serial.println(t_elev_up);
+      }
       // Removed Serial.flush() - blocking operation
     }
   }
@@ -90,6 +112,7 @@ const char* StateMachine::getStateName(State state) const {
     case ESTADO6_DESCARGA: return "6_DESCARGA";
     case ESTADO7_CIERRE: return "7_CIERRE";
     case ESTADO8_RETIRO: return "8_RETIRO";
+    case ESTADO_ERROR: return "ERROR";
     default: return "UNKNOWN";
   }
 }
@@ -116,14 +139,16 @@ void StateMachine::executeStateEntry() {
       if (previousState == ESTADO8_RETIRO) {
         inputs.simulateFrasco(true);  // Container empty for new cycle
         inputs.simulatePastillas(true);  // Pills loaded for new cycle
-        Serial.println("SENSORES:FRASCO_VACIO:1");
-        Serial.println("SENSORES:PASTILLAS_CARGADAS:1");
+        Serial.println("SENSORS:CONTAINER_EMPTY:1");
+        Serial.println("SENSORS:PILLS_LOADED:1");
       }
       break;
       
     case ESTADO1_ASCENSOR:
       // Start elevator going up
       elevator.moveUp();
+      // Send progress for elevator state
+      SerialProtocol::sendProgress("1_ASCENSOR", t_elev_up);
       break;
 
     case ESTADO2_DOSIFICACION:
@@ -131,23 +156,29 @@ void StateMachine::executeStateEntry() {
       dosingWheel.dispenseOne();
       Serial.print(F("DOSING:PILL_"));
       Serial.println(pastillasCount + 1);
+      // Send progress for dosing state
+      SerialProtocol::sendProgress("2_DOSIFICACION", t_step_settle);
       break;
       
     case ESTADO3_PESAJE:
       // Start weight monitoring
-      Serial.println(F("PESAJE:START"));
+      Serial.println(F("WEIGHT:START"));
       if (loadCell.isConnected()) {
         loadCell.readWeight();  // Get initial reading
       }
+      // Send progress for weighing state
+      SerialProtocol::sendProgress("3_PESAJE", t_weight_settle);
       break;
       
     case ESTADO4_TRASPASO:
       // Only activate transfer solenoid if elevator is up
       if (!elevator.isAtTop()) {
-        Serial.println("ERROR:ELEVADOR_DEBE_ESTAR_ARRIBA");
+        Serial.println("ERROR:ELEVATOR_MUST_BE_UP");
         changeState(ESTADO1_ASCENSOR);  // Go back to elevating
       } else {
         transferSolenoid.activate();
+        // Send progress for transfer state
+        SerialProtocol::sendProgress("4_TRASPASO", t_transfer);
         // Clear weight stable since pill is being removed
         // loadCell.simulateWeight(false);
         // Serial.println("SIM:WEIGHT_STABLE:OFF");
@@ -157,16 +188,22 @@ void StateMachine::executeStateEntry() {
     case ESTADO5_MOLIENDA:
       // Start grinder
       grinder.start();
+      // Send progress for grinding state
+      SerialProtocol::sendProgress("5_MOLIENDA", t_grind);
       break;
       
     case ESTADO6_DESCARGA:
       // Start elevator going down
       elevator.moveDown();
+      // Send progress for discharge state
+      SerialProtocol::sendProgress("6_DESCARGA", t_elev_down);
       break;
       
     case ESTADO7_CIERRE:
       // Activate cap solenoid
       capSolenoid.activate();
+      // Send progress for capping state
+      SerialProtocol::sendProgress("7_CIERRE", t_cap_push);
       break;
       
     case ESTADO8_RETIRO:
@@ -175,6 +212,29 @@ void StateMachine::executeStateEntry() {
       grinder.stop();
       transferSolenoid.deactivate();
       capSolenoid.deactivate();
+      break;
+
+    case ESTADO_ERROR:
+      // Stop all motors and actuators
+      elevator.stop();
+      dosingWheel.stop();
+      grinder.stop();
+      transferSolenoid.deactivate();
+      capSolenoid.deactivate();
+
+      // Show specific error message
+      if (currentErrorMessage != nullptr) {
+        Serial.print(F("ERROR:"));
+        Serial.println(currentErrorMessage);
+        if (oledDisplay.isInitialized()) {
+          oledDisplay.showError(currentErrorMessage);
+        }
+      } else {
+        Serial.println(F("ERROR:SYSTEM_IN_ERROR_STATE"));
+        if (oledDisplay.isInitialized()) {
+          oledDisplay.showError("ERROR SISTEMA");
+        }
+      }
       break;
   }
 }
@@ -207,7 +267,7 @@ void StateMachine::executeStateContinuous() {
         // Print if weight changed significantly OR every 500ms for status
         if (abs(weight - lastPrintedWeight) > WEIGHT_PRINT_THRESHOLD ||
             (now - lastPrintTime) > 500) {
-          Serial.print("PESO:");
+          Serial.print("WEIGHT:");
           Serial.print(weight, 2);
           Serial.print(" STABLE:");
           Serial.println(loadCell.isWeightStable() ? "YES" : "NO");
@@ -242,10 +302,12 @@ void StateMachine::processTransitions() {
   switch(currentState) {
     case ESTADO0_INICIO:
       // Wait for START button with all conditions met
-      if (inputs.isStartPressed() && 
-          inputs.isFrascoVacio() && 
+      if (inputs.isStartPressed() &&
+          inputs.isFrascoVacio() &&
           inputs.isPastillasCargadas()) {
         changeState(ESTADO1_ASCENSOR);
+        // Clear the start button after state change
+        inputs.simulateStart(false);
       }
       break;
       
@@ -254,26 +316,30 @@ void StateMachine::processTransitions() {
       if (elevator.isAtTop()) {
         // Elevator reached top position
         elevator.stop();  // Make sure it's stopped
+        Serial.println(F("ELEVATOR:REACHED_TOP"));
         changeState(ESTADO2_DOSIFICACION);
-      } else if (stateTimeout(t_elev_up * 2)) {
-        // Safety timeout - elevator should have reached top by now
-        Serial.println(F("WARNING:ELEVATOR_TIMEOUT"));
-        elevator.stop();
-        changeState(ESTADO2_DOSIFICACION);
+      } else if (stateTimeout(t_elev_up)) {
+        // Timeout - elevator should have reached top by now
+        Serial.println(F("ERROR:ELEVATOR_TIMEOUT_NOT_AT_TOP"));
+        elevator.stop();  // Stop motor to prevent damage
+        // Do NOT modify atTop - keep real position
+        // Go to error state since we're not at top
+        setErrorMessage("ELEVADOR NO SUBIO");
+        changeState(ESTADO_ERROR);
       }
       break;
       
     case ESTADO2_DOSIFICACION:
-      // First wait for dosing to complete
-      if (dosingWheel.isDispensing()) {
-        // Still dispensing - wait
-        return;
-      }
-
-      // Dosing complete, now wait for pill to settle
-      if (stateTimeout(T_STEP_SETTLE)) {
-        Serial.println(F("DOSING:COMPLETE_AND_SETTLED"));
-        changeState(ESTADO3_PESAJE);
+      // Check if dosing is complete
+      if (!dosingWheel.isDispensing()) {
+        // Dosing complete, now wait for pill to settle
+        if (stateTimeout(t_step_settle)) {
+          Serial.println(F("DOSING:COMPLETE_AND_SETTLED"));
+          changeState(ESTADO3_PESAJE);
+        }
+      } else {
+        // Still dispensing - reset timer so we wait AFTER dosing completes
+        stateTimer = millis();
       }
       break;
       
@@ -281,25 +347,30 @@ void StateMachine::processTransitions() {
       // Wait for weight to stabilize OR timeout - whichever comes first
       if (loadCell.isWeightStable()) {
         // Weight stabilized - proceed
-        Serial.println(F("PESO:ESTABLE"));
+        Serial.println(F("WEIGHT:STABLE"));
         changeState(ESTADO4_TRASPASO);
-      } else if (stateTimeout(T_WEIGHT_SETTLE)) {
+      } else if (stateTimeout(t_weight_settle)) {
         // Timeout - proceed anyway
-        Serial.println(F("WARNING:PESO_TIMEOUT"));
+        Serial.println(F("WARNING:WEIGHT_TIMEOUT"));
         changeState(ESTADO4_TRASPASO);
       }
       break;
       
     case ESTADO4_TRASPASO:
       // Wait for transfer time
-      if (stateTimeout(T_TRANSFER)) {
+      if (stateTimeout(t_transfer)) {
         transferSolenoid.deactivate();
         pastillasCount++;
-        
-        Serial.print("PASTILLAS:");
+
+        Serial.print("PILLS:");
         Serial.print(pastillasCount);
         Serial.print("/");
         Serial.println(lot_size);
+
+        // Update OLED display with new pill count
+        if (oledDisplay.isInitialized()) {
+          oledDisplay.showState(getStateName(currentState), pastillasCount, lot_size);
+        }
         
         if (pastillasCount < lot_size) {
           // Continue with next pill - go back to dosing
@@ -315,7 +386,7 @@ void StateMachine::processTransitions() {
       
     case ESTADO5_MOLIENDA:
       // Wait for grinding time
-      if (stateTimeout(T_GRIND)) {
+      if (stateTimeout(t_grind)) {
         grinder.stop();
         changeState(ESTADO6_DESCARGA);
       }
@@ -326,17 +397,19 @@ void StateMachine::processTransitions() {
       if (elevator.isAtBottom()) {
         elevator.stop();  // Make sure it's stopped
         changeState(ESTADO7_CIERRE);
-      } else if (stateTimeout(t_elev_down * 2)) {
-        // Safety timeout
-        Serial.println(F("WARNING:ELEVATOR_DOWN_TIMEOUT"));
-        elevator.stop();
-        changeState(ESTADO7_CIERRE);
+      } else if (stateTimeout(t_elev_down)) {
+        // Timeout - stop motor but don't proceed if not at bottom
+        Serial.println(F("ERROR:ELEVATOR_DOWN_TIMEOUT_NOT_AT_BOTTOM"));
+        elevator.stop();  // Stop motor to prevent damage
+        // Do NOT modify atBottom - keep real position
+        setErrorMessage("ELEVADOR NO BAJO");
+        changeState(ESTADO_ERROR);
       }
       break;
       
     case ESTADO7_CIERRE:
       // Wait for cap push time
-      if (stateTimeout(T_CAP_PUSH)) {
+      if (stateTimeout(t_cap_push)) {
         capSolenoid.deactivate();
         changeState(ESTADO8_RETIRO);
       }
@@ -346,8 +419,22 @@ void StateMachine::processTransitions() {
       // Wait for RESET button
       if (inputs.isResetPressed()) {
         pastillasCount = 0;
-        Serial.println("PASTILLAS:0/0");
+        Serial.println("PILLS:0/0");
         changeState(ESTADO0_INICIO);
+      }
+      break;
+
+    case ESTADO_ERROR:
+      // In error state, wait for RESET button to recover
+      if (inputs.isResetPressed()) {
+        Serial.println(F("ERROR:CLEARED_BY_USER"));
+        pastillasCount = 0;
+        currentErrorMessage = nullptr;  // Clear error message
+        changeState(ESTADO0_INICIO);
+        inputs.simulateReset(false);  // Clear reset button
+        if (oledDisplay.isInitialized()) {
+          oledDisplay.showState("0_INICIO", 0, lot_size);
+        }
       }
       break;
   }
@@ -371,12 +458,15 @@ bool StateMachine::recoverStateFromEEPROM() {
     stateJustChanged = false;
 
     Serial.println(F("RECOVERY:STATE_RESTORED"));
-    Serial.print(F("ESTADO:"));
+    Serial.print(F("STATE:"));
     Serial.println(getStateName(currentState));
-    Serial.print(F("PASTILLAS:"));
+    Serial.print(F("PILLS:"));
     Serial.print(pastillasCount);
     Serial.print(F("/"));
     Serial.println(lot_size);
+
+    // Don't send PROGRESS for recovered state since delays haven't been set yet
+    // PROGRESS will be sent when state actually changes
 
     return true;
   }

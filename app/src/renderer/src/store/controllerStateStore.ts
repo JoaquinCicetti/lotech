@@ -1,9 +1,15 @@
-import { CapStatus, DosingStatus, ElevatorStatus, GrinderStatus, TransferStatus } from '@renderer/serial/commands'
+import {
+  CapStatus,
+  DosingStatus,
+  ElevatorStatus,
+  GrinderStatus,
+  TransferStatus,
+} from '@renderer/serial/commands'
 import { HardwareStatus, MachineState, SystemStatus } from '@renderer/types'
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
 
-interface ControllerState {
+export interface ControllerStore {
   machineState: MachineState
   isRunning: boolean
   isPaused: boolean
@@ -63,7 +69,7 @@ const INITIAL_SENSORS = {
   pastillasCargadas: true,
 }
 
-export const useControllerStateStore = create<ControllerState>()(
+export const useControllerStateStore = create<ControllerStore>()(
   subscribeWithSelector((set) => ({
     machineState: MachineState.INICIO,
     isRunning: false,
@@ -82,7 +88,7 @@ export const useControllerStateStore = create<ControllerState>()(
 
     updateFromSystemStatus: (status) =>
       set((state) => {
-        const newState: Partial<ControllerState> = {}
+        const newState: Partial<ControllerStore> = {}
 
         // Initialize sensorReadings with current state
         const updatedSensorReadings = { ...state.sensorReadings }
