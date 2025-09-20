@@ -19,6 +19,18 @@ void ManualMode::init() {
 void ManualMode::setMode(OperatingMode mode) {
   currentMode = mode;
 
+  // Update OLED display
+  if (oledDisplay.isInitialized()) {
+    if (mode == MODE_MANUAL) {
+      oledDisplay.showManualMode();
+    } else {
+      // Show current state when switching to auto
+      oledDisplay.showState(stateMachine.getStateName(),
+                           stateMachine.getPillCount(),
+                           stateMachine.getLotSize());
+    }
+  }
+
   if (mode == MODE_MANUAL) {
     // Stop any automatic processes
     // Stop all hardware when switching to manual

@@ -2,6 +2,10 @@
 #include "config.h"
 #include "manual_mode.h"
 #include "state_machine.h"  // For extern variables
+#include <string.h>  // For strcmp
+#include <SPI.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 // =====================================================
 // ELEVATOR IMPLEMENTATION
@@ -11,7 +15,7 @@ Elevator::Elevator() : motor(AccelStepper::DRIVER, MOTOR1_STEP_PIN, MOTOR1_DIR_P
   movingUp = false;
   movingDown = false;
   atTop = false;
-  atBottom = true;
+  atBottom = true;  // Assume starting at bottom
   moveStartTime = 0;
   mode = MODE_REAL;
 }
@@ -27,10 +31,10 @@ void Elevator::moveUp() {
   if (!movingUp) {
     movingUp = true;
     movingDown = false;
-    motor.setSpeed(ELEVATOR_SPEED); 
+    motor.setSpeed(elevator_speed);
     moveStartTime = millis();
     Serial.println(F("ELEVATOR:UP"));
-    
+
   }
 }
 
@@ -38,10 +42,10 @@ void Elevator::moveDown() {
   if (!movingDown) {
     movingUp = false;
     movingDown = true;
-    motor.setSpeed(-ELEVATOR_SPEED); 
+    motor.setSpeed(-elevator_speed);
     moveStartTime = millis();
     Serial.println(F("ELEVATOR:DOWN"));
-    
+
   }
 }
 
@@ -61,15 +65,27 @@ void Elevator::run() {
 
     // ONLY check limits if restrictions are enabled AND enough time has passed
     if (ManualMode::hasPhysicalRestrictions()) {
-      // Check for timeout failsafe
-      if (movingUp && (millis() - moveStartTime > T_ELEV_UP)) {
-        atTop = true;
-        atBottom = false;
+      // Check for timeout failsafe - but DON'T modify position in auto mode
+      if (movingUp && (millis() - moveStartTime > t_elev_up)) {
+        // In both manual and simulation modes, set position on timeout
+        // In real auto mode, the state machine will handle timeout as error
+        if (ManualMode::isManual() || !proxSensor.isAvailable()) {
+          // Manual mode OR simulation (no prox sensor) - set position
+          atTop = true;
+          atBottom = false;
+          Serial.println(F("ELEVATOR:TIMEOUT_TOP_SIMULATED"));
+        }
         stop();
         Serial.println(F("ELEVATOR:TIMEOUT_TOP"));
-      } else if (movingDown && (millis() - moveStartTime > T_ELEV_DOWN)) {
-        atTop = false;
-        atBottom = true;
+      } else if (movingDown && (millis() - moveStartTime > t_elev_down)) {
+        // In both manual and simulation modes, set position on timeout
+        // In real auto mode, the state machine will handle timeout as error
+        if (ManualMode::isManual() || !proxSensor.isAvailable()) {
+          // Manual mode OR simulation (no prox sensor) - set position
+          atTop = false;
+          atBottom = true;
+          Serial.println(F("ELEVATOR:TIMEOUT_BOTTOM_SIMULATED"));
+        }
         stop();
         Serial.println(F("ELEVATOR:TIMEOUT_BOTTOM"));
       }
@@ -139,6 +155,7 @@ DosingWheel::DosingWheel() : motor(AccelStepper::DRIVER, MOTOR2_STEP_PIN, MOTOR2
 void DosingWheel::init() {
   motor.setMaxSpeed(DOSING_MAX_SPEED);
   motor.setAcceleration(DOSING_ACCELERATION);
+  motor.setSpeed(dosing_speed);  // Set default speed from global
   motor.setCurrentPosition(0);  // Reset position
 
   // Configure microstepping pins
@@ -159,8 +176,10 @@ void DosingWheel::dispenseOne() {
   // Only dispense if not already dispensing
   if (!dosingInProgress) {
     // Calculate steps based on current wheel divisions
-    // Use full stepping (no microstepping multiplier)
-    int stepsPerDivision = STEPS_PER_REVOLUTION / wheel_divisions;
+    // STEPS_PER_REVOLUTION is already 1600 (includes microstepping)
+    // But we need more rotation for proper pill dispensing
+    // Multiply by 2 for better rotation per division
+    int stepsPerDivision = (STEPS_PER_REVOLUTION * 2) / wheel_divisions;
     motor.move(stepsPerDivision);  // Positive for forward
     dosingInProgress = true;
     Serial.print(F("DOSING:STEPS:"));
@@ -222,7 +241,7 @@ void DosingWheel::startContinuous(bool forward) {
   // digitalWrite(MOTOR2_MS1_PIN, HIGH);  // Half stepping
   // digitalWrite(MOTOR2_MS2_PIN, LOW);   // MS1=1, MS2=0 = Half step
 
-  float speed = forward ? DOSING_SPEED : -DOSING_SPEED;
+  float speed = forward ? dosing_speed : -dosing_speed;
   motor.setSpeed(speed);
 
   Serial.print(F("DEBUG:DOSING:SPEED:"));
@@ -234,7 +253,7 @@ void DosingWheel::startContinuous(bool forward) {
 void DosingWheel::stopContinuous() {
   continuousMode = false;
   motor.stop();
-  motor.setSpeed(0);
+  // motor.setSpeed(0);
   // Set MS pins back to full stepping
   // digitalWrite(MOTOR2_MS1_PIN, LOW);
   // digitalWrite(MOTOR2_MS2_PIN, LOW);
@@ -378,18 +397,42 @@ void LoadCell::calibrate(float knownWeight) {
 
 void Grinder::init() {
   pinMode(MOTOR3_RELAY_PIN, OUTPUT);
+  // Set to OFF state based on relay polarity
   digitalWrite(MOTOR3_RELAY_PIN, LOW);
   running = false;
+  startTime = 0;
+  Serial.print(F("GRINDER:INIT_PIN_"));
+  Serial.print(MOTOR3_RELAY_PIN);
 }
 
 void Grinder::start() {
+  // Turn ON based on relay polarity
   digitalWrite(MOTOR3_RELAY_PIN, HIGH);
   running = true;
+  startTime = millis();  // Record start time
+  Serial.println(F("GRINDER:ON"));
+  Serial.print(F("GRINDER:START_PIN_STATE:"));
+  Serial.println(digitalRead(MOTOR3_RELAY_PIN));
 }
 
 void Grinder::stop() {
+  // Turn OFF based on relay polarity
   digitalWrite(MOTOR3_RELAY_PIN, LOW);
   running = false;
+  startTime = 0;  // Clear start time
+  Serial.println(F("GRINDER:OFF"));
+  Serial.print(F("GRINDER:STOP_PIN_STATE:"));
+  Serial.println(digitalRead(MOTOR3_RELAY_PIN));
+}
+
+void Grinder::run() {
+  // Check for timeout if running and restrictions are enabled
+  if (running && ManualMode::hasPhysicalRestrictions()) {
+    if (t_grinder_max > 0 && (millis() - startTime) >= t_grinder_max) {
+      Serial.println(F("GRINDER:TIMEOUT_PROTECTION"));
+      stop();  // Auto-stop on timeout
+    }
+  }
 }
 
 // isRunning() is defined inline in header
@@ -408,11 +451,49 @@ void Solenoid::init() {
 void Solenoid::activate() {
   digitalWrite(pin, HIGH);
   active = true;
+  activationTime = millis();  // Record activation time
+
+  // Report specific solenoid status for app
+  if (strcmp(name, "Transfer") == 0) {
+    Serial.println(F("TRANSFER:OPEN"));
+  } else if (strcmp(name, "Cap") == 0) {
+    Serial.println(F("CAP:PUSHED"));
+  }
 }
 
 void Solenoid::deactivate() {
   digitalWrite(pin, LOW);
   active = false;
+  activationTime = 0;  // Clear activation time
+
+  // Report specific solenoid status for app
+  if (strcmp(name, "Transfer") == 0) {
+    Serial.println(F("TRANSFER:CLOSED"));
+  } else if (strcmp(name, "Cap") == 0) {
+    Serial.println(F("CAP:RETRACTED"));
+  }
+}
+
+void Solenoid::run() {
+  // Check for timeout if active and restrictions are enabled
+  if (active && ManualMode::hasPhysicalRestrictions()) {
+    unsigned long timeout = 0;
+
+    // Determine timeout based on which solenoid this is
+    if (strcmp(name, "Transfer") == 0) {
+      timeout = t_transfer_max;  // Use hardware protection timeout
+    } else if (strcmp(name, "Cap") == 0) {
+      timeout = t_cap_max;  // Use hardware protection timeout
+    }
+
+    // Check if timeout has elapsed
+    if (timeout > 0 && (millis() - activationTime) >= timeout) {
+      Serial.print(F("SOLENOID:"));
+      Serial.print(name);
+      Serial.println(F(":TIMEOUT_PROTECTION"));
+      deactivate();  // Auto-deactivate on timeout
+    }
+  }
 }
 
 // isActive() is defined inline in header
@@ -545,6 +626,199 @@ bool InputSystem::isPastillasCargadas() const {
 }
 
 // =====================================================
+// OLED DISPLAY IMPLEMENTATION
+// =====================================================
+
+// Create display instance
+Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT,
+  &SPI, OLED_DC_PIN, OLED_RESET_PIN, OLED_CS_PIN);
+
+bool OLEDDisplay::init() {
+  // Try to initialize display but don't hang
+  initialized = false;
+
+  // Simple initialization without extra parameters
+  if(display.begin(SSD1306_SWITCHCAPVCC)) {
+    initialized = true;
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+    display.display();
+    return true;
+  }
+
+  return false;
+}
+
+void OLEDDisplay::clear() {
+  if (!initialized) return;
+  display.clearDisplay();
+  display.display();
+}
+
+void OLEDDisplay::update() {
+  if (!initialized) return;
+
+  unsigned long now = millis();
+  if (now - lastUpdate >= UPDATE_INTERVAL) {
+    display.display();
+    lastUpdate = now;
+  }
+}
+
+void OLEDDisplay::showStartup() {
+  if (!initialized) return;
+
+  display.clearDisplay();
+
+  // For dual-color display: yellow top (0-15), blue bottom (16-63)
+  // Put title in yellow zone
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(25, 0);  // Row 0 - in yellow zone
+  display.println(F("LOTECH"));
+
+  // Put subtitle in blue zone
+  display.setTextSize(1);
+  display.setCursor(20, 30);  // Row 30 - in blue zone
+  display.println(F("Sistema Iniciando"));
+  display.setCursor(30, 45);
+  display.println(F("Version 1.0"));
+
+  display.display();
+}
+
+void OLEDDisplay::showState(const char* stateName, int pillCount, int totalPills) {
+  if (!initialized) return;
+
+  display.clearDisplay();
+
+  // Use yellow zone (0-15) for important info
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 4);  // Center in yellow zone
+  display.print(F("Estado: "));
+  display.println(stateName);
+
+  // Use blue zone (16-63) for details
+  display.setCursor(0, 20);
+  display.print(F("Pastillas: "));
+  display.print(pillCount);
+  display.print(F("/"));
+  display.println(totalPills);
+
+  // Progress bar in blue zone
+  if (totalPills > 0) {
+    int percent = (pillCount * 100) / totalPills;
+    drawProgressBar(0, 35, 128, 10, percent);
+  }
+
+  // Additional info at bottom
+  display.setCursor(0, 50);
+  display.setTextSize(1);
+  if (pillCount == totalPills && totalPills > 0) {
+    display.print(F("Completado!"));
+  }
+
+  display.display();
+}
+
+void OLEDDisplay::showManualMode() {
+  if (!initialized) return;
+
+  display.clearDisplay();
+
+  // Yellow zone - mode indicator (centered)
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  // "MODO MANUAL" = 11 chars * 6 pixels = 66 pixels, center at (128-66)/2 = 31
+  display.setCursor(31, 4);
+  display.println(F("MODO MANUAL"));
+
+  // Blue zone - status (centered)
+  display.setTextSize(2);
+  // "CONTROL" = 7 chars * 12 pixels = 84 pixels, center at (128-84)/2 = 22
+  display.setCursor(22, 25);
+  display.println(F("CONTROL"));
+  // "ACTIVO" = 6 chars * 12 pixels = 72 pixels, center at (128-72)/2 = 28
+  display.setCursor(28, 45);
+  display.println(F("ACTIVO"));
+
+  display.display();
+}
+
+void OLEDDisplay::showError(const char* error) {
+  if (!initialized) return;
+
+  display.clearDisplay();
+
+  // Yellow zone (0-15) - ERROR header (centered)
+  display.setTextSize(2);
+  // "ERROR" = 5 chars * 12 pixels = 60 pixels, center at (128-60)/2 = 34
+  display.setCursor(34, 0);
+  display.println(F("ERROR"));
+
+  // Blue zone (16-63) - Error details (centered if short)
+  display.setTextSize(1);
+  int errorLen = strlen(error);
+  int errorPixels = errorLen * 6;
+  if (errorPixels < 128) {
+    display.setCursor((128 - errorPixels) / 2, 24);
+  } else {
+    display.setCursor(0, 24);
+  }
+  display.println(error);
+
+  // Instructions (centered)
+  display.setCursor(10, 40);
+  display.println(F("Presione RESET"));
+  display.setCursor(13, 50);
+  display.println(F("para continuar"));
+
+  display.display();
+}
+
+void OLEDDisplay::showWeight(float weight) {
+  if (!initialized) return;
+
+  // Update weight area only
+  display.fillRect(0, 48, 128, 16, SSD1306_BLACK);
+  display.setCursor(0, 48);
+  display.setTextSize(1);
+  display.print(F("Peso: "));
+  display.print(weight, 2);
+  display.print(F(" g"));
+}
+
+void OLEDDisplay::showProximity(uint16_t value, bool atTop, bool atBottom) {
+  if (!initialized) return;
+
+  // Update proximity area
+  display.fillRect(80, 48, 48, 16, SSD1306_BLACK);
+  display.setCursor(80, 48);
+  display.setTextSize(1);
+  if (atTop) {
+    display.print(F("TOP"));
+  } else if (atBottom) {
+    display.print(F("BTM"));
+  } else {
+    display.print(F("MID"));
+  }
+}
+
+void OLEDDisplay::drawProgressBar(int x, int y, int width, int height, int percent) {
+  if (!initialized) return;
+
+  // Draw border
+  display.drawRect(x, y, width, height, SSD1306_WHITE);
+
+  // Fill progress
+  int fillWidth = ((width - 2) * percent) / 100;
+  if (fillWidth > 0) {
+    display.fillRect(x + 1, y + 1, fillWidth, height - 2, SSD1306_WHITE);
+  }
+}
+
+// =====================================================
 // GLOBAL INSTANCES
 // =====================================================
 
@@ -556,6 +830,7 @@ Solenoid transferSolenoid(SOLENOID1_PIN, "Transfer");
 Solenoid capSolenoid(SOLENOID2_PIN, "Cap");
 ProximitySensor proxSensor;
 InputSystem inputs;
+OLEDDisplay oledDisplay;
 
 // Mode tracking (start in real mode)
 ControlMode globalMode = MODE_REAL;

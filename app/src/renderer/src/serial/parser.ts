@@ -157,16 +157,24 @@ export class SerialMessageParser {
         transfer: currentStatus.hardware?.transfer || TransferStatus.CLOSED,
         cap: currentStatus.hardware?.cap || CapStatus.RETRACTED,
         weight: currentStatus.hardware?.weight || 0,
+        dosingSteps: 0,
       }
 
-      if (
-        status === DosingStatus.FWD ||
-        status === DosingStatus.BWD ||
-        status === DosingStatus.STEP
-      ) {
-        hardware.dosing = DosingStatus.ACTIVE
-      } else if (status === DosingStatus.STOPPED || status === DosingStatus.COMPLETE) {
+      // Handle different dosing statuses
+      if (status === 'FWD') {
+        hardware.dosing = DosingStatus.FWD
+      } else if (status === 'BWD') {
+        hardware.dosing = DosingStatus.BWD
+      } else if (status === 'ONE_PILL') {
+        hardware.dosing = DosingStatus.STEP
+      } else if (status === 'STOPPED' || status === 'COMPLETE') {
         hardware.dosing = DosingStatus.IDLE
+      } else if (status.startsWith('STEPS:')) {
+        // Parse step count for animation
+        const steps = parseInt(status.substring(6))
+        hardware.dosing = DosingStatus.STEP
+        // Store steps in the hardware status for animation
+        hardware.dosingSteps = steps
       } else {
         hardware.dosing = DosingStatus.IDLE
       }
@@ -335,6 +343,53 @@ export class SerialMessageParser {
     if (line.startsWith(CommandPrefix.DOSING)) {
       const result: Record<string, number> = {}
       const parts = line.substring(CommandPrefix.DOSING.length).split(',')
+
+      parts.forEach((part) => {
+        const [key, value] = part.split(':')
+        if (key && value) {
+          result[key.toLowerCase()] = parseInt(value)
+        }
+      })
+
+      return Object.keys(result).length > 0 ? result : null
+    }
+
+    return null
+  }
+
+  static parseElevator(line: string): Record<string, number> | null {
+    // Handle ELEVATOR response from GET:ELEVATOR
+    // Format: "ELEVATOR:speed:800,min_speed:100,max_speed:2000"
+    if (line.startsWith(CommandPrefix.ELEVATOR)) {
+      const content = line.substring(CommandPrefix.ELEVATOR.length)
+
+      // Skip position updates (UP, DOWN, MOVING_UP, etc)
+      if (!content.includes(':')) {
+        return null
+      }
+
+      const result: Record<string, number> = {}
+      const parts = content.split(',')
+
+      parts.forEach((part) => {
+        const [key, value] = part.split(':')
+        if (key && value) {
+          result[key.toLowerCase()] = parseInt(value)
+        }
+      })
+
+      return Object.keys(result).length > 0 ? result : null
+    }
+
+    return null
+  }
+
+  static parseTimeouts(line: string): Record<string, number> | null {
+    // Handle TIMEOUTS response from GET:TIMEOUTS
+    // Format: "TIMEOUTS:transfer_max:10000,cap_max:10000,grinder_max:30000"
+    if (line.startsWith('TIMEOUTS:')) {
+      const result: Record<string, number> = {}
+      const parts = line.substring('TIMEOUTS:'.length).split(',')
 
       parts.forEach((part) => {
         const [key, value] = part.split(':')

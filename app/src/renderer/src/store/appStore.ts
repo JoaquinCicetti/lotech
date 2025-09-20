@@ -1,5 +1,11 @@
 import { DEFAULT_DELAYS, DEFAULT_DOSING, DEFAULT_VIEW } from '@renderer/constants/settings'
-import { CapStatus, DosingStatus, ElevatorStatus, GrinderStatus, TransferStatus } from '@renderer/serial/commands'
+import {
+  CapStatus,
+  DosingStatus,
+  ElevatorStatus,
+  GrinderStatus,
+  TransferStatus,
+} from '@renderer/serial/commands'
 import {
   DelaySettings,
   DosingSettings,
@@ -18,7 +24,7 @@ interface PendingCommand {
   timeoutMs?: number
 }
 
-interface AppState {
+export interface AppStore {
   // Connection state
   ports: SerialPortInfo[]
   selectedPort: string
@@ -93,7 +99,7 @@ const INITIAL_STATUS: SystemStatus = {
   },
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppStore>((set) => ({
   // Initial state
   ports: [],
   selectedPort: '',

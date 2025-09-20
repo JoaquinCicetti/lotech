@@ -1,5 +1,3 @@
-import { updateDelays, updateDosing, updateProximity } from '@renderer/commands/serialCommands'
-import { Button } from '@renderer/components/ui/button'
 import {
   Card,
   CardContent,
@@ -7,190 +5,382 @@ import {
   CardHeader,
   CardTitle,
 } from '@renderer/components/ui/card'
-import { Input } from '@renderer/components/ui/input'
 import { Label } from '@renderer/components/ui/label'
+import { debounce } from '@renderer/lib/utils'
+import {
+  updateDelays,
+  updateDosing,
+  updateElevator,
+  updateProximity,
+  updateTimeouts,
+} from '@renderer/serial/serialCommands'
 import { useSettingsStore } from '@renderer/store/settingsStore'
-import { Clock, Package, Ruler, Settings } from 'lucide-react'
+import {
+  DelaySettings,
+  DosingSettings,
+  ElevatorSettings,
+  HardwareTimeouts,
+  ProximitySettings,
+} from '@renderer/types'
+import { ArrowsUpFromLine, Clock, LoaderPinwheel, Shield } from 'lucide-react'
 import React from 'react'
+import { Slider } from '../ui/slider'
 
 export const SettingsPanel: React.FC = () => {
   const {
     delays,
     dosing,
     proximity,
+    elevator,
+    timeouts,
     updateDelay,
     updateDosing: updateDosingStore,
     updateProximity: updateProximityStore,
+    updateElevator: updateElevatorStore,
+    updateTimeout,
   } = useSettingsStore()
 
-  const handleDelayChange = (key: keyof typeof delays, value: string) => {
-    const numValue = parseInt(value, 10)
-    if (!isNaN(numValue) && numValue >= 0) {
-      updateDelay(key, numValue)
+  // Create debounced functions outside of useCallback
+  const sendDelaysDebounced = debounce((delays: DelaySettings) => {
+    updateDelays(delays)
+  }, 500)
+
+  const sendDosingDebounced = debounce((dosing: DosingSettings) => {
+    updateDosing(dosing.wheelDivisions, dosing.lotSize, dosing.motorSpeed)
+  }, 500)
+
+  const sendProximityDebounced = debounce((proximity: ProximitySettings) => {
+    updateProximity(proximity.minProximity, proximity.maxProximity)
+  }, 500)
+
+  const sendElevatorDebounced = debounce((speed: number) => {
+    updateElevator(speed)
+  }, 500)
+
+  const sendTimeoutsDebounced = debounce((timeouts: HardwareTimeouts) => {
+    updateTimeouts(timeouts)
+  }, 500)
+
+  const handleDelayChange = (key: keyof DelaySettings, value: number) => {
+    const newDelays = { ...delays, [key]: value }
+    updateDelay(key, value)
+    sendDelaysDebounced(newDelays)
+  }
+
+  const handleDosingChange = (key: keyof DosingSettings, value: number) => {
+    const newDosing = { ...dosing, [key]: value }
+    updateDosingStore(key, value)
+    sendDosingDebounced(newDosing)
+  }
+
+  const handleProximityChange = (key: keyof ProximitySettings, value: number) => {
+    const newProximity = { ...proximity, [key]: value }
+    updateProximityStore(key, value)
+    sendProximityDebounced(newProximity)
+  }
+
+  const handleElevatorChange = (key: keyof ElevatorSettings, value: number) => {
+    updateElevatorStore(key, value)
+    if (key === 'speed') {
+      sendElevatorDebounced(value)
     }
   }
 
-  const handleDosingChange = (key: keyof typeof dosing, value: string) => {
-    const numValue = parseInt(value, 10)
-    if (!isNaN(numValue) && numValue >= 0) {
-      updateDosingStore(key, numValue)
-    }
-  }
-
-  const handleProximityChange = (key: keyof typeof proximity, value: string) => {
-    const numValue = parseInt(value, 10)
-    if (!isNaN(numValue) && numValue >= 0) {
-      updateProximityStore(key, numValue)
-    }
-  }
-
-  const applySettings = async () => {
-    await updateDelays(delays)
-    await updateDosing(dosing.wheelDivisions, dosing.lotSize)
-    await updateProximity(proximity.minProximity, proximity.maxProximity)
+  const handleTimeoutChange = (key: keyof HardwareTimeouts, value: number) => {
+    const newTimeouts = { ...timeouts, [key]: value }
+    updateTimeout(key, value)
+    sendTimeoutsDebounced(newTimeouts)
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Delay Settings
-          </CardTitle>
-          <CardDescription>Configure timing delays in milliseconds</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="settle">Settle Time</Label>
-            <Input
-              id="settle"
-              type="number"
-              value={delays.settle}
-              onChange={(e) => handleDelayChange('settle', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="weight">Weight Time</Label>
-            <Input
-              id="weight"
-              type="number"
-              value={delays.weight}
-              onChange={(e) => handleDelayChange('weight', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="transfer">Transfer Time</Label>
-            <Input
-              id="transfer"
-              type="number"
-              value={delays.transfer}
-              onChange={(e) => handleDelayChange('transfer', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="grind">Grind Time</Label>
-            <Input
-              id="grind"
-              type="number"
-              value={delays.grind}
-              onChange={(e) => handleDelayChange('grind', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="cap">Cap Time</Label>
-            <Input
-              id="cap"
-              type="number"
-              value={delays.cap}
-              onChange={(e) => handleDelayChange('cap', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="elevUp">Elevator Up Time</Label>
-            <Input
-              id="elevUp"
-              type="number"
-              value={delays.elevUp}
-              onChange={(e) => handleDelayChange('elevUp', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="elevDown">Elevator Down Time</Label>
-            <Input
-              id="elevDown"
-              type="number"
-              value={delays.elevDown}
-              onChange={(e) => handleDelayChange('elevDown', e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">Ajustes</CardTitle>
+        <CardDescription>Configuración de parámetros del sistema</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-10">
+          {/* Delay Settings */}
+          <div className="flex-1 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-medium">Retardos (ms)</h3>
+              <Clock className="h-4 w-4" />
+            </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Dosing Settings
-          </CardTitle>
-          <CardDescription>Configure dosing parameters</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="wheelDivisions">Wheel Divisions</Label>
-            <Input
-              id="wheelDivisions"
-              type="number"
-              value={dosing.wheelDivisions}
-              onChange={(e) => handleDosingChange('wheelDivisions', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="lotSize">Lot Size</Label>
-            <Input
-              id="lotSize"
-              type="number"
-              value={dosing.lotSize}
-              onChange={(e) => handleDosingChange('lotSize', e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Label className="text-xs">Transferencia: </Label>
+                  <span className="text-sm">{delays.transfer}ms</span>
+                </div>
+                <Slider
+                  value={[delays.transfer]}
+                  onValueChange={([v]) => handleDelayChange('transfer', v)}
+                  max={5_000}
+                  step={100}
+                  className="w-full"
+                />
+              </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Ruler className="h-5 w-5" />
-            Proximity Settings
-          </CardTitle>
-          <CardDescription>Configure proximity sensor thresholds</CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="minProximity">Minimum Distance</Label>
-            <Input
-              id="minProximity"
-              type="number"
-              value={proximity.minProximity}
-              onChange={(e) => handleProximityChange('minProximity', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="maxProximity">Maximum Distance</Label>
-            <Input
-              id="maxProximity"
-              type="number"
-              value={proximity.maxProximity}
-              onChange={(e) => handleProximityChange('maxProximity', e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Label className="text-xs">Molienda: </Label>
+                  <span className="text-sm">{delays.grind}ms</span>
+                </div>
+                <Slider
+                  value={[delays.grind]}
+                  onValueChange={([v]) => handleDelayChange('grind', v)}
+                  max={5000}
+                  step={100}
+                  className="w-full"
+                />
+              </div>
 
-      <Button onClick={applySettings} className="w-full">
-        <Settings className="mr-2 h-4 w-4" />
-        Apply Settings to Controller
-      </Button>
-    </div>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Label className="text-xs">Tapado:</Label>
+                  <span className="text-sm">{delays.cap}ms</span>
+                </div>
+                <Slider
+                  value={[delays.cap]}
+                  onValueChange={([v]) => handleDelayChange('cap', v)}
+                  max={5000}
+                  step={100}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-medium">Pesaje</h3>
+              <Clock className="h-4 w-4" />
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Label className="text-xs">Tiempo límite: </Label>
+                  <span className="text-sm">{delays.weight}ms</span>
+                </div>
+                <Slider
+                  value={[delays.weight]}
+                  onValueChange={([v]) => handleDelayChange('weight', v)}
+                  max={5_000}
+                  step={100}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Elevator Settings */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-medium">Elevador</h3>
+              <ArrowsUpFromLine className="h-4 w-4" />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Velocidad:</Label>
+                <span className="text-sm">{elevator.speed} pasos/s</span>
+              </div>
+              <Slider
+                value={[elevator.speed]}
+                onValueChange={([v]) => handleElevatorChange('speed', v)}
+                min={elevator.minSpeed}
+                max={elevator.maxSpeed}
+                step={10}
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Tiempo límite de Subida:</Label>
+                <span className="text-sm">{delays.elevUp}ms</span>
+              </div>
+              <Slider
+                value={[delays.elevUp]}
+                onValueChange={([v]) => handleDelayChange('elevUp', v)}
+                max={10000}
+                step={100}
+                className="w-full"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Tiempo límite de Bajada: </Label>
+                <span className="text-sm">{delays.elevDown}ms</span>
+              </div>
+              <Slider
+                value={[delays.elevDown]}
+                onValueChange={([v]) => handleDelayChange('elevDown', v)}
+                max={10000}
+                step={100}
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Label className="text-xs">Posición inferior:</Label>
+                  <span className="text-sm">{proximity.minProximity}mm</span>
+                </div>
+                <Slider
+                  value={[proximity.minProximity]}
+                  onValueChange={([v]) => handleProximityChange('minProximity', v)}
+                  max={300}
+                  step={5}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Label className="text-xs">Posición superior:</Label>
+                  <span className="text-sm">{proximity.maxProximity}mm</span>
+                </div>
+                <Slider
+                  value={[proximity.maxProximity]}
+                  onValueChange={([v]) => handleProximityChange('maxProximity', v)}
+                  max={1024}
+                  step={5}
+                  min={proximity.minProximity}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Dosing Settings */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-medium">Dosificadora</h3>
+              <LoaderPinwheel className="h-4 w-4" />
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Label className="text-xs">Divisiones de Rueda: </Label>
+                  <span className="text-sm">{dosing.wheelDivisions}</span>
+                </div>
+                <Slider
+                  value={[dosing.wheelDivisions]}
+                  onValueChange={([v]) => handleDosingChange('wheelDivisions', v)}
+                  min={1}
+                  max={30}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Label className="text-xs">Tamaño de Lote: </Label>
+                  <span className="text-sm">{dosing.lotSize}</span>
+                </div>
+                <Slider
+                  value={[dosing.lotSize]}
+                  onValueChange={([v]) => handleDosingChange('lotSize', v)}
+                  min={1}
+                  max={100}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Label className="text-xs">Velocidad del Motor:</Label>
+                  <span className="text-sm">{dosing.motorSpeed?.toFixed(1) || '-'} rad/s</span>
+                </div>
+                <Slider
+                  value={[dosing.motorSpeed || 0]}
+                  onValueChange={([v]) => handleDosingChange('motorSpeed', v)}
+                  min={0.5}
+                  max={2}
+                  step={0.1}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Label className="text-xs">Tiempo limite: </Label>
+                  <span className="text-sm">{delays.settle}ms</span>
+                </div>
+                <Slider
+                  value={[delays.settle]}
+                  onValueChange={([v]) => handleDelayChange('settle', v)}
+                  max={5_000}
+                  step={100}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Hardware Protection Timeouts */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-medium">Protección de Hardware</h3>
+              <Shield className="h-4 w-4" />
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Label className="text-xs">Tiempo Máx. Solenoide Transfer:</Label>
+                  <span className="text-sm">{timeouts.transferMax}ms</span>
+                </div>
+                <Slider
+                  value={[timeouts.transferMax]}
+                  onValueChange={([v]) => handleTimeoutChange('transferMax', v)}
+                  min={1000}
+                  max={30000}
+                  step={500}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Label className="text-xs">Tiempo Máx. Solenoide Tapa:</Label>
+                  <span className="text-sm">{timeouts.capMax}ms</span>
+                </div>
+                <Slider
+                  value={[timeouts.capMax]}
+                  onValueChange={([v]) => handleTimeoutChange('capMax', v)}
+                  min={1000}
+                  max={30000}
+                  step={500}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <Label className="text-xs">Tiempo Máx. Molinillo:</Label>
+                  <span className="text-sm">{timeouts.grinderMax}ms</span>
+                </div>
+                <Slider
+                  value={[timeouts.grinderMax]}
+                  onValueChange={([v]) => handleTimeoutChange('grinderMax', v)}
+                  min={5000}
+                  max={60000}
+                  step={1000}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

@@ -17,11 +17,22 @@ void setup() {
   // Disable watchdog on startup (in case of reset)
   wdt_disable();
 
-  Serial.begin(9600);
+  Serial.begin(115200);
   // delay(100);  // Small delay for serial init
 
   // Initialize all hardware modules
-  Serial.println(F("Inicializando"));
+  Serial.println(F("Initializing"));
+
+  // Initialize OLED display (but don't block if it fails)
+  Serial.println(F("Trying OLED init..."));
+  if(oledDisplay.init()) {
+    Serial.println(F("OLED: Initialized"));
+    oledDisplay.showStartup();
+    // Don't delay too long
+    delay(500);  // Reduced from 2000
+  } else {
+    Serial.println(F("OLED: Init failed - continuing anyway"));
+  }
 
   // Initialize state persistence
   StatePersistence::init();
@@ -51,6 +62,18 @@ void setup() {
   // Initialize manual mode (default)
   ManualMode::init();
 
+  // Initialize EEPROM persistence
+  StatePersistence::init();
+
+  // Try to load saved settings from EEPROM
+  if (StatePersistence::loadSettings()) {
+    Serial.println(F("SETTINGS:RESTORED"));
+    // Update hardware with loaded settings
+    dosingWheel.motor.setSpeed(dosing_speed);
+  } else {
+    Serial.println(F("SETTINGS:USING_DEFAULTS"));
+  }
+
   Serial.println(F("========================================"));
   Serial.println(F("LOTECH Controller v1.0"));
 
@@ -67,8 +90,17 @@ void setup() {
   Serial.println(F("Type HELP for commands"));
   Serial.println(F("========================================"));
 
-  Serial.print(F("Estado actual: "));
+  Serial.print(F("Current state: "));
   Serial.println(stateMachine.getStateName());
+
+  // Show initial state on OLED
+  if (oledDisplay.isInitialized()) {
+    if (ManualMode::isManual()) {
+      oledDisplay.showManualMode();
+    } else {
+      oledDisplay.showState(stateMachine.getStateName(), 0, lot_size);
+    }
+  }
 }
 
 void loop() {
@@ -83,6 +115,31 @@ void loop() {
     // Manual mode - just run hardware updates, no state machine
     elevator.run();
     dosingWheel.run();
+    transferSolenoid.run();  // Check timeout for transfer solenoid
+    capSolenoid.run();      // Check timeout for cap solenoid
+    grinder.run();          // Check timeout for grinder
+
+    // Report dosing wheel status periodically while it's running
+    static unsigned long lastDosingReport = 0;
+    static bool wasDosingActive = false;
+    bool isDosingActive = dosingWheel.isDispensing() || dosingWheel.isContinuousMode();
+
+    if (isDosingActive) {
+      // Report status every 100ms while active
+      if (millis() - lastDosingReport > 100) {
+        if (dosingWheel.getDirection()) {
+          Serial.println(F("DOSING:FWD"));
+        } else {
+          Serial.println(F("DOSING:BWD"));
+        }
+        lastDosingReport = millis();
+      }
+      wasDosingActive = true;
+    } else if (wasDosingActive) {
+      // Just stopped - send stop message once
+      Serial.println(F("DOSING:STOPPED"));
+      wasDosingActive = false;
+    }
 
     // Motors respond directly to manual commands
   }
@@ -100,8 +157,11 @@ void loop() {
     stateMachine.processTransitions();
 
     // Also run hardware updates for state machine
-    // elevator.run();
-    // dosingWheel.run();
+    elevator.run();
+    dosingWheel.run();
+    transferSolenoid.run();  // Check timeout for transfer solenoid
+    capSolenoid.run();      // Check timeout for cap solenoid
+    grinder.run();          // Check timeout for grinder
   }
   
   // Send heartbeat

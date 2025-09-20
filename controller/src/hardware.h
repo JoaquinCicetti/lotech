@@ -65,6 +65,8 @@ public:
   void stop();
   void run();  // Call in loop
   bool isDispensing() const { return dosingInProgress; }
+  bool isContinuousMode() const { return continuousMode; }
+  bool getDirection() const { return motor.speed() > 0; }  // true = forward, false = backward
   void updateStepsPerDivision();  // Recalculate steps based on wheel_divisions
 
   // Manual mode continuous control
@@ -121,11 +123,13 @@ public:
 class Grinder {
 private:
   bool running;
-  
+  unsigned long startTime;  // Track when grinder started
+
 public:
   void init();
   void start();
   void stop();
+  void run();  // Check for timeout
   bool isRunning() const { return running; }
 };
 
@@ -138,12 +142,14 @@ private:
   uint8_t pin;
   const char* name;
   bool active;
-  
+  unsigned long activationTime;  // Track when solenoid was activated
+
 public:
-  Solenoid(uint8_t p, const char* n) : pin(p), name(n), active(false) {}
+  Solenoid(uint8_t p, const char* n) : pin(p), name(n), active(false), activationTime(0) {}
   void init();
   void activate();
   void deactivate();
+  void run();  // Check for timeout
   bool isActive() const { return active; }
 };
 
@@ -173,6 +179,36 @@ public:
   bool hasSignificantChange();
   bool isAvailable() const { return available; }
   uint8_t getLastRawValue() const { return lastRawValue; }
+};
+
+// =====================================================
+// OLED DISPLAY MODULE
+// =====================================================
+
+class OLEDDisplay {
+private:
+  bool initialized;
+  unsigned long lastUpdate;
+  static const unsigned long UPDATE_INTERVAL = 100; // Update every 100ms
+
+public:
+  OLEDDisplay() : initialized(false), lastUpdate(0) {}
+  bool init();
+  void update();
+
+  // Display screens
+  void showStartup();
+  void showState(const char* stateName, int pillCount, int totalPills);
+  void showManualMode();
+  void showError(const char* error);
+  void showWeight(float weight);
+  void showProximity(uint16_t value, bool atTop, bool atBottom);
+
+  // Helper methods
+  void clear();
+  void drawProgressBar(int x, int y, int width, int height, int percent);
+
+  bool isInitialized() const { return initialized; }
 };
 
 // =====================================================
@@ -228,6 +264,7 @@ extern Solenoid transferSolenoid;
 extern Solenoid capSolenoid;
 extern InputSystem inputs;
 extern ProximitySensor proxSensor;
+extern OLEDDisplay oledDisplay;
 
 // Global control mode
 extern ControlMode globalMode;

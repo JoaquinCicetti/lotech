@@ -2,6 +2,7 @@ import { useConnectionStore } from '@renderer/store/connectionStore'
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
 import { useSettingsStore } from '@renderer/store/settingsStore'
 import { useCallback, useEffect, useRef } from 'react'
+import { toast } from 'sonner'
 import { StatusCommand } from './commands'
 import { SerialMessageParser } from './parser'
 
@@ -26,7 +27,7 @@ export function useSerialConnection(): UseSerialConnectionReturn {
   } = useConnectionStore()
 
   const { updateFromSystemStatus, setError } = useControllerStateStore()
-  const { setDelays, setDosing } = useSettingsStore()
+  const { setDelays, setDosing, setElevator, setTimeouts } = useSettingsStore()
   const hasReceivedFirstMessage = useRef(false)
 
   const sendCommand = useCallback(
@@ -45,7 +46,7 @@ export function useSerialConnection(): UseSerialConnectionReturn {
   const connect = useCallback(async (): Promise<void> => {
     if (!selectedPort) return
     try {
-      const success = await window.serial.open({ path: selectedPort, baudRate: 9600 })
+      const success = await window.serial.open({ path: selectedPort, baudRate: 115200 })
       setConnected(success)
       setConnectionError(null)
       setLastMessageTime(Date.now())
@@ -82,6 +83,58 @@ export function useSerialConnection(): UseSerialConnectionReturn {
       setConnectionError(null)
       addSerialData(line)
 
+      // Show toasts for errors, warnings, and blocked messages
+      if (line.includes('ERROR:')) {
+        // Clean up the error message, removing encoding issues
+        const errorMessage = line
+          .replace('ERROR:', '')
+          .replace(/[^\x20-\x7E]/g, '') // Remove non-ASCII characters
+          .trim()
+
+        // Only show toast if we have a meaningful message
+        if (errorMessage && errorMessage.length > 0) {
+          toast.error(errorMessage, {
+            duration: 5000,
+            description: 'Error del controlador',
+          })
+        }
+      } else if (line.includes('BLOCKED:')) {
+        const blockedMessage = line
+          .replace('BLOCKED:', '')
+          .replace(/[^\x20-\x7E]/g, '')
+          .trim()
+
+        if (blockedMessage && blockedMessage.length > 0) {
+          toast.warning(blockedMessage, {
+            duration: 4000,
+            description: 'Acción bloqueada',
+          })
+        }
+      } else if (line.includes('WARNING:')) {
+        const warningMessage = line
+          .replace('WARNING:', '')
+          .replace(/[^\x20-\x7E]/g, '')
+          .trim()
+
+        if (warningMessage && warningMessage.length > 0) {
+          toast.warning(warningMessage, {
+            duration: 4000,
+            description: 'Advertencia',
+          })
+        }
+      } else if (line.includes('ALERT:')) {
+        const alertMessage = line
+          .replace('ALERT:', '')
+          .replace(/[^\x20-\x7E]/g, '')
+          .trim()
+
+        if (alertMessage && alertMessage.length > 0) {
+          toast.warning(alertMessage, {
+            duration: 4000,
+          })
+        }
+      }
+
       // On first message from controller, request settings
       if (!hasReceivedFirstMessage.current && line.trim().length > 0) {
         hasReceivedFirstMessage.current = true
@@ -92,6 +145,12 @@ export function useSerialConnection(): UseSerialConnectionReturn {
             await window.serial.write({ path: selectedPort, data: StatusCommand.GET_DELAYS + '\n' })
             setTimeout(() => {
               window.serial.write({ path: selectedPort, data: StatusCommand.GET_DOSING + '\n' })
+              setTimeout(() => {
+                window.serial.write({ path: selectedPort, data: StatusCommand.GET_ELEVATOR + '\n' })
+                setTimeout(() => {
+                  window.serial.write({ path: selectedPort, data: StatusCommand.GET_TIMEOUTS + '\n' })
+                }, 300)
+              }, 200)
             }, 100)
           }
         }, 200)
@@ -100,14 +159,16 @@ export function useSerialConnection(): UseSerialConnectionReturn {
       // Parse delays
       const delays = SerialMessageParser.parseDelays(line)
       if (delays) {
+        // Only update values that were actually received
+        const currentDelays = useSettingsStore.getState().delays
         const newDelays = {
-          settle: delays.settle ?? 0,
-          weight: delays.weight ?? 0,
-          transfer: delays.transfer ?? 0,
-          grind: delays.grind ?? 0,
-          cap: delays.cap ?? 0,
-          elevUp: delays.elevup ?? delays.up ?? 0,
-          elevDown: delays.elevdown ?? delays.down ?? 0,
+          settle: delays.settle ?? currentDelays.settle,
+          weight: delays.weight ?? currentDelays.weight,
+          transfer: delays.transfer ?? currentDelays.transfer,
+          grind: delays.grind ?? currentDelays.grind,
+          cap: delays.cap ?? currentDelays.cap,
+          elevUp: delays.elevUp ?? currentDelays.elevUp,  // Now properly mapped to camelCase
+          elevDown: delays.elevDown ?? currentDelays.elevDown,  // Now properly mapped to camelCase
         }
         setDelays(newDelays)
         return
@@ -116,11 +177,42 @@ export function useSerialConnection(): UseSerialConnectionReturn {
       // Parse dosing
       const dosing = SerialMessageParser.parseDosing(line)
       if (dosing) {
+        // Only update if we got valid values, don't overwrite with 0
+        const currentDosing = useSettingsStore.getState().dosing
         const newDosing = {
-          wheelDivisions: dosing.divisions ?? 0,
-          lotSize: dosing.lot_size ?? 0,
+          wheelDivisions: dosing.divisions ?? currentDosing.wheelDivisions,
+          lotSize: dosing.lot_size ?? currentDosing.lotSize,
+          motorSpeed: dosing.motor_speed ? dosing.motor_speed / 400 : currentDosing.motorSpeed,  // Convert steps/sec to rad/sec (approx)
         }
         setDosing(newDosing)
+        return
+      }
+
+      // Parse elevator settings
+      const elevator = SerialMessageParser.parseElevator(line)
+      if (elevator) {
+        // Only update if we got valid values
+        const currentElevator = useSettingsStore.getState().elevator
+        const newElevator = {
+          speed: elevator.speed ?? currentElevator.speed,
+          minSpeed: elevator.min_speed ?? currentElevator.minSpeed,
+          maxSpeed: elevator.max_speed ?? currentElevator.maxSpeed,
+        }
+        setElevator(newElevator)
+        return
+      }
+
+      // Parse timeout settings
+      const timeouts = SerialMessageParser.parseTimeouts(line)
+      if (timeouts) {
+        // Only update if we got valid values
+        const currentTimeouts = useSettingsStore.getState().timeouts
+        const newTimeouts = {
+          transferMax: timeouts.transfer_max ?? currentTimeouts.transferMax,
+          capMax: timeouts.cap_max ?? currentTimeouts.capMax,
+          grinderMax: timeouts.grinder_max ?? currentTimeouts.grinderMax,
+        }
+        setTimeouts(newTimeouts)
         return
       }
 
@@ -148,6 +240,10 @@ export function useSerialConnection(): UseSerialConnectionReturn {
       setConnectionError(error)
       setError(error)
       addSerialData(`ERROR: ${error}`)
+      toast.error(error, {
+        duration: 5000,
+        description: 'Error de comunicación serial',
+      })
     }
 
     const removeDataListener = window.serial.onData(handleData)
@@ -175,6 +271,8 @@ export function useSerialConnection(): UseSerialConnectionReturn {
     addSerialData,
     setDelays,
     setDosing,
+    setElevator,
+    setTimeouts,
     updateFromSystemStatus,
     setError,
   ])

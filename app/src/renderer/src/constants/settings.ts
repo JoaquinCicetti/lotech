@@ -1,6 +1,8 @@
 import {
   DelaySettings,
   DosingSettings,
+  ElevatorSettings,
+  HardwareTimeouts,
   ProximitySettings,
   ViewMode,
   ViewSettings,
@@ -19,11 +21,24 @@ export const DEFAULT_DELAYS: DelaySettings = {
 export const DEFAULT_DOSING: DosingSettings = {
   wheelDivisions: 20,
   lotSize: 10,
+  motorSpeed: 2.0,  // Default 2 radians per second
 }
 
 export const DEFAULT_PROXIMITY: ProximitySettings = {
   minProximity: 10,
   maxProximity: 100,
+}
+
+export const DEFAULT_ELEVATOR: ElevatorSettings = {
+  speed: 800,     // Default speed (steps per second)
+  minSpeed: 100,  // Minimum speed (steps per second)
+  maxSpeed: 2000, // Maximum speed (steps per second)
+}
+
+export const DEFAULT_TIMEOUTS: HardwareTimeouts = {
+  transferMax: 10000,  // 10 seconds maximum
+  capMax: 10000,       // 10 seconds maximum
+  grinderMax: 30000,   // 30 seconds maximum
 }
 
 export const DEFAULT_VIEW: ViewSettings = {
