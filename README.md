@@ -1,5 +1,7 @@
 # Lotech - Automatización de Procesamiento de Píldoras Farmacéuticas
 
+[![build-windows](https://github.com/JoaquinCicetti/lotech/actions/workflows/build-windows.yml/badge.svg)](https://github.com/JoaquinCicetti/lotech/actions/workflows/build-windows.yml)
+
 ## ¿Qué es Lotech?
 
 Lotech es una máquina automatizada diseñada para la industria farmacéutica para procesar lotes de píldoras de manera eficiente y precisa. El sistema automatiza todo el flujo de trabajo desde la introducción de las píldoras hasta el empaquetado final.
