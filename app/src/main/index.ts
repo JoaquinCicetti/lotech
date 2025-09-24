@@ -2,7 +2,6 @@ import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'path'
 import { SerialPort } from 'serialport'
-import icon from '../../build/icon.svg?asset'
 
 function createWindow(): void {
   // Create the browser window.
@@ -12,7 +11,7 @@ function createWindow(): void {
     show: false,
     fullscreen: true,
     autoHideMenuBar: true,
-    ...(process.platform === 'linux' ? { icon } : {}),
+    ...(process.platform === 'linux' ? { icon: join(__dirname, '../../build/icon.svg') } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

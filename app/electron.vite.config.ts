@@ -6,6 +6,16 @@ import { resolve } from 'path'
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        '@': resolve('src'),
+      },
+    },
+    build: {
+      rollupOptions: {
+        external: ['../../build/icon.svg'],
+      },
+    },
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
