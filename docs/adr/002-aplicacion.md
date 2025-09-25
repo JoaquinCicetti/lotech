@@ -1,5 +1,8 @@
 # ADR-002: Tecnología de Aplicación de Escritorio
 
+## Estado
+**Implementado**
+
 ## Contexto
 
 Necesitamos desarrollar una aplicación de escritorio multiplataforma (Mac y Windows) con las siguientes características:
@@ -15,7 +18,7 @@ Necesitamos desarrollar una aplicación de escritorio multiplataforma (Mac y Win
 
 ## Opciones Consideradas
 
-### 1. Electron + React
+### 1. Electron + React ✅
 
 - **Ventajas**: Ecosistema maduro, gran comunidad, muchas librerías disponibles, tecnología conocida
 - **Desventajas**: Bundle más grande, mayor consumo de recursos
@@ -24,7 +27,7 @@ Necesitamos desarrollar una aplicación de escritorio multiplataforma (Mac y Win
 ### 2. Tauri + React
 
 - **Ventajas**: Bundle pequeño, excelente rendimiento, APIs nativas
-- **Desventajas**: Framework nuevo, menor ecosistema, tecnología menos conocida
+- **Desventajas**: Framework nuevo, menor ecosistema, requiere Rust
 - **Comunicación Serial**: APIs nativas pero menos documentación
 
 ### 3. Next.js + Capacitor
@@ -35,75 +38,98 @@ Necesitamos desarrollar una aplicación de escritorio multiplataforma (Mac y Win
 
 ## Decisión
 
-Seleccionaremos **Tauri + React** como la tecnología principal para la aplicación de escritorio por las siguientes razones:
+**Implementamos Electron + React** como la tecnología principal para la aplicación de escritorio.
 
 ### Justificación Técnica
 
-- **Rendimiento Superior**: Backend nativo en Rust con frontend React
-- **Bundle Pequeño**: ~10MB vs ~100MB+ de Electron, facilitando distribución
-- **Seguridad Moderna**: Arquitectura de seguridad robusta con permisos granulares
-- **APIs Nativas**: Acceso directo a funcionalidades del sistema operativo
-- **Comunicación Serial**: Plugin oficial de Tauri para comunicación serial confiable
+- **Ecosistema Maduro**: Miles de aplicaciones en producción (VS Code, Discord, Slack)
+- **Comunicación Serial Probada**: El paquete `serialport` es el estándar de la industria
+- **Desarrollo Rápido**: Amplia documentación y recursos disponibles
+- **Multiplataforma Real**: Un código funciona en Windows, Mac y Linux
+- **Integración Completa**: Proceso main/renderer permite control total del hardware
 
 ### Justificación para el Proyecto
 
-- **Eficiencia Industrial**: Rendimiento óptimo para operación continua 24/7
-- **Integración PlatformIO**: Se complementa perfectamente con el desarrollo Arduino
-- **Experiencia de Usuario**: React permite interfaces modernas y responsivas
-- **Gestión con pnpm**: Package manager eficiente para el proyecto
-- **Tecnología Moderna**: Framework con roadmap de desarrollo activo
+- **Confiabilidad Industrial**: Tecnología probada en entornos de producción 24/7
+- **Integración PlatformIO**: Comunicación directa con Arduino via serialport
+- **Experiencia de Usuario**: React + shadcn/ui para interfaces modernas
+- **Gestión con pnpm**: Instalación eficiente de dependencias
+- **Soporte Comunitario**: Soluciones disponibles para cualquier problema
+
+## Stack Tecnológico Implementado
+
+- **Framework**: Electron 28+
+- **Build Tool**: electron-vite
+- **Package Manager**: pnpm
+- **Frontend**: React 18 con TypeScript
+- **UI Library**: shadcn/ui con Tailwind CSS
+- **Estado**: Zustand
+- **Comunicación Serial**: serialport 12.0.0
+- **Base de Datos**: SQLite con better-sqlite3
+- **Bundler**: electron-builder para distribución
+
+## Implementación Actual
+
+### Estructura del Proyecto
+```
+app/
+├── src/
+│   ├── main/          # Proceso principal (Node.js)
+│   │   └── index.ts   # Control serial y ventanas
+│   ├── preload/       # Bridge seguro
+│   │   └── index.ts   # APIs expuestas al renderer
+│   └── renderer/      # UI React
+│       ├── App.tsx
+│       └── components/
+```
+
+### Comunicación Serial Implementada
+- Puerto serial manejado en proceso main
+- Comunicación via IPC con el renderer
+- Auto-detección de Arduino Mega
+- Reconexión automática
+- Protocolo JSON para comandos
 
 ## Consecuencias
 
-### Positivas
+### Positivas (Confirmadas)
 
-- Aplicación rápida y eficiente con bajo consumo de recursos
-- Bundle pequeño (~10MB) facilita distribución e instalación
-- Interfaz de usuario moderna con React y librerías UI estándar
-- Comunicación serial nativa y confiable con plugin oficial
-- Mayor seguridad por diseño con sistema de permisos
-- Desarrollo activo y comunidad creciente
-- Integración perfecta con PlatformIO para Arduino
+- ✅ Desarrollo rápido y estable
+- ✅ Comunicación serial 100% funcional
+- ✅ Interfaz moderna con React y shadcn/ui
+- ✅ Distribución simple con electron-builder
+- ✅ Hot-reload funcional para desarrollo
+- ✅ Debugging completo con Chrome DevTools
 
-### Negativas
+### Negativas (Aceptadas)
 
-- Framework más nuevo, menor ecosistema comparado con Electron
-- Curva de aprendizaje para desarrolladores no familiarizados con Tauri
-- Requiere Rust instalado para desarrollo (pero no para distribución)
-- Menos recursos de troubleshooting online comparado con Electron
+- Bundle de ~100MB (aceptable para uso industrial)
+- Consumo RAM ~200MB (no crítico para PCs dedicadas)
+- Tiempo de inicio ~2-3 segundos
 
 ### Neutrales
 
-- Documentación en crecimiento pero suficiente para el proyecto
-- Stack tecnológico moderno que representa el futuro del desarrollo desktop
-- Compilación nativa puede tomar más tiempo inicial
-
-## Stack Tecnológico Completo
-
-- **Framework**: Tauri 1.5+
-- **Package Manager**: pnpm
-- **Frontend**: React 18+ con TypeScript
-- **UI Library**: Material-UI (MUI) o Ant Design
-- **Estado**: Redux Toolkit o Zustand
-- **Comunicación Serial**: Plugin oficial `@tauri-apps/plugin-serialport`
-- **Base de Datos Local**: SQLite con plugin de Tauri
-- **Build Tool**: Vite (incluido con Tauri)
-- **Bundler**: Tauri CLI
+- Actualizaciones automáticas posibles pero no implementadas
+- Firma de código necesaria para distribución comercial
 
 ## Notas de Implementación
 
-- Usar comandos Tauri para comunicación segura backend-frontend
-- Implementar manejo robusto de errores de comunicación serial
-- Configurar permisos apropiados para acceso a puertos seriales
-- Establecer protocolo JSON para comunicación con Arduino
-- Crear sistema de logging completo para troubleshooting
-- Usar plugin de store de Tauri para persistencia de configuraciones
-- Implementar auto-updater con el sistema integrado de Tauri
-- Configurar hot-reload para desarrollo eficiente
+- IPC channels implementados: `serial:list`, `serial:open`, `serial:close`, `serial:write`
+- Evento `serial:data` para datos entrantes del Arduino
+- Manejo de errores robusto con reconexión automática
+- Logs guardados en archivos para debugging
+- Configuración persistente con electron-store
+
+## Lecciones Aprendidas
+
+1. **Electron fue la decisión correcta**: La madurez del ecosistema permitió desarrollo rápido
+2. **serialport funciona perfectamente**: Sin problemas de compatibilidad
+3. **electron-vite simplifica el desarrollo**: Hot-reload y build optimizado
+4. **shadcn/ui acelera el UI**: Componentes listos para usar
 
 ## Referencias
 
-- [Documentación oficial de Tauri](https://tauri.app/)
-- [Plugin Serialport de Tauri](https://github.com/tauri-apps/plugins-workspace/tree/v1/plugins/serialport)
-- [Guías de Tauri + React](https://tauri.app/v1/guides/getting-started/setup/react/)
-- [Mejores prácticas de seguridad en Tauri](https://tauri.app/v1/references/architecture/security/)
+- [Documentación Electron](https://www.electronjs.org/)
+- [serialport npm](https://serialport.io/)
+- [electron-vite](https://electron-vite.org/)
+- [shadcn/ui](https://ui.shadcn.com/)
