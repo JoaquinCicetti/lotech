@@ -116,7 +116,7 @@ export const SettingsPanel: React.FC = () => {
                 <Slider
                   value={[delays.transfer]}
                   onValueChange={([v]) => handleDelayChange('transfer', v)}
-                  max={5_000}
+                  max={10_000}
                   step={100}
                   className="w-full"
                 />
@@ -130,7 +130,7 @@ export const SettingsPanel: React.FC = () => {
                 <Slider
                   value={[delays.grind]}
                   onValueChange={([v]) => handleDelayChange('grind', v)}
-                  max={5000}
+                  max={10_000}
                   step={100}
                   className="w-full"
                 />
@@ -144,7 +144,7 @@ export const SettingsPanel: React.FC = () => {
                 <Slider
                   value={[delays.cap]}
                   onValueChange={([v]) => handleDelayChange('cap', v)}
-                  max={5000}
+                  max={10_000}
                   step={100}
                   className="w-full"
                 />
@@ -167,7 +167,7 @@ export const SettingsPanel: React.FC = () => {
                 <Slider
                   value={[delays.weight]}
                   onValueChange={([v]) => handleDelayChange('weight', v)}
-                  max={5_000}
+                  max={10_000}
                   step={100}
                   className="w-full"
                 />
@@ -205,7 +205,7 @@ export const SettingsPanel: React.FC = () => {
               <Slider
                 value={[delays.elevUp]}
                 onValueChange={([v]) => handleDelayChange('elevUp', v)}
-                max={10000}
+                max={20_000}
                 step={100}
                 className="w-full"
               />
@@ -219,7 +219,7 @@ export const SettingsPanel: React.FC = () => {
               <Slider
                 value={[delays.elevDown]}
                 onValueChange={([v]) => handleDelayChange('elevDown', v)}
-                max={10000}
+                max={20_000}
                 step={100}
                 className="w-full"
               />
@@ -228,12 +228,12 @@ export const SettingsPanel: React.FC = () => {
               <div className="space-y-1">
                 <div className="flex justify-between">
                   <Label className="text-xs">Posición inferior:</Label>
-                  <span className="text-sm">{proximity.minProximity}mm</span>
+                  <span className="text-sm">{proximity.minProximity}</span>
                 </div>
                 <Slider
                   value={[proximity.minProximity]}
                   onValueChange={([v]) => handleProximityChange('minProximity', v)}
-                  max={300}
+                  max={500}
                   step={5}
                   className="w-full"
                 />
@@ -242,7 +242,7 @@ export const SettingsPanel: React.FC = () => {
               <div className="space-y-1">
                 <div className="flex justify-between">
                   <Label className="text-xs">Posición superior:</Label>
-                  <span className="text-sm">{proximity.maxProximity}mm</span>
+                  <span className="text-sm">{proximity.maxProximity}</span>
                 </div>
                 <Slider
                   value={[proximity.maxProximity]}
@@ -273,7 +273,7 @@ export const SettingsPanel: React.FC = () => {
                   value={[dosing.wheelDivisions]}
                   onValueChange={([v]) => handleDosingChange('wheelDivisions', v)}
                   min={1}
-                  max={30}
+                  max={64}
                   step={1}
                   className="w-full"
                 />
@@ -288,7 +288,7 @@ export const SettingsPanel: React.FC = () => {
                   value={[dosing.lotSize]}
                   onValueChange={([v]) => handleDosingChange('lotSize', v)}
                   min={1}
-                  max={100}
+                  max={64}
                   step={1}
                   className="w-full"
                 />
@@ -303,7 +303,7 @@ export const SettingsPanel: React.FC = () => {
                   value={[dosing.motorSpeed || 0]}
                   onValueChange={([v]) => handleDosingChange('motorSpeed', v)}
                   min={0.5}
-                  max={2}
+                  max={4}
                   step={0.1}
                   className="w-full"
                 />
@@ -317,7 +317,7 @@ export const SettingsPanel: React.FC = () => {
                 <Slider
                   value={[delays.settle]}
                   onValueChange={([v]) => handleDelayChange('settle', v)}
-                  max={5_000}
+                  max={10_000}
                   step={100}
                   className="w-full"
                 />
@@ -342,7 +342,7 @@ export const SettingsPanel: React.FC = () => {
                   value={[timeouts.transferMax]}
                   onValueChange={([v]) => handleTimeoutChange('transferMax', v)}
                   min={1000}
-                  max={30000}
+                  max={30_000}
                   step={500}
                   className="w-full"
                 />
@@ -357,7 +357,7 @@ export const SettingsPanel: React.FC = () => {
                   value={[timeouts.capMax]}
                   onValueChange={([v]) => handleTimeoutChange('capMax', v)}
                   min={1000}
-                  max={30000}
+                  max={30_000}
                   step={500}
                   className="w-full"
                 />
@@ -371,8 +371,8 @@ export const SettingsPanel: React.FC = () => {
                 <Slider
                   value={[timeouts.grinderMax]}
                   onValueChange={([v]) => handleTimeoutChange('grinderMax', v)}
-                  min={5000}
-                  max={60000}
+                  min={1_000}
+                  max={120_000}
                   step={1000}
                   className="w-full"
                 />

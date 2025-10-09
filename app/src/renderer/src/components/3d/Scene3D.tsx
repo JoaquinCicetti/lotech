@@ -1,13 +1,11 @@
 import { Grid, Loader } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useAppStore } from '@renderer/store/appStore'
 import React, { Suspense } from 'react'
 import { CatmullRomCurve3, MathUtils, Vector3 } from 'three'
 import { SystemStatus } from '../../types'
 import { CameraController } from './CameraController'
 import { Lighting } from './Lighting'
 import { MachineModel } from './MachineModel'
-import { StatusDisplay } from './StatusDisplay'
 
 interface Scene3DProps {
   systemStatus: SystemStatus
@@ -135,7 +133,6 @@ export const CameraPathAnimator: React.FC<CameraPathAnimatorProps> = ({
 
 export const Scene3D: React.FC<Scene3DProps> = (props) => {
   const { systemStatus } = props
-  const { isConnected, currentDosing } = useAppStore()
 
   return (
     <div className="from-background to-muted/20 relative h-[100vh] w-full overflow-hidden rounded-lg bg-gradient-to-b">
@@ -162,13 +159,6 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
             infiniteGrid
           />
 
-          <StatusDisplay
-            state={systemStatus.state}
-            pillCount={systemStatus.pillCount}
-            targetPills={currentDosing.lotSize}
-            weight={systemStatus.weight}
-            isConnected={isConnected}
-          />
           {/* Use SimpleMachine instead of MachineModel for now */}
           {/* <SimpleMachine systemStatus={systemStatus} /> */}
           <MachineModel systemStatus={systemStatus} />

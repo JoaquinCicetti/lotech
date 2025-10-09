@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@renderer/components/u
 import { Progress } from '@renderer/components/ui/progress'
 import { cn } from '@renderer/lib/utils'
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
-import { Activity, Cpu, Gauge, Move3d, Scale } from 'lucide-react'
+import { Cpu, Gauge, Move3d } from 'lucide-react'
 import React from 'react'
 
 interface SensorIndicatorProps {
@@ -25,53 +25,15 @@ const SensorIndicator: React.FC<SensorIndicatorProps> = ({ label, active }) => (
   </div>
 )
 
-interface SensorCardProps {
-  title: string
-  value: string | number
-  unit?: string
-  icon: React.ReactNode
-  className?: string
-}
-
-const SensorCard: React.FC<SensorCardProps> = ({ title, value, unit, icon, className }) => (
-  <Card className={cn('', className)}>
-    <CardHeader className="pb-2">
-      <CardTitle className="flex items-center gap-2 text-sm font-medium">
-        {icon}
-        {title}
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">
-        {value}
-        {unit && <span className="text-muted-foreground ml-1 text-base font-normal">{unit}</span>}
-      </div>
-    </CardContent>
-  </Card>
-)
-
 export const SensorCards: React.FC = () => {
   const { sensorReadings, pillCount, hardwareStatus } = useControllerStateStore()
 
   return (
     <div className="w-full space-y-4">
-      {/* Main Sensor Values */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <SensorCard
-          title="Celda de Carga"
-          value={sensorReadings.loadCell.toFixed(1)}
-          unit="g"
-          icon={<Scale className="h-4 w-4" />}
-        />
-        <SensorCard
-          title="Píldoras"
-          value={pillCount}
-          unit="pills"
-          icon={<Activity className="h-4 w-4" />}
-        />
-
-        {/* Elevator Card with visual indicator */}
-        <Card className="md:row-span-2">
+      {/* 3 Consolidated Cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {/* 1. Elevator Card with Animation */}
+        <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Move3d className="h-4 w-4" />
@@ -80,21 +42,7 @@ export const SensorCards: React.FC = () => {
           </CardHeader>
           <CardContent>
             <ElevatorIndicator />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Gauge className="h-4 w-4" />
-              Sensores
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span>Celda de Carga</span>
-                <span className="font-mono">{sensorReadings.loadCell.toFixed(1)}g</span>
-              </div>
+            <div className="mt-3 space-y-2">
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span>Proximidad</span>
@@ -104,9 +52,37 @@ export const SensorCards: React.FC = () => {
                 </div>
                 <Progress value={(sensorReadings.proximityDistance / 1024) * 100} className="h-2" />
               </div>
-              <div className="flex items-center justify-between text-xs">
-                <span>Contador de Píldoras</span>
-                <span className="font-mono">{pillCount}</span>
+              <div className="flex gap-2 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className={cn('h-1.5 w-1.5 rounded-full', sensorReadings.posAlta ? 'bg-green-500' : 'bg-gray-300')} />
+                  <span className="text-muted-foreground">Alta</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className={cn('h-1.5 w-1.5 rounded-full', sensorReadings.posBaja ? 'bg-green-500' : 'bg-gray-300')} />
+                  <span className="text-muted-foreground">Baja</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 2. Sensors Card */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Gauge className="h-4 w-4" />
+              Sensores
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Celda de Carga</span>
+                <span className="font-mono text-lg font-semibold">{sensorReadings.loadCell.toFixed(1)}g</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Contador de Píldoras</span>
+                <span className="font-mono text-lg font-semibold">{pillCount}</span>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-1">
                 <SensorIndicator label="Peso OK" active={sensorReadings.weightStable} />
@@ -116,21 +92,24 @@ export const SensorCards: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Hardware Status */}
+        {/* 3. Hardware/Outputs Card */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Cpu className="h-4 w-4" />
-              Hardware
+              Salidas (Hardware)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-1">
+            <div className="grid grid-cols-2 gap-2">
               <SensorIndicator label="Dosificación" active={hardwareStatus.dosing === 'ACTIVE'} />
               <SensorIndicator label="Molino" active={hardwareStatus.grinder === 'ON'} />
               <SensorIndicator label="Transferencia" active={hardwareStatus.transfer === 'OPEN'} />
               <SensorIndicator label="Tapado" active={hardwareStatus.cap === 'PUSHED'} />
-              <SensorIndicator label="Celda de Carga" active={true} />
+              <SensorIndicator
+                label="Elevador"
+                active={hardwareStatus.elevator !== 'IDLE'}
+              />
             </div>
           </CardContent>
         </Card>
