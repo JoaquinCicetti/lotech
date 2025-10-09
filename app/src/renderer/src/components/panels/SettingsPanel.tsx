@@ -302,9 +302,9 @@ export const SettingsPanel: React.FC = () => {
                 <Slider
                   value={[dosing.motorSpeed || 0]}
                   onValueChange={([v]) => handleDosingChange('motorSpeed', v)}
-                  min={0.5}
+                  min={0.01}
                   max={4}
-                  step={0.1}
+                  step={0.01}
                   className="w-full"
                 />
               </div>
