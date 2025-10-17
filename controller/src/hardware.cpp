@@ -287,13 +287,31 @@ LoadCell::LoadCell() : scale() {
 }
 
 void LoadCell::init() {
+  Serial.println(F("LOADCELL:INIT_START"));
+
   scale.begin(HX711_DOUT_PIN, HX711_SCK_PIN);
 
-  if (scale.is_ready()) {
-    scale.set_scale(2280.f);  // Default calibration factor
-    scale.tare();
+  // Wait MORE for proper stabilization
+  delay(1000);
+
+  // Check multiple times
+  bool ready = false;
+  for (int i = 0; i < 5; i++) {
+    if (scale.is_ready()) {
+      ready = true;
+      break;
+    }
+    delay(100);
+  }
+
+  if (ready) {
     isReady = true;
     Serial.println(F("LOADCELL:INIT_OK"));
+
+    // Do a test read to verify it works
+    long testRead = scale.read();
+    Serial.print(F("LOADCELL:TEST_READ:"));
+    Serial.println(testRead);
   } else {
     isReady = false;
     Serial.println(F("LOADCELL:INIT_FAIL"));
@@ -301,38 +319,23 @@ void LoadCell::init() {
 }
 
 float LoadCell::readWeight() {
-  // Non-blocking weight reading with filtering
+  // Simple direct reading - NO FILTERING, NO BUFFERING
   if (!isReady) {
-    return 0.0;  // Load cell not initialized
+    return 0.0;
   }
 
+  // Only read if enough time has passed (like the delay in the test)
   unsigned long now = millis();
+  if (now - lastWeightRead < 500) {
+    return currentWeight;  // Return last value
+  }
+  lastWeightRead = now;
 
-  // Read new weight every 100ms
-  if (now - lastWeightRead >= 100) {
-    if (scale.is_ready()) {
-      float newWeight = scale.get_units(3);  // Faster reading with 3 samples
-
-      // Add to circular buffer
-      weightBuffer[weightBufferIndex] = newWeight;
-      weightBufferIndex = (weightBufferIndex + 1) % WEIGHT_BUFFER_SIZE;
-
-      if (!bufferFilled && weightBufferIndex == 0) {
-        bufferFilled = true;
-      }
-
-      // Calculate moving average
-      float sum = 0;
-      int count = bufferFilled ? WEIGHT_BUFFER_SIZE : weightBufferIndex;
-      for (int i = 0; i < count; i++) {
-        sum += weightBuffer[i];
-      }
-      currentWeight = sum / count;
-
-      lastWeightRead = now;
-    } else {
-      // Load cell not ready - might have disconnected
-      isReady = false;
+  if (scale.is_ready()) {
+    // Just read raw value directly - exactly like the test that worked
+    long raw = scale.read();
+    if (raw != -1) {  // Only update if valid reading
+      currentWeight = (float)raw;
     }
   }
 

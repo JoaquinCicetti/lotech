@@ -90,8 +90,8 @@ private:
   float weightThreshold;
   unsigned long weightStableTime;
 
-  // Weight stabilization
-  static const uint8_t WEIGHT_BUFFER_SIZE = 10;
+  // Weight stabilization - reduced buffer for faster response
+  static const uint8_t WEIGHT_BUFFER_SIZE = 5;
   float weightBuffer[WEIGHT_BUFFER_SIZE];
   uint8_t weightBufferIndex;
   bool bufferFilled;

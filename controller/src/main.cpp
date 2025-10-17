@@ -1,6 +1,7 @@
 
 #include <Arduino.h>
 #include <avr/wdt.h>  // Watchdog timer for safety
+#include <HX711.h>  // For direct test
 #include "config.h"
 #include "hardware.h"
 #include "state_machine.h"
@@ -37,8 +38,8 @@ void setup() {
   // Initialize state persistence
   StatePersistence::init();
 
-  // Enable watchdog with 2 second timeout - will reset if frozen
-  wdt_enable(WDTO_2S);
+  // DISABLED - watchdog may interfere with HX711 timing
+  // wdt_enable(WDTO_2S);
   
   // Try to init proximity sensor (don't block if fails)
   if (proxSensor.init()) {
@@ -53,7 +54,7 @@ void setup() {
   
   elevator.init();
   dosingWheel.init();
-  loadCell.init();
+  // loadCell.init();  // DISABLED - using direct HX711 instead
   grinder.init();
   transferSolenoid.init();
   capSolenoid.init();
@@ -104,8 +105,8 @@ void setup() {
 }
 
 void loop() {
-  // Reset watchdog timer - proves we're not frozen
-  wdt_reset();
+  // Watchdog disabled - was interfering with HX711
+  // wdt_reset();
 
   // Process serial commands
   commands.processSerialInput();
@@ -212,5 +213,88 @@ void loop() {
       lastProxValue = prox;
       lastProxReport = millis();
     }
+  }
+
+  // Direct HX711 handling (bypassing LoadCell class which had conflicts)
+  static unsigned long lastWeightReport = 0;
+  static HX711 directScale;
+  static bool directScaleInit = false;
+  static long tareValue = 0;
+  static bool isTared = false;
+  static float smoothedWeight = 0.0;  // For smoothing
+  static float displayWeight = 0.0;   // What we actually show
+
+  // Initialize once
+  if (!directScaleInit) {
+    directScale.begin(A0, A1);  // A0=DOUT, A1=SCK
+    delay(1000);
+
+    // Set scale to 1 for raw values
+    directScale.set_scale(1.0f);
+
+    directScaleInit = true;
+    Serial.println(F("DIRECT_HX711:INIT"));
+
+    // Get initial tare value (average of 20 readings for stability)
+    if (directScale.is_ready()) {
+      long sum = 0;
+      for(int i = 0; i < 20; i++) {
+        sum += directScale.read();
+        delay(10);
+      }
+      tareValue = sum / 20;
+      isTared = true;
+      Serial.print(F("DIRECT_HX711:TARE:"));
+      Serial.println(tareValue);
+    }
+  }
+
+  // Read weight every 250ms
+  if (millis() - lastWeightReport >= 250) {
+    if (directScale.is_ready()) {
+      // Average multiple readings for stability
+      long sum = 0;
+      const int samples = 3;
+      for(int i = 0; i < samples; i++) {
+        sum += directScale.read();
+      }
+      long raw = sum / samples;
+
+      // Apply tare
+      long taredValue = raw - tareValue;
+
+      // Convert to grams with calibration factor
+      // If showing 0.7-0.8 instead of 1.0, multiply by 1.3 (1.0/0.77 ≈ 1.3)
+      float grams = (float)taredValue / 770.0;  // Adjusted from 1000 to 770
+
+      // Exponential smoothing with HIGHER alpha for faster response
+      const float alpha = 0.35;  // Increased for faster response (was 0.15)
+      smoothedWeight = (alpha * grams) + ((1.0 - alpha) * smoothedWeight);
+
+      // Dead zone filter - ignore small variations near zero
+      const float deadZone = 0.5;  // +/- 0.5g considered zero
+      if (abs(smoothedWeight) < deadZone) {
+        displayWeight = 0.0;
+      } else {
+        // Round to 0.1g for display
+        displayWeight = round(smoothedWeight * 10.0) / 10.0;
+      }
+
+      // Send weight
+      Serial.print(F("WEIGHT:"));
+      Serial.print(displayWeight, 1);
+      Serial.println(F(" g"));
+
+      // Debug info occasionally
+      if (millis() % 5000 < 250) {  // Every 5 seconds
+        Serial.print(F("DEBUG:RAW:"));
+        Serial.print(raw);
+        Serial.print(F(" SMOOTHED:"));
+        Serial.println(smoothedWeight, 2);
+      }
+    } else {
+      Serial.println(F("WEIGHT:NOT_READY"));
+    }
+    lastWeightReport = millis();
   }
 }

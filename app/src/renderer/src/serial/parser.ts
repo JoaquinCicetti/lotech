@@ -45,11 +45,29 @@ export class SerialMessageParser {
       }
     }
 
-    // WEIGHT: Weight reading
+    // WEIGHT: Weight reading (can be RAW, mg or g)
     if (cleanLine.startsWith(CommandPrefix.WEIGHT)) {
-      const weightStr = cleanLine.substring(CommandPrefix.WEIGHT.length).trim()
-      const weight = parseFloat(weightStr)
-      if (!isNaN(weight) && weight >= -100 && weight <= 10000) {
+      let weightStr = cleanLine.substring(CommandPrefix.WEIGHT.length).trim()
+
+      // Check format
+      let weight = 0
+      if (weightStr.startsWith('RAW:')) {
+        // Raw value from load cell - just display as is for debugging
+        const rawValue = parseFloat(weightStr.replace('RAW:', ''))
+        // For now, just show raw value divided by 1000 to keep it readable
+        weight = rawValue / 1000
+      } else if (weightStr.endsWith(' mg')) {
+        // Weight in milligrams - convert to grams for display
+        weight = parseFloat(weightStr.replace(' mg', '')) / 1000
+      } else if (weightStr.endsWith(' g')) {
+        // Weight in grams
+        weight = parseFloat(weightStr.replace(' g', ''))
+      } else {
+        // No unit specified, assume grams
+        weight = parseFloat(weightStr)
+      }
+
+      if (!isNaN(weight)) {
         return { weight }
       }
     }
