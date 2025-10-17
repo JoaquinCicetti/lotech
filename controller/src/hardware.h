@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <AccelStepper.h>
 #include <HX711.h>
-#include <Arduino_APDS9960.h>
+// Removed APDS9960 - using HC-SR04 instead
 #include "config.h"
 
 // =====================================================
@@ -66,7 +66,7 @@ public:
   void run();  // Call in loop
   bool isDispensing() const { return dosingInProgress; }
   bool isContinuousMode() const { return continuousMode; }
-  bool getDirection() const { return motor.speed() > 0; }  // true = forward, false = backward
+  bool getDirection() { return motor.speed() > 0; }  // true = forward, false = backward (non-const because speed() is non-const)
   void updateStepsPerDivision();  // Recalculate steps based on wheel_divisions
 
   // Manual mode continuous control
@@ -159,26 +159,29 @@ public:
 
 class ProximitySensor {
 private:
-  uint16_t lastProximity;  // Scaled value 0-1024
-  uint8_t lastRawValue;     // Raw sensor value 0-255
+  uint16_t lastProximity;  // Distance in scaled format 0-1024
+  uint16_t lastRawValue;    // Distance in mm (0-4000 for 0-400cm range)
   bool available;
-  static const uint8_t CHANGE_THRESHOLD = 5;  // Only report if raw value changes by 5+
+  static const uint8_t CHANGE_THRESHOLD = 5;  // Only report if value changes by 5+
 
   // Moving average filter for stability
   static const uint8_t FILTER_SIZE = 10;
-  uint8_t filterBuffer[FILTER_SIZE];
+  uint16_t filterBuffer[FILTER_SIZE];  // Store in mm
   uint8_t filterIndex;
   bool filterInitialized;
-  
+
 public:
   ProximitySensor() : lastProximity(0), lastRawValue(0), available(false), filterIndex(0), filterInitialized(false) {
     memset(filterBuffer, 0, sizeof(filterBuffer));
   }
   bool init();
-  uint16_t read();  // Returns scaled 0-1024
+  uint16_t read();  // Returns distance scaled 0-1024 (inverted: close=high, far=low)
   bool hasSignificantChange();
   bool isAvailable() const { return available; }
-  uint8_t getLastRawValue() const { return lastRawValue; }
+  uint16_t getLastRawValue() const { return lastRawValue; }  // Returns mm
+
+private:
+  long readDistanceMm();  // Raw HC-SR04 reading in mm
 };
 
 // =====================================================

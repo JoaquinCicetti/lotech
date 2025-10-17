@@ -508,19 +508,41 @@ void Solenoid::run() {
 // Constructor is defined inline in header
 
 bool ProximitySensor::init() {
-  // Initialize APDS9960 sensor
-  if (!APDS.begin()) {
-    Serial.println(F("PROX:INIT_FAIL - APDS9960 not found"));
-    available = false;
-    return false;
-  }
-
-  // The library automatically enables proximity when calling proximityAvailable() or readProximity()
-  // No explicit enable needed with this library version
+  // Initialize HC-SR04 pins
+  pinMode(HCSR04_TRIG_PIN, OUTPUT);
+  pinMode(HCSR04_ECHO_PIN, INPUT);
+  digitalWrite(HCSR04_TRIG_PIN, LOW);
 
   available = true;
-  Serial.println(F("PROX:INIT_OK - APDS9960 initialized"));
+  Serial.println(F("PROX:INIT_OK - HC-SR04 initialized"));
   return true;
+}
+
+long ProximitySensor::readDistanceMm() {
+  // Clear trigger
+  digitalWrite(HCSR04_TRIG_PIN, LOW);
+  delayMicroseconds(5);
+
+  // Send 10us pulse
+  digitalWrite(HCSR04_TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(HCSR04_TRIG_PIN, LOW);
+
+  // Wait for echo - 12ms timeout for ~2m max range (enough for 15cm)
+  long duration = pulseIn(HCSR04_ECHO_PIN, HIGH, 12000);
+
+  if (duration == 0) {
+    return 0; // Timeout - no object detected
+  }
+
+  // Convert to mm: duration * 0.343 / 2 = duration * 343 / 2000
+  long distance = (duration * 343L) / 2000L;
+
+  // Constrain to reasonable range (20-4000mm)
+  if (distance < 20) distance = 20;
+  if (distance > 4000) distance = 4000;
+
+  return distance;
 }
 
 uint16_t ProximitySensor::read() {
@@ -528,43 +550,48 @@ uint16_t ProximitySensor::read() {
     return 0;
   }
 
-  // Check if proximity data is available
-  if (APDS.proximityAvailable()) {
-    // Read proximity value (0-255, closer objects have higher values)
-    int proximity = APDS.readProximity();
+  // Read distance in mm
+  long distanceMm = readDistanceMm();
 
-    // Check for valid reading
-    if (proximity >= 0 && proximity <= 255) {
-      uint8_t rawValue = (uint8_t)proximity;
-
-      // Add to filter buffer
-      filterBuffer[filterIndex] = rawValue;
-      filterIndex = (filterIndex + 1) % FILTER_SIZE;
-
-      // Mark filter as initialized after first full cycle
-      if (filterIndex == 0) {
-        filterInitialized = true;
-      }
-
-      // Calculate moving average
-      uint16_t sum = 0;
-      uint8_t count = filterInitialized ? FILTER_SIZE : (filterIndex > 0 ? filterIndex : 1);
-
-      for (uint8_t i = 0; i < count; i++) {
-        sum += filterBuffer[i];
-      }
-
-      // Store filtered raw value
-      lastRawValue = sum / count;
-
-      // Scale to 0-1024 range for compatibility
-      lastProximity = (uint16_t)lastRawValue * 4;
-
-      return lastProximity;
-    }
+  if (distanceMm < 0 || distanceMm > 4000) {
+    // Invalid reading - return last known value
+    return lastProximity;
   }
 
-  // Return last known value if no new reading available
+  // Store raw distance in mm
+  lastRawValue = constrain(distanceMm, 0, 4000);
+
+  // Add to filter buffer for smoothing
+  filterBuffer[filterIndex] = distanceMm;
+  filterIndex = (filterIndex + 1) % FILTER_SIZE;
+
+  if (filterIndex == 0) {
+    filterInitialized = true;
+  }
+
+  // Calculate moving average
+  uint32_t sum = 0;
+  uint8_t count = filterInitialized ? FILTER_SIZE : (filterIndex > 0 ? filterIndex : 1);
+
+  for (uint8_t i = 0; i < count; i++) {
+    sum += filterBuffer[i];
+  }
+
+  uint16_t avgDistance = sum / count;
+
+  // INVERT and scale to 0-1024 range to match APDS behavior
+  // Close distance (e.g., 10mm) = high value (1024)
+  // Far distance (e.g., 150mm) = low value (0)
+  // Map: 10-150mm range to 1024-0 for maximum precision in 15cm range
+  if (avgDistance <= 10) {
+    lastProximity = 1024;
+  } else if (avgDistance >= 150) {
+    lastProximity = 0;
+  } else {
+    // Linear interpolation: closer = higher value
+    lastProximity = map(avgDistance, 10, 150, 1024, 0);
+  }
+
   return lastProximity;
 }
 

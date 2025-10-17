@@ -40,18 +40,20 @@ void setup() {
 
   // DISABLED - watchdog may interfere with HX711 timing
   // wdt_enable(WDTO_2S);
-  
-  // Try to init proximity sensor (don't block if fails)
+
+  // PROXIMITY SENSOR DISABLED - uncomment when stable
+  /*
   if (proxSensor.init()) {
     Serial.println(F("PROX:INIT_OK"));
-    // Send initial proximity reading
     uint16_t initialProx = proxSensor.read();
     Serial.print(F("PROX:"));
     Serial.println(initialProx);
   } else {
     Serial.println(F("PROX:INIT_FAIL"));
   }
-  
+  */
+  Serial.println(F("PROX:DISABLED"));
+
   elevator.init();
   dosingWheel.init();
   // loadCell.init();  // DISABLED - using direct HX711 instead
@@ -171,37 +173,33 @@ void loop() {
     lastHeartbeat = millis();
   }
   
-  // Update elevator position from proximity sensor (even when not moving)
+  // PROXIMITY SENSOR DISABLED - was causing motor stuttering
+  // Uncomment this block when sensor is stable
+  /*
   static unsigned long lastPositionUpdate = 0;
-  if (millis() - lastPositionUpdate > 100) { // Update every 100ms
+  if (millis() - lastPositionUpdate > 500) {
     lastPositionUpdate = millis();
-    elevator.updatePosition(); // Update internal position state
+    elevator.updatePosition();
   }
 
-  // Read and report proximity if available - but not too often!
-  if (proxSensor.isAvailable() && (millis() - lastProxReport > 250)) { // Check every 250ms for better responsiveness
+  if (proxSensor.isAvailable() && (millis() - lastProxReport > 500)) {
     uint16_t prox = proxSensor.read();
-
-    // Filter out sudden 0 values - only accept 0 if we get it consistently
     static uint8_t zeroCount = 0;
     if (prox == 0) {
       zeroCount++;
-      // Only accept 0 after 3 consecutive readings
       if (zeroCount < 3) {
-        prox = lastProxValue; // Use last valid value
+        prox = lastProxValue;
       }
     } else {
-      zeroCount = 0; // Reset counter for non-zero values
+      zeroCount = 0;
     }
 
-    // Only report if value changed significantly (by more than 5) or timeout
     int proxDiff = abs((int)prox - (int)lastProxValue);
     if (proxDiff > 5 || millis() - lastProxReport > 2000) {
       Serial.print(F("PROX:"));
       Serial.print(prox);
-      Serial.print(F(",RAW:"));
-      Serial.print(proxSensor.getLastRawValue());  // Add raw value for debugging
-      // Report actual elevator position based on internal state
+      Serial.print(F(",MM:"));
+      Serial.print(proxSensor.getLastRawValue());
       if (elevator.isAtTop()) {
         Serial.print(F(",POS:UP"));
       } else if (elevator.isAtBottom()) {
@@ -214,13 +212,13 @@ void loop() {
       lastProxReport = millis();
     }
   }
+  */
 
   // Direct HX711 handling (bypassing LoadCell class which had conflicts)
   static unsigned long lastWeightReport = 0;
   static HX711 directScale;
   static bool directScaleInit = false;
   static long tareValue = 0;
-  static bool isTared = false;
   static float smoothedWeight = 0.0;  // For smoothing
   static float displayWeight = 0.0;   // What we actually show
 
@@ -243,22 +241,16 @@ void loop() {
         delay(10);
       }
       tareValue = sum / 20;
-      isTared = true;
       Serial.print(F("DIRECT_HX711:TARE:"));
       Serial.println(tareValue);
     }
   }
 
-  // Read weight every 250ms
-  if (millis() - lastWeightReport >= 250) {
+  // Read weight every 500ms to avoid blocking motors
+  if (millis() - lastWeightReport >= 500) {
     if (directScale.is_ready()) {
-      // Average multiple readings for stability
-      long sum = 0;
-      const int samples = 3;
-      for(int i = 0; i < samples; i++) {
-        sum += directScale.read();
-      }
-      long raw = sum / samples;
+      // Single reading to avoid blocking - smoothing filter handles noise
+      long raw = directScale.read();
 
       // Apply tare
       long taredValue = raw - tareValue;
@@ -276,13 +268,13 @@ void loop() {
       if (abs(smoothedWeight) < deadZone) {
         displayWeight = 0.0;
       } else {
-        // Round to 0.1g for display
-        displayWeight = round(smoothedWeight * 10.0) / 10.0;
+        // Round to 0.001g (1mg) for display with 3 decimal precision
+        displayWeight = round(smoothedWeight * 1000.0) / 1000.0;
       }
 
-      // Send weight
+      // Send weight with 3 decimal precision
       Serial.print(F("WEIGHT:"));
-      Serial.print(displayWeight, 1);
+      Serial.print(displayWeight, 3);
       Serial.println(F(" g"));
 
       // Debug info occasionally

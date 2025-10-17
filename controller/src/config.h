@@ -29,7 +29,9 @@
 #define HX711_DOUT_PIN A0  // Data pin
 #define HX711_SCK_PIN A1   // Clock pin
 
-// Proximity sensor uses I2C (A4/SDA, A5/SCL) - no need to define pins
+// HC-SR04 Ultrasonic Sensor (replacing APDS9960)
+#define HCSR04_TRIG_PIN 26  // Trigger pin
+#define HCSR04_ECHO_PIN 27  // Echo pin
 
 // Buttons - Use pins that are not conflicting with motors
 #define START_BUTTON_PIN 22  // Digital pin 22 (safe, not used by motors)

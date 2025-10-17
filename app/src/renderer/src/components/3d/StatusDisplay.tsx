@@ -70,7 +70,7 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = (props) => {
           <div className="grid grid-cols-2 gap-2 border-t pt-2">
             <div className="space-y-1">
               <span className="text-xs text-muted-foreground">Peso</span>
-              <div className="font-mono text-sm font-semibold">{(weight ?? 0).toFixed(1)}g</div>
+              <div className="font-mono text-sm font-semibold">{(weight ?? 0).toFixed(3)}g</div>
             </div>
             <div className="space-y-1">
               <span className="text-xs text-muted-foreground">Proximidad</span>
