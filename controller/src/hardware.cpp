@@ -31,9 +31,10 @@ void Elevator::moveUp() {
   if (!movingUp) {
     movingUp = true;
     movingDown = false;
-    motor.setSpeed(elevator_speed);
+    motor.setSpeed((float)elevator_speed);
     moveStartTime = millis();
-    Serial.println(F("ELEVATOR:UP"));
+    Serial.print(F("ELEVATOR:UP - SPEED:"));
+    Serial.println(elevator_speed);
 
   }
 }
@@ -42,9 +43,10 @@ void Elevator::moveDown() {
   if (!movingDown) {
     movingUp = false;
     movingDown = true;
-    motor.setSpeed(-elevator_speed);
+    motor.setSpeed(-(float)elevator_speed);
     moveStartTime = millis();
-    Serial.println(F("ELEVATOR:DOWN"));
+    Serial.print(F("ELEVATOR:DOWN - SPEED:"));
+    Serial.println(elevator_speed);
 
   }
 }
@@ -59,36 +61,82 @@ void Elevator::stop() {
 }
 
 void Elevator::run() {
-  // Simply run the motor if moving - nothing else
+  // ALWAYS run motor first - highest priority
   if (movingUp || movingDown) {
-    motor.runSpeed();
+    // Update speed on every run - allows real-time speed adjustment
+    if (movingUp) {
+      motor.setSpeed((float)elevator_speed);
+    } else if (movingDown) {
+      motor.setSpeed(-(float)elevator_speed);
+    }
 
-    // ONLY check limits if restrictions are enabled AND enough time has passed
-    if (ManualMode::hasPhysicalRestrictions()) {
-      // Check for timeout failsafe - but DON'T modify position in auto mode
-      if (movingUp && (millis() - moveStartTime > t_elev_up)) {
-        // In both manual and simulation modes, set position on timeout
-        // In real auto mode, the state machine will handle timeout as error
-        if (ManualMode::isManual() || !proxSensor.isAvailable()) {
-          // Manual mode OR simulation (no prox sensor) - set position
-          atTop = true;
-          atBottom = false;
-          Serial.println(F("ELEVATOR:TIMEOUT_TOP_SIMULATED"));
+    // Debug: check if motor is actually running
+    static unsigned long lastDebug = 0;
+    if (millis() - lastDebug > 1000) {
+      Serial.print(F("DEBUG:MOTOR_SPEED="));
+      Serial.print(motor.speed());
+      Serial.print(F(" POS="));
+      Serial.println(motor.currentPosition());
+      lastDebug = millis();
+    }
+    motor.runSpeed();
+  }
+
+  // Position sensing logic - different for manual vs auto mode
+  if (ManualMode::isManual()) {
+    // MANUAL MODE: Update position but only block if restrictions ON + sensor available
+    if (proxSensor.isAvailable()) {
+      static unsigned long lastPosUpdate = 0;
+      if (millis() - lastPosUpdate > 200) {  // Check every 200ms
+        updatePosition();  // Updates internal atTop/atBottom flags
+
+        // Only stop at limits if restrictions are enabled
+        if (ManualMode::hasPhysicalRestrictions()) {
+          if (atTop && movingUp) {
+            stop();
+            Serial.println(F("ELEVATOR:BLOCKED_TOP"));
+          } else if (atBottom && movingDown) {
+            stop();
+            Serial.println(F("ELEVATOR:BLOCKED_BOTTOM"));
+          }
         }
-        stop();
-        Serial.println(F("ELEVATOR:TIMEOUT_TOP"));
-      } else if (movingDown && (millis() - moveStartTime > t_elev_down)) {
-        // In both manual and simulation modes, set position on timeout
-        // In real auto mode, the state machine will handle timeout as error
-        if (ManualMode::isManual() || !proxSensor.isAvailable()) {
-          // Manual mode OR simulation (no prox sensor) - set position
-          atTop = false;
-          atBottom = true;
-          Serial.println(F("ELEVATOR:TIMEOUT_BOTTOM_SIMULATED"));
-        }
-        stop();
-        Serial.println(F("ELEVATOR:TIMEOUT_BOTTOM"));
+        lastPosUpdate = millis();
       }
+    }
+    // If no sensor or restrictions OFF - elevator moves freely
+  } else {
+    // AUTO MODE: Always check position if sensor available - both moving and idle
+    // We need to know position even when stopped to detect if we reached the limit
+    if (proxSensor.isAvailable()) {
+      static unsigned long lastPosUpdate = 0;
+      if (millis() - lastPosUpdate > 100) {  // Check every 100ms in auto mode
+        updatePosition();
+        lastPosUpdate = millis();
+      }
+    }
+  }
+
+  // Timeout failsafe - always active if restrictions enabled
+  if ((movingUp || movingDown) && ManualMode::hasPhysicalRestrictions()) {
+    unsigned long elapsed = millis() - moveStartTime;
+    if (movingUp && (elapsed > t_elev_up)) {
+      Serial.print(F("DEBUG:TIMEOUT_CHECK - elapsed="));
+      Serial.print(elapsed);
+      Serial.print(F(" t_elev_up="));
+      Serial.println(t_elev_up);
+      stop();
+      atTop = true;
+      atBottom = false;
+      Serial.println(F("ELEVATOR:TIMEOUT_TOP"));
+    } else if (movingDown && (elapsed > t_elev_down)) {
+      Serial.print(F("DEBUG:TIMEOUT_CHECK - elapsed="));
+      Serial.print(elapsed);
+      Serial.print(F(" t_elev_down="));
+      Serial.println(t_elev_down);
+      stop();
+      atTop = false;
+      atBottom = true;
+      Serial.println(F("ELEVATOR:TIMEOUT_BOTTOM"));
     }
   }
 }
@@ -110,15 +158,31 @@ bool Elevator::isAtBottom() const {
 void Elevator::updatePosition() {
   // Update position based on proximity sensor (VL53L0X distance in mm)
   // This is called periodically to keep position state current
+  // SENSOR MOUNTED AT TOP: Large distance = elevator is DOWN (at bottom)
   if (proxSensor.isAvailable()) {
     uint16_t distance = proxSensor.read();
     bool wasAtTop = atTop;
     bool wasAtBottom = atBottom;
 
-    // VL53L0X: smaller distance = closer to sensor = TOP position
-    // Larger distance = farther from sensor = BOTTOM position
-    atTop = (distance <= prox_threshold_up);
-    atBottom = (distance >= prox_threshold_down);
+    // Sensor at TOP with hysteresis to avoid noise/blinking:
+    // Small distance = elevator close to sensor = elevator is UP (at top position)
+    // Large distance = elevator far from sensor = elevator is DOWN (at bottom position)
+    // Add 20mm hysteresis to prevent oscillation
+    if (atTop) {
+      // Once at top, need to move 20mm down to consider it not at top
+      atTop = (distance <= prox_threshold_up + 20);
+    } else {
+      // Not at top, need to get very close (within threshold) to consider it at top
+      atTop = (distance <= prox_threshold_up);
+    }
+
+    if (atBottom) {
+      // Once at bottom, need to move 20mm up to consider it not at bottom
+      atBottom = (distance >= prox_threshold_down - 20);
+    } else {
+      // Not at bottom, need to get very far (beyond threshold) to consider it at bottom
+      atBottom = (distance >= prox_threshold_down);
+    }
 
     // Only stop motor if restrictions are enabled AND we reached a limit while moving
     if (ManualMode::hasPhysicalRestrictions()) {
@@ -155,9 +219,9 @@ DosingWheel::DosingWheel() : motor(AccelStepper::DRIVER, MOTOR2_STEP_PIN, MOTOR2
 }
 
 void DosingWheel::init() {
-  motor.setMaxSpeed(DOSING_MAX_SPEED);
-  motor.setAcceleration(DOSING_ACCELERATION);
-  motor.setSpeed(dosing_speed);  // Set default speed from global
+  motor.setMaxSpeed((float)DOSING_MAX_SPEED);
+  motor.setAcceleration((float)DOSING_ACCELERATION);
+  motor.setSpeed((float)dosing_speed);  // Set default speed from global
   motor.setCurrentPosition(0);  // Reset position
 
   // Configure microstepping pins
@@ -171,7 +235,8 @@ void DosingWheel::init() {
   // pinMode(MOTOR2_STEP_PIN, OUTPUT);
   // pinMode(MOTOR2_DIR_PIN, OUTPUT);
 
-  Serial.println(F("DOSING:INIT_OK"));
+  Serial.print(F("DOSING:INIT_OK - SPEED:"));
+  Serial.println(dosing_speed);
 }
 
 void DosingWheel::dispenseOne() {
@@ -216,8 +281,18 @@ void DosingWheel::run() {
 
     if (dosingInProgress) {
       long remaining = motor.distanceToGo();
+      static unsigned long lastDebug = 0;
+      if (millis() - lastDebug > 500) {
+        Serial.print(F("DEBUG:DOSING_POS="));
+        Serial.print(motor.currentPosition());
+        Serial.print(F(" REMAINING="));
+        Serial.println(remaining);
+        lastDebug = millis();
+      }
+
       if (remaining == 0) {
         dosingInProgress = false;
+        Serial.println(F("DOSING:COMPLETE"));
         // Send completion message in test mode
         if (globalMode == MODE_TEST) {
           Serial.println("TEST:DOSING:COMPLETE");
@@ -286,6 +361,10 @@ LoadCell::LoadCell() : scale() {
   for (int i = 0; i < WEIGHT_BUFFER_SIZE; i++) {
     weightBuffer[i] = 0;
   }
+
+  // Initialize tare state machine
+  tareInProgress = false;
+  tareStartTime = 0;
 }
 
 void LoadCell::init() {
@@ -321,23 +400,29 @@ void LoadCell::init() {
 }
 
 float LoadCell::readWeight() {
-  // Simple direct reading - NO FILTERING, NO BUFFERING
+  // Return calibrated weight in grams
   if (!isReady) {
     return 0.0;
   }
 
-  // Only read if enough time has passed (like the delay in the test)
+  // Try to read if scale is ready (non-blocking attempt)
   unsigned long now = millis();
-  if (now - lastWeightRead < 500) {
-    return currentWeight;  // Return last value
-  }
-  lastWeightRead = now;
 
   if (scale.is_ready()) {
-    // Just read raw value directly - exactly like the test that worked
+    // Read and convert to weight using calibration factor
     long raw = scale.read();
     if (raw != -1) {  // Only update if valid reading
-      currentWeight = (float)raw;
+      // Convert raw value to grams using calibration factor
+      currentWeight = (float)raw / calibrationFactor;
+
+      // Add to buffer for stability calculation (update every successful read)
+      weightBuffer[weightBufferIndex] = currentWeight;
+      weightBufferIndex = (weightBufferIndex + 1) % WEIGHT_BUFFER_SIZE;
+      if (weightBufferIndex == 0) {
+        bufferFilled = true;
+      }
+
+      lastWeightRead = now;
     }
   }
 
@@ -345,7 +430,47 @@ float LoadCell::readWeight() {
 }
 
 void LoadCell::tare() {
-  scale.tare();
+  // Start non-blocking tare operation
+  if (!tareInProgress) {
+    Serial.println(F("LOADCELL:TARE_START"));
+    tareInProgress = true;
+    tareStartTime = millis();
+    // Don't call scale.tare() here - do it in run() with timeout protection
+  }
+}
+
+void LoadCell::run() {
+  // Process non-blocking tare operation
+  if (tareInProgress) {
+    unsigned long elapsed = millis() - tareStartTime;
+
+    // Safety timeout to prevent hanging
+    if (elapsed > TARE_TIMEOUT) {
+      Serial.println(F("LOADCELL:TARE_TIMEOUT"));
+      tareInProgress = false;
+      return;
+    }
+
+    // Try to tare - this is still blocking, but limited to TARE_TIMEOUT
+    if (scale.is_ready()) {
+      // Set all weights to zero (simplified tare without blocking HX711 reads)
+      scale.tare();
+
+      // Clear weight buffer
+      weightBufferIndex = 0;
+      bufferFilled = false;
+      currentWeight = 0.0;
+      stableWeight = 0.0;
+      stableStartTime = 0;
+
+      Serial.println(F("LOADCELL:TARED"));
+      tareInProgress = false;
+    } else if (elapsed > 100) {
+      // If scale not ready after 100ms, timeout the tare
+      Serial.println(F("LOADCELL:TARE_NOT_READY"));
+      tareInProgress = false;
+    }
+  }
 }
 
 bool LoadCell::isWeightStable() {
@@ -454,6 +579,10 @@ void Solenoid::init() {
 }
 
 void Solenoid::activate() {
+  if (!active) {  // Only print if not already active
+    Serial.print(F("DEBUG:SOLENOID_ACTIVATE:"));
+    Serial.println(name);
+  }
   digitalWrite(pin, HIGH);
   active = true;
   activationTime = millis();  // Record activation time
@@ -523,48 +652,39 @@ bool ProximitySensor::init() {
   // This reduces measurement time for faster updates
   lox.configSensor(Adafruit_VL53L0X::VL53L0X_SENSE_HIGH_SPEED);
 
+  // Start continuous ranging - measurements happen in background
+  // This allows non-blocking reads via readRangeContinuousMillimeters()
+  lox.startRangeContinuous();
+
   available = true;
-  Serial.println(F("PROX:INIT_OK - VL53L0X initialized"));
+  Serial.println(F("PROX:INIT_OK - VL53L0X initialized (continuous mode)"));
   return true;
 }
 
 uint16_t ProximitySensor::read() {
   if (!available) {
-    return 0;
-  }
-
-  // Take a distance measurement
-  VL53L0X_RangingMeasurementData_t measure;
-  lox.rangingTest(&measure, false);
-
-  // Check if measurement is valid (status = 0 means valid)
-  if (measure.RangeStatus != 4) {  // 4 = out of range
-    uint16_t distance = measure.RangeMilliMeter;
-
-    // Add to filter buffer
-    filterBuffer[filterIndex] = distance;
-    filterIndex = (filterIndex + 1) % FILTER_SIZE;
-
-    // Mark filter as initialized after first full cycle
-    if (filterIndex == 0) {
-      filterInitialized = true;
-    }
-
-    // Calculate moving average
-    uint32_t sum = 0;
-    uint8_t count = filterInitialized ? FILTER_SIZE : (filterIndex > 0 ? filterIndex : 1);
-
-    for (uint8_t i = 0; i < count; i++) {
-      sum += filterBuffer[i];
-    }
-
-    // Store filtered distance
-    lastDistance = sum / count;
-
     return lastDistance;
   }
 
-  // Return last known value if measurement failed
+  // Read the latest distance measurement from continuous mode (NON-BLOCKING)
+  // Only read if measurement is complete, otherwise return last value
+  if (lox.isRangeComplete()) {
+    uint16_t distance = lox.readRange();
+
+    // Check if we got a valid reading (not out of range)
+    if (distance > 0 && distance < 8191) {  // 8191 is max valid range for VL53L0X
+      // Simple filter - just use last 3 readings average for speed
+      static uint16_t last3[3] = {0, 0, 0};
+      static uint8_t idx = 0;
+
+      last3[idx] = distance;
+      idx = (idx + 1) % 3;
+
+      // Average of last 3
+      lastDistance = (last3[0] + last3[1] + last3[2]) / 3;
+    }
+  }
+
   return lastDistance;
 }
 

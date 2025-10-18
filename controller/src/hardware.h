@@ -99,15 +99,21 @@ private:
   float stableWeight;
   unsigned long stableStartTime;
 
+  // Tare operation state machine - non-blocking
+  bool tareInProgress;
+  unsigned long tareStartTime;
+  static const unsigned long TARE_TIMEOUT = 2000;  // 2 second timeout for tare
+
   // Simulation variables
   bool simWeightStable;
-  
+
 public:
   LoadCell();
   void init();
   float readWeight();
   bool isWeightStable();
-  void tare();
+  void tare();  // Start non-blocking tare
+  void run();   // Call in main loop to process tare
   void calibrate(float knownWeight);
   
   void setMode(ControlMode m) { mode = m; }

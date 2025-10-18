@@ -8,13 +8,9 @@
 CommandProcessor commands;
 
 void CommandProcessor::processSerialInput() {
-  // Process max 10 chars per loop to prevent blocking
-  int charsProcessed = 0;
-  const int MAX_CHARS_PER_LOOP = 10;
-
-  while (Serial.available() > 0 && charsProcessed < MAX_CHARS_PER_LOOP) {
+  // Process entire command line or buffer limit
+  while (Serial.available() > 0) {
     char incomingChar = Serial.read();
-    charsProcessed++;
 
     if (incomingChar == '\n' || incomingChar == '\r') {
       if (bufferIndex > 0) {
@@ -31,6 +27,12 @@ void CommandProcessor::processSerialInput() {
         inputBuffer[bufferIndex++] = ' ';  // Convert to space
       }
       // Silently ignore other non-printable characters
+    }
+
+    // Small delay to allow serial buffer to fill before reading next byte
+    // This prevents losing data when commands arrive in rapid succession
+    if (Serial.available() == 0) {
+      delayMicroseconds(100);
     }
   }
 }
@@ -470,17 +472,28 @@ void CommandProcessor::processCommand(const char* command) {
 
 void CommandProcessor::parseDelaySettings(const char* params) {
   // Parse format: "settle:1000,weight:2000,..."
-  char buffer[128];
+  Serial.print(F("DEBUG:parseDelaySettings received: "));
+  Serial.println(params);
+
+  char buffer[256];  // Increased from 128 to handle all delay parameters
   strncpy(buffer, params, sizeof(buffer) - 1);
   buffer[sizeof(buffer) - 1] = '\0';
 
   char* token = strtok(buffer, ",");
   while (token != NULL) {
+    Serial.print(F("DEBUG:Processing token: "));
+    Serial.println(token);
+
     char* separator = strchr(token, ':');
     if (separator != NULL) {
       *separator = '\0';
       const char* key = token;
-      int value = atoi(separator + 1);
+      unsigned long value = strtoul(separator + 1, NULL, 10);  // Use strtoul for unsigned long
+
+      Serial.print(F("DEBUG:Key='"));
+      Serial.print(key);
+      Serial.print(F("' Value="));
+      Serial.println(value);
 
       if (strcmp(key, "settle") == 0) t_step_settle = value;
       else if (strcmp(key, "weight") == 0) t_weight_settle = value;
@@ -488,18 +501,26 @@ void CommandProcessor::parseDelaySettings(const char* params) {
       else if (strcmp(key, "grind") == 0) t_grind = value;
       else if (strcmp(key, "cap") == 0) t_cap_push = value;
       else if (strcmp(key, "elevUp") == 0) {
-        Serial.print(F("DEBUG:Setting t_elev_up from "));
+        Serial.print(F("DEBUG:MATCH elevUp! Setting t_elev_up from "));
         Serial.print(t_elev_up);
         Serial.print(F(" to "));
         Serial.println(value);
         t_elev_up = value;
+        Serial.print(F("DEBUG:t_elev_up is now: "));
+        Serial.println(t_elev_up);
       }
       else if (strcmp(key, "elevDown") == 0) {
-        Serial.print(F("DEBUG:Setting t_elev_down from "));
+        Serial.print(F("DEBUG:MATCH elevDown! Setting t_elev_down from "));
         Serial.print(t_elev_down);
         Serial.print(F(" to "));
         Serial.println(value);
         t_elev_down = value;
+        Serial.print(F("DEBUG:t_elev_down is now: "));
+        Serial.println(t_elev_down);
+      }
+      else {
+        Serial.print(F("DEBUG:NO MATCH for key: "));
+        Serial.println(key);
       }
     }
     token = strtok(NULL, ",");

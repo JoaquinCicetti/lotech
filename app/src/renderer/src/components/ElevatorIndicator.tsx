@@ -1,14 +1,44 @@
 import { cn } from '@renderer/lib/utils'
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
+import { useSettingsStore } from '@renderer/store/settingsStore'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import React from 'react'
 
 export const ElevatorIndicator: React.FC = () => {
   const { sensorReadings, hardwareStatus } = useControllerStateStore()
+  const { proximity } = useSettingsStore()
 
   // Calculate elevator position (0 = bottom, 100 = top)
-  // Proximity sensor: low values = bottom, high values = top
-  const elevatorPosition = (sensorReadings.proximityDistance / 1024) * 100
+  // VL53L0X sensor mounted at TOP:
+  // - Small distance (≤minProximity) = elevator at TOP (100%)
+  // - Large distance (≥maxProximity) = elevator at BOTTOM (0%)
+
+  // Get the actual configured thresholds
+  const minDist = proximity.minProximity // Top position threshold (~100mm)
+  const maxDist = proximity.maxProximity // Bottom position threshold (~300mm)
+  const currentDist = sensorReadings.proximityDistance
+
+  // Calculate position with precise mapping
+  // minDist (top) = 100%, maxDist (bottom) = 0%
+  // Clamp to ensure smooth animation between min and max
+  let elevatorPosition = 0
+  if (currentDist <= minDist) {
+    elevatorPosition = 100 // At or above top
+  } else if (currentDist >= maxDist) {
+    elevatorPosition = 0 // At or below bottom
+  } else {
+    // Linear interpolation between min and max
+    // (maxDist - currentDist) / (maxDist - minDist) gives us a value between 0 and 1
+    // Multiply by 100 to get percentage
+    elevatorPosition = ((maxDist - currentDist) / (maxDist - minDist)) * 100
+  }
+
+  // Debug: log position mapping
+  React.useEffect(() => {
+    const debugInfo = `dist=${currentDist}mm (min=${minDist}, max=${maxDist}) => pos=${elevatorPosition.toFixed(1)}%`
+
+    console.log('Elevator position mapping:', debugInfo)
+  }, [currentDist, minDist, maxDist, elevatorPosition])
 
   // Determine if elevator is at positions
   const isAtTop = sensorReadings.posAlta
@@ -72,7 +102,7 @@ export const ElevatorIndicator: React.FC = () => {
       {/* Proximity Value */}
       <div className="text-center">
         <p className="text-muted-foreground text-[10px]">
-          Proximidad: {sensorReadings.proximityDistance}
+          Distancia: {sensorReadings.proximityDistance} mm
         </p>
       </div>
     </div>

@@ -14,6 +14,10 @@ unsigned long lastHeartbeat = 0;
 unsigned long lastProxReport = 0;
 uint16_t lastProxValue = 9999; // Set to impossible value to force first report
 
+// Weight reading control - only enabled when needed (to avoid blocking motors)
+bool needsWeightReading = false;
+bool forceWeightRead = false;  // Set by commands to force a weight reading
+
 void setup() {
   // Disable watchdog on startup (in case of reset)
   wdt_disable();
@@ -105,44 +109,18 @@ void setup() {
 }
 
 void loop() {
-  // Watchdog disabled - was interfering with HX711
-  // wdt_reset();
-
+  // ========== PRIORITY 1: MOTORS - MUST RUN FIRST ==========
   // Process serial commands
   commands.processSerialInput();
 
-  // Handle different modes
+  // Run motors based on mode
   if (ManualMode::isManual()) {
-    // Manual mode - just run hardware updates, no state machine
+    // Manual mode - run hardware directly
     elevator.run();
     dosingWheel.run();
-    transferSolenoid.run();  // Check timeout for transfer solenoid
-    capSolenoid.run();      // Check timeout for cap solenoid
-    grinder.run();          // Check timeout for grinder
-
-    // Report dosing wheel status periodically while it's running
-    static unsigned long lastDosingReport = 0;
-    static bool wasDosingActive = false;
-    bool isDosingActive = dosingWheel.isDispensing() || dosingWheel.isContinuousMode();
-
-    if (isDosingActive) {
-      // Report status every 100ms while active
-      if (millis() - lastDosingReport > 100) {
-        if (dosingWheel.getDirection()) {
-          Serial.println(F("DOSING:FWD"));
-        } else {
-          Serial.println(F("DOSING:BWD"));
-        }
-        lastDosingReport = millis();
-      }
-      wasDosingActive = true;
-    } else if (wasDosingActive) {
-      // Just stopped - send stop message once
-      Serial.println(F("DOSING:STOPPED"));
-      wasDosingActive = false;
-    }
-
-    // Motors respond directly to manual commands
+    transferSolenoid.run();
+    capSolenoid.run();
+    grinder.run();
   }
   else if (ManualMode::isAuto()) {
     // Auto mode - run state machine
@@ -150,151 +128,101 @@ void loop() {
       stateMachine.clearStateChange();
       stateMachine.executeStateEntry();
     }
-
-    // Execute continuous state actions
     stateMachine.executeStateContinuous();
-
-    // Check for state transitions
     stateMachine.processTransitions();
 
-    // Also run hardware updates for state machine
+    // Run hardware for state machine
     elevator.run();
     dosingWheel.run();
-    transferSolenoid.run();  // Check timeout for transfer solenoid
-    capSolenoid.run();      // Check timeout for cap solenoid
-    grinder.run();          // Check timeout for grinder
+    transferSolenoid.run();
+    capSolenoid.run();
+    grinder.run();
   }
-  
+
+  // ========== LOAD CELL OPERATIONS (non-blocking tare) ==========
+  loadCell.run();
+
+  // ========== PRIORITY 2: SENSOR READING & REPORTING ==========
+  // Read sensor MUCH LESS frequently to avoid blocking
+  static unsigned long lastSensorRead = 0;
+  static uint16_t currentDistance = 0;
+
+  // Read sensor every 100ms - sensor is now non-blocking in continuous mode
+  unsigned long sensorInterval = 100;
+  if (proxSensor.isAvailable() && (millis() - lastSensorRead > sensorInterval)) {
+    currentDistance = proxSensor.read();  // Non-blocking continuous mode read
+    lastSensorRead = millis();
+  }
+
+  // Report position and distance changes with better filtering
+  static bool lastWasAtTop = false;
+  static bool lastWasAtBottom = false;
+  static uint16_t lastReportedDistance = 9999;
+
+  bool atTop = elevator.isAtTop();
+  bool atBottom = elevator.isAtBottom();
+  bool posChanged = (atTop != lastWasAtTop) || (atBottom != lastWasAtBottom);
+
+  // Only report if distance changed by MORE than 5mm (filter oscillation)
+  bool distChanged = abs((int)currentDistance - (int)lastReportedDistance) > 5;
+
+  // Report ONLY when something actually changes
+  if (posChanged || distChanged) {
+    Serial.print(F("PROX:"));
+    Serial.print(currentDistance);
+
+    if (atTop) {
+      Serial.println(F(",POS:UP"));
+    } else if (atBottom) {
+      Serial.println(F(",POS:DOWN"));
+    } else {
+      Serial.println(F(",POS:MID"));
+    }
+
+    lastWasAtTop = atTop;
+    lastWasAtBottom = atBottom;
+    lastReportedDistance = currentDistance;
+    lastProxReport = millis();
+  }
+
+  // Report dosing status
+  static unsigned long lastDosingReport = 0;
+  static bool wasDosingActive = false;
+  bool isDosingActive = dosingWheel.isDispensing() || dosingWheel.isContinuousMode();
+  if (isDosingActive && (millis() - lastDosingReport > 200)) {
+    Serial.println(dosingWheel.getDirection() ? F("DOSING:FWD") : F("DOSING:BWD"));
+    lastDosingReport = millis();
+    wasDosingActive = true;
+  } else if (!isDosingActive && wasDosingActive) {
+    Serial.println(F("DOSING:STOPPED"));
+    wasDosingActive = false;
+  }
+
   // Send heartbeat
   if (millis() - lastHeartbeat >= HEARTBEAT_INTERVAL) {
     SerialProtocol::sendHeartbeat(stateMachine.getStateName(), millis());
     lastHeartbeat = millis();
   }
-  
-  // Update elevator position from proximity sensor (even when not moving)
-  static unsigned long lastPositionUpdate = 0;
-  if (millis() - lastPositionUpdate > 100) { // Update every 100ms
-    lastPositionUpdate = millis();
-    elevator.updatePosition(); // Update internal position state
-  }
 
-  // Read and report proximity if available - but not too often!
-  if (proxSensor.isAvailable() && (millis() - lastProxReport > 250)) { // Check every 250ms for better responsiveness
-    uint16_t prox = proxSensor.read();
+  // ========== CONDITIONAL WEIGHT READING ==========
+  // Read weight when: 1) Auto mode in weighing state, 2) Manual command requests it
+  static unsigned long lastWeightRead = 0;
 
-    // Filter out sudden 0 values - only accept 0 if we get it consistently
-    static uint8_t zeroCount = 0;
-    if (prox == 0) {
-      zeroCount++;
-      // Only accept 0 after 3 consecutive readings
-      if (zeroCount < 3) {
-        prox = lastProxValue; // Use last valid value
+  // Check if we're in weighing state
+  bool inWeighingState = (stateMachine.getCurrentState() == ESTADO3_PESAJE);
+
+  if (needsWeightReading || inWeighingState) {
+    if (millis() - lastWeightRead >= 200) {  // Every 200ms when needed
+      float weight = loadCell.readWeight();
+
+      // Report weight continuously when in weighing state
+      if (inWeighingState) {
+        Serial.print(F("WEIGHT:"));
+        Serial.print(weight, 1);
+        Serial.println(F(" g"));
       }
-    } else {
-      zeroCount = 0; // Reset counter for non-zero values
+
+      lastWeightRead = millis();
     }
-
-    // Only report if value changed significantly (by more than 5mm) or timeout
-    int proxDiff = abs((int)prox - (int)lastProxValue);
-    if (proxDiff > 5 || millis() - lastProxReport > 2000) {
-      Serial.print(F("PROX:"));
-      Serial.print(prox);
-      Serial.print(F(",DIST_MM:"));
-      Serial.print(proxSensor.getLastDistance());  // Distance in mm
-      // Report actual elevator position based on internal state
-      if (elevator.isAtTop()) {
-        Serial.print(F(",POS:UP"));
-      } else if (elevator.isAtBottom()) {
-        Serial.print(F(",POS:DOWN"));
-      } else {
-        Serial.print(F(",POS:MID"));
-      }
-      Serial.println();
-      lastProxValue = prox;
-      lastProxReport = millis();
-    }
-  }
-
-  // Direct HX711 handling (bypassing LoadCell class which had conflicts)
-  static unsigned long lastWeightReport = 0;
-  static HX711 directScale;
-  static bool directScaleInit = false;
-  static long tareValue = 0;
-  static bool isTared = false;
-  static float smoothedWeight = 0.0;  // For smoothing
-  static float displayWeight = 0.0;   // What we actually show
-
-  // Initialize once
-  if (!directScaleInit) {
-    directScale.begin(A0, A1);  // A0=DOUT, A1=SCK
-    delay(1000);
-
-    // Set scale to 1 for raw values
-    directScale.set_scale(1.0f);
-
-    directScaleInit = true;
-    Serial.println(F("DIRECT_HX711:INIT"));
-
-    // Get initial tare value (average of 20 readings for stability)
-    if (directScale.is_ready()) {
-      long sum = 0;
-      for(int i = 0; i < 20; i++) {
-        sum += directScale.read();
-        delay(10);
-      }
-      tareValue = sum / 20;
-      isTared = true;
-      Serial.print(F("DIRECT_HX711:TARE:"));
-      Serial.println(tareValue);
-    }
-  }
-
-  // Read weight every 250ms
-  if (millis() - lastWeightReport >= 250) {
-    if (directScale.is_ready()) {
-      // Average multiple readings for stability
-      long sum = 0;
-      const int samples = 3;
-      for(int i = 0; i < samples; i++) {
-        sum += directScale.read();
-      }
-      long raw = sum / samples;
-
-      // Apply tare
-      long taredValue = raw - tareValue;
-
-      // Convert to grams with calibration factor
-      // If showing 0.7-0.8 instead of 1.0, multiply by 1.3 (1.0/0.77 ≈ 1.3)
-      float grams = (float)taredValue / 770.0;  // Adjusted from 1000 to 770
-
-      // Exponential smoothing with HIGHER alpha for faster response
-      const float alpha = 0.35;  // Increased for faster response (was 0.15)
-      smoothedWeight = (alpha * grams) + ((1.0 - alpha) * smoothedWeight);
-
-      // Dead zone filter - ignore small variations near zero
-      const float deadZone = 0.5;  // +/- 0.5g considered zero
-      if (abs(smoothedWeight) < deadZone) {
-        displayWeight = 0.0;
-      } else {
-        // Round to 0.1g for display
-        displayWeight = round(smoothedWeight * 10.0) / 10.0;
-      }
-
-      // Send weight
-      Serial.print(F("WEIGHT:"));
-      Serial.print(displayWeight, 1);
-      Serial.println(F(" g"));
-
-      // Debug info occasionally
-      if (millis() % 5000 < 250) {  // Every 5 seconds
-        Serial.print(F("DEBUG:RAW:"));
-        Serial.print(raw);
-        Serial.print(F(" SMOOTHED:"));
-        Serial.println(smoothedWeight, 2);
-      }
-    } else {
-      Serial.println(F("WEIGHT:NOT_READY"));
-    }
-    lastWeightReport = millis();
   }
 }

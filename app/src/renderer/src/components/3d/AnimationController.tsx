@@ -83,6 +83,7 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
       }
       const initialPosition = calculateElevatorPosition(elevatorParams)
 
+      console.log({ initialPosition })
       // Set initial positions without animation
       animationState.current.elevatorY = initialPosition
       animationState.current.containerZ = -initialPosition
@@ -109,7 +110,10 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
         maxProximity: proximity.maxProximity,
         maxHeight: ELEVATOR_MAX_HEIGHT,
       }
-      return calculateElevatorPosition(elevatorParams)
+
+      const target = calculateElevatorPosition(elevatorParams)
+
+      return target
     }
 
     // Animate container (moves opposite to elevator)

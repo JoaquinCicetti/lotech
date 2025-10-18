@@ -84,7 +84,8 @@ export class SerialMessageParser {
       const parts = proximityStr.split(',')
       const proximity = parseInt(parts[0])
 
-      if (!isNaN(proximity) && proximity >= 0 && proximity <= 1024) {
+      // VL53L0X can measure up to 2000mm
+      if (!isNaN(proximity) && proximity >= 0 && proximity <= 2000) {
         const sensors = { ...currentStatus.sensors }
 
         // Parse position if provided

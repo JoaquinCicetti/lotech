@@ -66,12 +66,20 @@ export function smoothLerp(params: LerpParams): number {
 export function calculateElevatorPosition(params: ElevatorCalculationParams): number {
   const { proximityDistance, minProximity, maxProximity, maxHeight } = params
 
-  if (proximityDistance <= minProximity) {
-    return 0
-  } else if (proximityDistance >= maxProximity) {
+  // sensing from top so topPosition < bottomPosition
+  const topPosition = maxProximity
+  const bottomPosition = minProximity
+
+  console.log({ proximityDistance, minProximity, maxProximity, maxHeight })
+
+  if (proximityDistance <= topPosition) {
     return maxHeight
+  } else if (proximityDistance >= minProximity) {
+    return 0
   } else {
-    const ratio = (proximityDistance - minProximity) / (maxProximity - minProximity)
+    const ratio = 1 - (proximityDistance - topPosition) / (bottomPosition - topPosition)
+
+    console.log({ ratio })
     return ratio * maxHeight
   }
 }

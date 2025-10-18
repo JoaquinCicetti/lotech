@@ -5,7 +5,7 @@
 
 class CommandProcessor {
 private:
-  static const int BUFFER_SIZE = 64;
+  static const int BUFFER_SIZE = 256;  // Increased to handle full command strings
   char inputBuffer[BUFFER_SIZE];
   int bufferIndex;
 

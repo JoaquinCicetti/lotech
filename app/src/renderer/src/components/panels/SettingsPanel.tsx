@@ -40,26 +40,26 @@ export const SettingsPanel: React.FC = () => {
     updateTimeout,
   } = useSettingsStore()
 
-  // Create debounced functions outside of useCallback
+  // Create debounced functions with 300ms delay to avoid spamming serial
   const sendDelaysDebounced = debounce((delays: DelaySettings) => {
     updateDelays(delays)
-  }, 500)
+  }, 300)
 
   const sendDosingDebounced = debounce((dosing: DosingSettings) => {
     updateDosing(dosing.wheelDivisions, dosing.lotSize, dosing.motorSpeed)
-  }, 500)
+  }, 300)
 
   const sendProximityDebounced = debounce((proximity: ProximitySettings) => {
     updateProximity(proximity.minProximity, proximity.maxProximity)
-  }, 500)
+  }, 300)
 
   const sendElevatorDebounced = debounce((speed: number) => {
     updateElevator(speed)
-  }, 500)
+  }, 300)
 
   const sendTimeoutsDebounced = debounce((timeouts: HardwareTimeouts) => {
     updateTimeouts(timeouts)
-  }, 500)
+  }, 300)
 
   const handleDelayChange = (key: keyof DelaySettings, value: number) => {
     const newDelays = { ...delays, [key]: value }
@@ -233,8 +233,9 @@ export const SettingsPanel: React.FC = () => {
                 <Slider
                   value={[proximity.minProximity]}
                   onValueChange={([v]) => handleProximityChange('minProximity', v)}
-                  max={500}
-                  step={5}
+                  min={120}
+                  max={200}
+                  step={1}
                   className="w-full"
                 />
               </div>
@@ -247,9 +248,9 @@ export const SettingsPanel: React.FC = () => {
                 <Slider
                   value={[proximity.maxProximity]}
                   onValueChange={([v]) => handleProximityChange('maxProximity', v)}
-                  max={1024}
-                  step={5}
-                  min={proximity.minProximity}
+                  min={50}
+                  max={120}
+                  step={1}
                   className="w-full"
                 />
               </div>

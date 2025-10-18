@@ -6,6 +6,9 @@
 // Global instance
 StateMachine stateMachine;
 
+// Weight reading control flag (extern from main.cpp)
+extern bool needsWeightReading;
+
 // Global delay variables for state transitions (definitions with default values)
 unsigned long t_step_settle = T_STEP_SETTLE_DEFAULT;
 unsigned long t_weight_settle = T_WEIGHT_SETTLE_DEFAULT;
@@ -163,6 +166,7 @@ void StateMachine::executeStateEntry() {
     case ESTADO3_PESAJE:
       // Start weight monitoring
       Serial.println(F("WEIGHT:START"));
+      needsWeightReading = true;  // Enable weight reading in main loop
       if (loadCell.isConnected()) {
         loadCell.readWeight();  // Get initial reading
       }
@@ -186,10 +190,16 @@ void StateMachine::executeStateEntry() {
       break;
       
     case ESTADO5_MOLIENDA:
-      // Start grinder
-      grinder.start();
-      // Send progress for grinding state
-      SerialProtocol::sendProgress("5_MOLIENDA", t_grind);
+      // Safety check: grinder MUST NOT run if elevator is not at top
+      if (!elevator.isAtTop()) {
+        Serial.println(F("ERROR:GRINDER_REQUIRES_ELEVATOR_AT_TOP"));
+        changeState(ESTADO1_ASCENSOR);  // Go back to elevating
+      } else {
+        // Start grinder
+        grinder.start();
+        // Send progress for grinding state
+        SerialProtocol::sendProgress("5_MOLIENDA", t_grind);
+      }
       break;
       
     case ESTADO6_DESCARGA:
@@ -258,19 +268,23 @@ void StateMachine::executeStateContinuous() {
       // Continuously monitor weight
       if (loadCell.isConnected()) {
         float weight = loadCell.readWeight();
+        bool isStable = loadCell.isWeightStable();
 
         // Print weight changes for monitoring
         static float lastPrintedWeight = 0;
         static unsigned long lastPrintTime = 0;
         unsigned long now = millis();
 
-        // Print if weight changed significantly OR every 500ms for status
-        if (abs(weight - lastPrintedWeight) > WEIGHT_PRINT_THRESHOLD ||
-            (now - lastPrintTime) > 500) {
+        // Print every 200ms for frequent monitoring during weighing
+        if ((now - lastPrintTime) > 200) {
           Serial.print("WEIGHT:");
           Serial.print(weight, 2);
-          Serial.print(" STABLE:");
-          Serial.println(loadCell.isWeightStable() ? "YES" : "NO");
+          Serial.print("g STABLE:");
+          Serial.print(isStable ? "YES" : "NO");
+          Serial.print(" TIMEOUT:");
+          Serial.print(stateTimeout(t_weight_settle) ? "YES" : "NO");
+          Serial.print(" ELAPSED:");
+          Serial.println(getStateTime());
           lastPrintedWeight = weight;
           lastPrintTime = now;
         }
@@ -283,14 +297,35 @@ void StateMachine::executeStateContinuous() {
         }
       }
       break;
-      
+
+    case ESTADO4_TRASPASO:
+      // Keep solenoid active and check for timeout protection
+      transferSolenoid.run();
+      break;
+
+    case ESTADO5_MOLIENDA:
+      // Safety: only run grinder if elevator is at top
+      if (elevator.isAtTop()) {
+        // Run grinder (checks timeout protection)
+        grinder.run();
+      } else {
+        // Elevator not at top - don't run grinder
+        Serial.println(F("ERROR:GRINDER_BLOCKED_ELEVATOR_NOT_AT_TOP"));
+      }
+      break;
+
     case ESTADO6_DESCARGA:
       // Update elevator motor downward
       elevator.run();
       // Check position continuously
       elevator.updatePosition();
       break;
-      
+
+    case ESTADO7_CIERRE:
+      // Keep cap solenoid active and check for timeout protection
+      capSolenoid.run();
+      break;
+
     default:
       // Other states don't need continuous actions
       break;
@@ -348,10 +383,12 @@ void StateMachine::processTransitions() {
       if (loadCell.isWeightStable()) {
         // Weight stabilized - proceed
         Serial.println(F("WEIGHT:STABLE"));
+        needsWeightReading = false;  // Disable weight reading
         changeState(ESTADO4_TRASPASO);
       } else if (stateTimeout(t_weight_settle)) {
         // Timeout - proceed anyway
         Serial.println(F("WARNING:WEIGHT_TIMEOUT"));
+        needsWeightReading = false;  // Disable weight reading
         changeState(ESTADO4_TRASPASO);
       }
       break;

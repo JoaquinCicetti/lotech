@@ -120,18 +120,23 @@
 // PROXIMITY SENSOR PARAMETERS (VL53L0X)
 // =====================================================
 // VL53L0X measures distance in millimeters (mm)
-// Shorter distance = closer to sensor
-// Typical range: 30mm - 1200mm (actual max ~2000mm in ideal conditions)
+// SENSOR MOUNTED AT TOP OF ELEVATOR TRAVEL
+//
+// When elevator is UP (at top):    distance is SMALL (close to sensor) ≤ 100mm
+// When elevator is DOWN (at bottom): distance is LARGE (far from sensor) ≥ 300mm
+//
+// Typical sensor range: 30mm - 1200mm (max ~2000mm in ideal conditions)
 
-#define PROX_THRESHOLD_UP_DEFAULT 100    // Default threshold for top position (mm) - closer to sensor
-#define PROX_THRESHOLD_DOWN_DEFAULT 300  // Default threshold for bottom position (mm) - farther from sensor
+#define PROX_THRESHOLD_UP_DEFAULT 100    // Elevator at TOP: distance ≤ 100mm (close to sensor)
+#define PROX_THRESHOLD_DOWN_DEFAULT 300  // Elevator at BOTTOM: distance ≥ 300mm (far from sensor)
 
 // =====================================================
 // SYSTEM PARAMETERS
 // =====================================================
 
 #define HEARTBEAT_INTERVAL 5000  // 5 seconds to reduce traffic
-#define WEIGHT_PRINT_THRESHOLD 0.1  // Only print weight changes larger than this
+#define WEIGHT_PRINT_THRESHOLD 0.2  // Only print weight changes ≥0.2g (lazy reporting)
 #define WEIGHT_STABLE_TIME 1000       // Time weight must be stable (ms)
+#define PROX_PRINT_THRESHOLD 2        // Only print proximity changes ≥2mm (lazy reporting)
 
 #endif // CONFIG_H

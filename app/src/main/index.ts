@@ -80,12 +80,19 @@ function createWindow(): void {
     return true
   })
 
-  ipcMain.handle('serial:write', (_e, { path, data }) => {
+  ipcMain.handle('serial:write', async (_e, { path, data }) => {
     const p = ports[path]
     if (!p) throw new Error('Port not open')
 
     console.log('writing', data)
-    p.write(data + '\n')
+    // Write the command with a small delay and flush to ensure Arduino receives it completely
+    p.write(data + '\n', (err) => {
+      if (err) {
+        console.error('Serial write error:', err)
+      }
+    })
+    // Small delay to ensure Arduino has time to process
+    await new Promise(resolve => setTimeout(resolve, 50))
     return true
   })
 

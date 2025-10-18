@@ -12,20 +12,21 @@
 #define EEPROM_CHECKSUM_ADDR 7       // Simple checksum (1 byte)
 
 // EEPROM addresses for settings (starting at address 10)
+// NOTE: timeout values are unsigned long (4 bytes on Arduino)
 #define EEPROM_SETTINGS_START 10
 #define EEPROM_WHEEL_DIVISIONS_ADDR 10  // Wheel divisions (1 byte)
 #define EEPROM_DOSING_SPEED_ADDR 11     // Dosing motor speed (2 bytes)
-#define EEPROM_T_SETTLE_ADDR 13         // Settle time (2 bytes)
-#define EEPROM_T_WEIGHT_ADDR 15         // Weight time (2 bytes)
-#define EEPROM_T_TRANSFER_ADDR 17       // Transfer time (2 bytes)
-#define EEPROM_T_GRIND_ADDR 19          // Grind time (2 bytes)
-#define EEPROM_T_CAP_ADDR 21            // Cap time (2 bytes)
-#define EEPROM_T_ELEV_UP_ADDR 23        // Elevator up time (2 bytes)
-#define EEPROM_T_ELEV_DOWN_ADDR 25      // Elevator down time (2 bytes)
-#define EEPROM_PROX_MIN_ADDR 27         // Proximity min (2 bytes)
-#define EEPROM_PROX_MAX_ADDR 29         // Proximity max (2 bytes)
-#define EEPROM_ELEVATOR_SPEED_ADDR 31   // Elevator speed (2 bytes)
-#define EEPROM_SETTINGS_CHECKSUM 33     // Settings checksum (1 byte)
+#define EEPROM_T_SETTLE_ADDR 13         // Settle time (4 bytes)
+#define EEPROM_T_WEIGHT_ADDR 17         // Weight time (4 bytes)
+#define EEPROM_T_TRANSFER_ADDR 21       // Transfer time (4 bytes)
+#define EEPROM_T_GRIND_ADDR 25          // Grind time (4 bytes)
+#define EEPROM_T_CAP_ADDR 29            // Cap time (4 bytes)
+#define EEPROM_T_ELEV_UP_ADDR 33        // Elevator up time (4 bytes)
+#define EEPROM_T_ELEV_DOWN_ADDR 37      // Elevator down time (4 bytes)
+#define EEPROM_PROX_MIN_ADDR 41         // Proximity min (2 bytes)
+#define EEPROM_PROX_MAX_ADDR 43         // Proximity max (2 bytes)
+#define EEPROM_ELEVATOR_SPEED_ADDR 45   // Elevator speed (2 bytes)
+#define EEPROM_SETTINGS_CHECKSUM 47     // Settings checksum (1 byte)
 
 #define EEPROM_MAGIC_VALUE 0xAB55    // Magic value to verify EEPROM has been initialized
 

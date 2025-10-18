@@ -1,6 +1,5 @@
 import { ElevatorIndicator } from '@renderer/components/ElevatorIndicator'
 import { Card, CardContent, CardHeader, CardTitle } from '@renderer/components/ui/card'
-import { Progress } from '@renderer/components/ui/progress'
 import { cn } from '@renderer/lib/utils'
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
 import { Cpu, Gauge, Move3d } from 'lucide-react'
@@ -45,20 +44,29 @@ export const SensorCards: React.FC = () => {
             <div className="mt-3 space-y-2">
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span>Proximidad</span>
+                  <span>Distancia</span>
                   <span className="text-muted-foreground font-mono text-[10px]">
-                    {sensorReadings.proximityDistance}/1024
+                    {sensorReadings.proximityDistance} mm
                   </span>
                 </div>
-                <Progress value={(sensorReadings.proximityDistance / 1024) * 100} className="h-2" />
               </div>
               <div className="flex gap-2 text-xs">
                 <div className="flex items-center gap-1">
-                  <div className={cn('h-1.5 w-1.5 rounded-full', sensorReadings.posAlta ? 'bg-green-500' : 'bg-gray-300')} />
+                  <div
+                    className={cn(
+                      'h-1.5 w-1.5 rounded-full',
+                      sensorReadings.posAlta ? 'bg-green-500' : 'bg-gray-300'
+                    )}
+                  />
                   <span className="text-muted-foreground">Alta</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className={cn('h-1.5 w-1.5 rounded-full', sensorReadings.posBaja ? 'bg-green-500' : 'bg-gray-300')} />
+                  <div
+                    className={cn(
+                      'h-1.5 w-1.5 rounded-full',
+                      sensorReadings.posBaja ? 'bg-green-500' : 'bg-gray-300'
+                    )}
+                  />
                   <span className="text-muted-foreground">Baja</span>
                 </div>
               </div>
@@ -77,11 +85,13 @@ export const SensorCards: React.FC = () => {
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Celda de Carga</span>
-                <span className="font-mono text-lg font-semibold">{sensorReadings.loadCell.toFixed(1)}g</span>
+                <span className="text-muted-foreground text-xs">Celda de Carga</span>
+                <span className="font-mono text-lg font-semibold">
+                  {sensorReadings.loadCell.toFixed(1)}g
+                </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">Contador de Píldoras</span>
+                <span className="text-muted-foreground text-xs">Contador de Píldoras</span>
                 <span className="font-mono text-lg font-semibold">{pillCount}</span>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-1">
@@ -106,10 +116,7 @@ export const SensorCards: React.FC = () => {
               <SensorIndicator label="Molino" active={hardwareStatus.grinder === 'ON'} />
               <SensorIndicator label="Transferencia" active={hardwareStatus.transfer === 'OPEN'} />
               <SensorIndicator label="Tapado" active={hardwareStatus.cap === 'PUSHED'} />
-              <SensorIndicator
-                label="Elevador"
-                active={hardwareStatus.elevator !== 'IDLE'}
-              />
+              <SensorIndicator label="Elevador" active={hardwareStatus.elevator !== 'IDLE'} />
             </div>
           </CardContent>
         </Card>

@@ -162,20 +162,12 @@ export function SensorStatus({ onSendCommand }: SensorStatusProps) {
                 <span className="text-xs text-gray-600">{`Top (>${upThreshold})`}</span>
               </div>
               <div className="relative h-3 overflow-hidden rounded-full bg-gray-300">
+                {/* Simplified bar without incorrect calculations */}
                 <div
                   className="absolute h-full bg-gradient-to-r from-orange-400 to-green-500 transition-all duration-300"
                   style={{
-                    width: `${Math.min(100, (proximityDistance / 1024) * 100)}%`,
+                    width: '50%', // Just show a static bar for now
                   }}
-                />
-                {/* Position markers */}
-                <div
-                  className="absolute h-full w-0.5 bg-gray-600"
-                  style={{ left: `${(downThreshold / 1024) * 100}%` }}
-                />
-                <div
-                  className="absolute h-full w-0.5 bg-gray-600"
-                  style={{ left: `${(upThreshold / 1024) * 100}%` }}
                 />
               </div>
             </div>

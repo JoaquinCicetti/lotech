@@ -25,8 +25,8 @@ export const DEFAULT_DOSING: DosingSettings = {
 }
 
 export const DEFAULT_PROXIMITY: ProximitySettings = {
-  minProximity: 10,
-  maxProximity: 100,
+  minProximity: 100,  // VL53L0X: distance at TOP position (mm)
+  maxProximity: 300,  // VL53L0X: distance at BOTTOM position (mm)
 }
 
 export const DEFAULT_ELEVATOR: ElevatorSettings = {
