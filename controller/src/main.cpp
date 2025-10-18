@@ -194,13 +194,13 @@ void loop() {
       zeroCount = 0; // Reset counter for non-zero values
     }
 
-    // Only report if value changed significantly (by more than 5) or timeout
+    // Only report if value changed significantly (by more than 5mm) or timeout
     int proxDiff = abs((int)prox - (int)lastProxValue);
     if (proxDiff > 5 || millis() - lastProxReport > 2000) {
       Serial.print(F("PROX:"));
       Serial.print(prox);
-      Serial.print(F(",RAW:"));
-      Serial.print(proxSensor.getLastRawValue());  // Add raw value for debugging
+      Serial.print(F(",DIST_MM:"));
+      Serial.print(proxSensor.getLastDistance());  // Distance in mm
       // Report actual elevator position based on internal state
       if (elevator.isAtTop()) {
         Serial.print(F(",POS:UP"));

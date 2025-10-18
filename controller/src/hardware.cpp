@@ -108,15 +108,17 @@ bool Elevator::isAtBottom() const {
 }
 
 void Elevator::updatePosition() {
-  // Update position based on proximity sensor
+  // Update position based on proximity sensor (VL53L0X distance in mm)
   // This is called periodically to keep position state current
   if (proxSensor.isAvailable()) {
-    uint16_t prox = proxSensor.read();
+    uint16_t distance = proxSensor.read();
     bool wasAtTop = atTop;
     bool wasAtBottom = atBottom;
 
-    atTop = (prox > prox_threshold_up);
-    atBottom = (prox <= prox_threshold_down);
+    // VL53L0X: smaller distance = closer to sensor = TOP position
+    // Larger distance = farther from sensor = BOTTOM position
+    atTop = (distance <= prox_threshold_up);
+    atBottom = (distance >= prox_threshold_down);
 
     // Only stop motor if restrictions are enabled AND we reached a limit while moving
     if (ManualMode::hasPhysicalRestrictions()) {
@@ -508,18 +510,21 @@ void Solenoid::run() {
 // Constructor is defined inline in header
 
 bool ProximitySensor::init() {
-  // Initialize APDS9960 sensor
-  if (!APDS.begin()) {
-    Serial.println(F("PROX:INIT_FAIL - APDS9960 not found"));
+  // Initialize VL53L0X sensor
+  Serial.println(F("PROX:INIT_START - VL53L0X"));
+
+  if (!lox.begin()) {
+    Serial.println(F("PROX:INIT_FAIL - VL53L0X not found"));
     available = false;
     return false;
   }
 
-  // The library automatically enables proximity when calling proximityAvailable() or readProximity()
-  // No explicit enable needed with this library version
+  // Configure sensor for high speed measurements
+  // This reduces measurement time for faster updates
+  lox.configSensor(Adafruit_VL53L0X::VL53L0X_SENSE_HIGH_SPEED);
 
   available = true;
-  Serial.println(F("PROX:INIT_OK - APDS9960 initialized"));
+  Serial.println(F("PROX:INIT_OK - VL53L0X initialized"));
   return true;
 }
 
@@ -528,44 +533,39 @@ uint16_t ProximitySensor::read() {
     return 0;
   }
 
-  // Check if proximity data is available
-  if (APDS.proximityAvailable()) {
-    // Read proximity value (0-255, closer objects have higher values)
-    int proximity = APDS.readProximity();
+  // Take a distance measurement
+  VL53L0X_RangingMeasurementData_t measure;
+  lox.rangingTest(&measure, false);
 
-    // Check for valid reading
-    if (proximity >= 0 && proximity <= 255) {
-      uint8_t rawValue = (uint8_t)proximity;
+  // Check if measurement is valid (status = 0 means valid)
+  if (measure.RangeStatus != 4) {  // 4 = out of range
+    uint16_t distance = measure.RangeMilliMeter;
 
-      // Add to filter buffer
-      filterBuffer[filterIndex] = rawValue;
-      filterIndex = (filterIndex + 1) % FILTER_SIZE;
+    // Add to filter buffer
+    filterBuffer[filterIndex] = distance;
+    filterIndex = (filterIndex + 1) % FILTER_SIZE;
 
-      // Mark filter as initialized after first full cycle
-      if (filterIndex == 0) {
-        filterInitialized = true;
-      }
-
-      // Calculate moving average
-      uint16_t sum = 0;
-      uint8_t count = filterInitialized ? FILTER_SIZE : (filterIndex > 0 ? filterIndex : 1);
-
-      for (uint8_t i = 0; i < count; i++) {
-        sum += filterBuffer[i];
-      }
-
-      // Store filtered raw value
-      lastRawValue = sum / count;
-
-      // Scale to 0-1024 range for compatibility
-      lastProximity = (uint16_t)lastRawValue * 4;
-
-      return lastProximity;
+    // Mark filter as initialized after first full cycle
+    if (filterIndex == 0) {
+      filterInitialized = true;
     }
+
+    // Calculate moving average
+    uint32_t sum = 0;
+    uint8_t count = filterInitialized ? FILTER_SIZE : (filterIndex > 0 ? filterIndex : 1);
+
+    for (uint8_t i = 0; i < count; i++) {
+      sum += filterBuffer[i];
+    }
+
+    // Store filtered distance
+    lastDistance = sum / count;
+
+    return lastDistance;
   }
 
-  // Return last known value if no new reading available
-  return lastProximity;
+  // Return last known value if measurement failed
+  return lastDistance;
 }
 
 // isAvailable() is defined inline in header

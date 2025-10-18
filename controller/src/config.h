@@ -117,11 +117,14 @@
 #define DOSING_SPEED dosing_speed
 
 // =====================================================
-// PROXIMITY SENSOR PARAMETERS
+// PROXIMITY SENSOR PARAMETERS (VL53L0X)
 // =====================================================
+// VL53L0X measures distance in millimeters (mm)
+// Shorter distance = closer to sensor
+// Typical range: 30mm - 1200mm (actual max ~2000mm in ideal conditions)
 
-#define PROX_THRESHOLD_UP_DEFAULT 500    // Default threshold for top position (0-1024)
-#define PROX_THRESHOLD_DOWN_DEFAULT 50   // Default threshold for bottom position (0-1024)
+#define PROX_THRESHOLD_UP_DEFAULT 100    // Default threshold for top position (mm) - closer to sensor
+#define PROX_THRESHOLD_DOWN_DEFAULT 300  // Default threshold for bottom position (mm) - farther from sensor
 
 // =====================================================
 // SYSTEM PARAMETERS
