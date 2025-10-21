@@ -33,7 +33,7 @@
 
 // Buttons - Use pins that are not conflicting with motors
 #define START_BUTTON_PIN 22  // Digital pin 22 (safe, not used by motors)
-#define RESET_BUTTON_PIN 23  // Digital pin 23 (safe, not used by motors)
+#define STOP_BUTTON_PIN 23  // Digital pin 23 (safe, not used by motors)
 
 // Optional sensor pins (for future use)
 #define FRASCO_SENSOR_PIN 24  // Digital pin 24 for container sensor

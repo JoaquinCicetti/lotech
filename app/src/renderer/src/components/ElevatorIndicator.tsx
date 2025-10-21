@@ -20,25 +20,21 @@ export const ElevatorIndicator: React.FC = () => {
 
   // Calculate position with precise mapping
   // minDist (top) = 100%, maxDist (bottom) = 0%
-  // Clamp to ensure smooth animation between min and max
-  let elevatorPosition = 0
-  if (currentDist <= minDist) {
-    elevatorPosition = 100 // At or above top
-  } else if (currentDist >= maxDist) {
-    elevatorPosition = 0 // At or below bottom
-  } else {
-    // Linear interpolation between min and max
-    // (maxDist - currentDist) / (maxDist - minDist) gives us a value between 0 and 1
-    // Multiply by 100 to get percentage
-    elevatorPosition = ((maxDist - currentDist) / (maxDist - minDist)) * 100
-  }
+  const elevatorPosition = React.useMemo(() => {
+    let position = 0
+    if (currentDist <= minDist) {
+      position = 100 // At or above top
+    } else if (currentDist >= maxDist) {
+      position = 0 // At or below bottom
+    } else {
+      // Linear interpolation between min and max
+      // (maxDist - currentDist) / (maxDist - minDist) gives us a value between 0 and 1
+      // Multiply by 100 to get percentage
+      position = ((maxDist - currentDist) / (maxDist - minDist)) * 100
+    }
 
-  // Debug: log position mapping
-  React.useEffect(() => {
-    const debugInfo = `dist=${currentDist}mm (min=${minDist}, max=${maxDist}) => pos=${elevatorPosition.toFixed(1)}%`
-
-    console.log('Elevator position mapping:', debugInfo)
-  }, [currentDist, minDist, maxDist, elevatorPosition])
+    return position
+  }, [currentDist, minDist, maxDist])
 
   // Determine if elevator is at positions
   const isAtTop = sensorReadings.posAlta
@@ -65,13 +61,14 @@ export const ElevatorIndicator: React.FC = () => {
         {/* Elevator Car */}
         <div
           className={cn(
-            'absolute right-0 left-0 mx-auto h-6 w-10 rounded transition-all duration-500',
+            'absolute right-0 left-0 mx-auto h-6 w-10 rounded transition-all duration-300 ease-in-out',
             isMoving ? 'bg-orange-500' : 'bg-blue-500',
             isMoving && 'animate-pulse'
           )}
           style={{
             bottom: `${elevatorPosition}%`,
             transform: 'translateY(50%)',
+            willChange: 'bottom',
           }}
         >
           {/* Direction Arrow */}

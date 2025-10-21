@@ -281,13 +281,23 @@ void CommandProcessor::processCommand(const char* command) {
   else if (strcmp(command, "GRINDER_ON") == 0) {
     if (ManualMode::isAuto()) {
       Serial.println(F("WARNING:MANUAL_CMD_IN_AUTO"));
+      return;
     }
-    grinder.start();
-    Serial.println(F("GRINDER:ON"));
-    Serial.print(F("RELAY_PIN:"));
-    Serial.print(MOTOR3_RELAY_PIN);
-    Serial.print(F(" STATE:"));
-    Serial.println(digitalRead(MOTOR3_RELAY_PIN));
+    // CRITICAL SAFETY: Grinder can ONLY run when elevator is at TOP position
+    if (elevator.isAtTop()) {
+      grinder.start();
+      Serial.println(F("GRINDER:ON"));
+      Serial.print(F("RELAY_PIN:"));
+      Serial.print(MOTOR3_RELAY_PIN);
+      Serial.print(F(" STATE:"));
+      Serial.println(digitalRead(MOTOR3_RELAY_PIN));
+    } else if (!ManualMode::hasPhysicalRestrictions()) {
+      // If restrictions disabled, allow but warn
+      grinder.start();
+      Serial.println(F("GRINDER:ON:UNSAFE"));
+    } else {
+      Serial.println(F("GRINDER:BLOCKED_NOT_AT_TOP"));
+    }
     return;
   }
   else if (strcmp(command, "GRINDER_OFF") == 0) {
@@ -404,6 +414,24 @@ void CommandProcessor::processCommand(const char* command) {
       Serial.println(F("AUTO:STOPPED"));
     } else {
       Serial.println(F("ERROR:STOP_REQUIRES_AUTO"));
+    }
+    return;
+  }
+  else if (strcmp(command, "PAUSE") == 0) {
+    if (ManualMode::isAuto()) {
+      stateMachine.pause();
+      Serial.println(F("AUTO:PAUSED"));
+    } else {
+      Serial.println(F("ERROR:PAUSE_REQUIRES_AUTO"));
+    }
+    return;
+  }
+  else if (strcmp(command, "RESUME") == 0) {
+    if (ManualMode::isAuto()) {
+      stateMachine.resume();
+      Serial.println(F("AUTO:RESUMED"));
+    } else {
+      Serial.println(F("ERROR:RESUME_REQUIRES_AUTO"));
     }
     return;
   }

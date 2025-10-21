@@ -41,12 +41,20 @@ void ManualMode::setMode(OperatingMode mode) {
     capSolenoid.deactivate();
     Serial.println(F("MODE:MANUAL"));
   } else {
-    // Resume automatic operation
+    // AUTO MODE - ALWAYS enable safety restrictions
+    physicalRestrictions = true;
     Serial.println(F("MODE:AUTO"));
+    Serial.println(F("RESTRICTIONS:ENABLED"));
   }
 }
 
 void ManualMode::setPhysicalRestrictions(bool enabled) {
+  // AUTO MODE - restrictions are ALWAYS enabled, cannot be disabled
+  if (currentMode == MODE_AUTO && !enabled) {
+    Serial.println(F("ERROR:CANNOT_DISABLE_RESTRICTIONS_IN_AUTO"));
+    return;
+  }
+
   physicalRestrictions = enabled;
   Serial.print(F("RESTRICTIONS:"));
   Serial.println(enabled ? F("ENABLED") : F("DISABLED"));
@@ -189,8 +197,17 @@ void ManualMode::controlElevatorMotor(const char* direction) {
 
 void ManualMode::controlGrinderMotor(const char* state) {
   if (strcmp(state, "ON") == 0) {
-    grinder.start();
-    Serial.println(F("GRINDER:ON"));
+    // CRITICAL SAFETY: Grinder can ONLY run when elevator is at TOP position
+    if (elevator.isAtTop()) {
+      grinder.start();
+      Serial.println(F("GRINDER:ON"));
+    } else if (!physicalRestrictions) {
+      // If restrictions disabled, allow but warn
+      grinder.start();
+      Serial.println(F("GRINDER:ON:UNSAFE"));
+    } else {
+      Serial.println(F("GRINDER:BLOCKED_NOT_AT_TOP"));
+    }
   }
   else if (strcmp(state, "OFF") == 0) {
     grinder.stop();

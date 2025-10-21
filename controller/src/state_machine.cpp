@@ -41,6 +41,8 @@ StateMachine::StateMachine() {
   stateJustChanged = false;
   stateTimer = 0;
   pastillasCount = 0;
+  isPaused = false;
+  pausedFromState = ESTADO0_INICIO;
   currentErrorMessage = nullptr;
 }
 
@@ -183,9 +185,6 @@ void StateMachine::executeStateEntry() {
         transferSolenoid.activate();
         // Send progress for transfer state
         SerialProtocol::sendProgress("4_TRASPASO", t_transfer);
-        // Clear weight stable since pill is being removed
-        // loadCell.simulateWeight(false);
-        // Serial.println("SIM:WEIGHT_STABLE:OFF");
       }
       break;
       
@@ -222,6 +221,11 @@ void StateMachine::executeStateEntry() {
       grinder.stop();
       transferSolenoid.deactivate();
       capSolenoid.deactivate();
+
+      // Notify that cycle is complete
+      Serial.println(F("CYCLE:COMPLETE"));
+      Serial.print(F("CYCLE:TOTAL_PILLS:"));
+      Serial.println(pastillasCount);
       break;
 
     case ESTADO_ERROR:
@@ -278,7 +282,7 @@ void StateMachine::executeStateContinuous() {
         // Print every 200ms for frequent monitoring during weighing
         if ((now - lastPrintTime) > 200) {
           Serial.print("WEIGHT:");
-          Serial.print(weight, 2);
+          Serial.print(weight, 4);
           Serial.print("g STABLE:");
           Serial.print(isStable ? "YES" : "NO");
           Serial.print(" TIMEOUT:");
@@ -404,11 +408,19 @@ void StateMachine::processTransitions() {
         Serial.print("/");
         Serial.println(lot_size);
 
+        // Wait 100ms for scale to settle after transfer, then auto-tare
+        // Only tare if we're continuing to next pill (not on last pill)
+        if (loadCell.isConnected() && pastillasCount < lot_size) {
+          delay(100);  // Let scale settle
+          loadCell.tare();
+          Serial.println(F("LOADCELL:AUTO_TARE"));
+        }
+
         // Update OLED display with new pill count
         if (oledDisplay.isInitialized()) {
           oledDisplay.showState(getStateName(currentState), pastillasCount, lot_size);
         }
-        
+
         if (pastillasCount < lot_size) {
           // Continue with next pill - go back to dosing
           Serial.println(F("CYCLE:NEXT_PILL"));
@@ -509,4 +521,59 @@ bool StateMachine::recoverStateFromEEPROM() {
   }
 
   return false;
+}
+
+void StateMachine::pause() {
+  // Don't pause if already paused or in certain states
+  if (isPaused || currentState == ESTADO0_INICIO ||
+      currentState == ESTADO8_RETIRO || currentState == ESTADO_ERROR) {
+    return;
+  }
+
+  // Save current state and set pause flag
+  pausedFromState = currentState;
+  isPaused = true;
+
+  // Stop all hardware immediately
+  elevator.stop();
+  dosingWheel.stop();
+  grinder.stop();
+  transferSolenoid.deactivate();
+  capSolenoid.deactivate();
+
+  // Disable weight reading if active
+  needsWeightReading = false;
+
+  Serial.println("PAUSED:1");
+  Serial.print("PAUSED_FROM:");
+  Serial.println(getStateName(pausedFromState));
+
+  // Update OLED to show paused state
+  if (oledDisplay.isInitialized()) {
+    oledDisplay.showState("PAUSADO", pastillasCount, lot_size);
+  }
+}
+
+void StateMachine::resume() {
+  if (!isPaused) {
+    return;
+  }
+
+  isPaused = false;
+
+  Serial.println("PAUSED:0");
+  Serial.print("RESUMING:");
+  Serial.println(getStateName(pausedFromState));
+
+  // Update OLED back to current state
+  if (oledDisplay.isInitialized()) {
+    oledDisplay.showState(getStateName(pausedFromState), pastillasCount, lot_size);
+  }
+
+  // Resume hardware based on the state we paused from
+  // We need to re-execute the state entry to restart operations
+  currentState = pausedFromState;
+  stateTimer = millis(); // Reset timer for the state
+  stateJustChanged = true;
+  executeStateEntry();
 }

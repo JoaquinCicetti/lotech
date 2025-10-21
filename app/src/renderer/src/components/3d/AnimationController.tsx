@@ -72,9 +72,19 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
   const proximity = useSettingsStore((state) => state.proximity)
   const dosingSettings = useSettingsStore((state) => state.dosing)
 
-  // Set initial elevator position on mount
+  // Set initial elevator position on mount - use refs to avoid dependency issues
+  const initializedRef = React.useRef(false)
+
   React.useEffect(() => {
-    if (elevatorRef.current && containerRef.current) {
+    // Only initialize once when we have valid data
+    if (
+      !initializedRef.current &&
+      elevatorRef.current &&
+      containerRef.current &&
+      proximityDistance > 0 &&
+      proximity.minProximity > 0 &&
+      proximity.maxProximity > 0
+    ) {
       const elevatorParams: ElevatorCalculationParams = {
         proximityDistance,
         minProximity: proximity.minProximity,
@@ -83,16 +93,21 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
       }
       const initialPosition = calculateElevatorPosition(elevatorParams)
 
-      console.log({ initialPosition })
       // Set initial positions without animation
       animationState.current.elevatorY = initialPosition
       animationState.current.containerZ = -initialPosition
+      animationState.current.elevatorTarget = initialPosition
       elevatorRef.current.position.y = initialPosition
       containerRef.current.position.z = -initialPosition
+
+      initializedRef.current = true
     }
-  }, []) // Run only on mount
+  }, [proximityDistance, proximity.minProximity, proximity.maxProximity])
 
   useFrame((state, delta) => {
+    // Don't animate until initialized
+    if (!initializedRef.current) return
+
     const { state: currentState, hardware } = systemStatus
 
     // Create check params for animation decisions
@@ -123,13 +138,13 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
       // Apply pulse effect for state changes
       applyPulseToChildren(containerRef.current, shouldPulse, state.clock.elapsedTime)
 
-      // Smooth container movement
+      // Smooth container movement with slower, more natural lerp
       const targetZ = -getElevatorTarget()
       const lerpParams: LerpParams = {
         current: animationState.current.containerZ,
         target: targetZ,
         delta,
-        speed: 3.5,
+        speed: 3.0, // Smoother interpolation
       }
       animationState.current.containerZ = smoothLerp(lerpParams)
       containerRef.current.position.z = animationState.current.containerZ
@@ -145,13 +160,13 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
       }
       applyPulseEffect(pulseParams)
 
-      // Smooth elevator movement
+      // Smooth elevator movement with slower, more natural lerp
       const targetY = getElevatorTarget()
       const lerpParams: LerpParams = {
         current: animationState.current.elevatorY,
         target: targetY,
         delta,
-        speed: 3.5,
+        speed: 3.0, // Smoother interpolation
       }
       animationState.current.elevatorY = smoothLerp(lerpParams)
       elevatorRef.current.position.y = animationState.current.elevatorY

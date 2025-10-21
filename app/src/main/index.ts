@@ -1,5 +1,6 @@
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { SerialPort } from 'serialport'
 
@@ -92,7 +93,7 @@ function createWindow(): void {
       }
     })
     // Small delay to ensure Arduino has time to process
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await new Promise((resolve) => setTimeout(resolve, 50))
     return true
   })
 
@@ -104,6 +105,30 @@ function createWindow(): void {
       delete messageBuffers[path]
     }
     return true
+  })
+
+  // File save dialog for cycle data export
+  ipcMain.handle('file:saveDialog', async (_e, { content, defaultFilename }) => {
+    try {
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: 'Save Cycle Data',
+        defaultPath: defaultFilename || `lotech_cycle_${Date.now()}.csv`,
+        filters: [
+          { name: 'CSV Files', extensions: ['csv'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+      })
+
+      if (!result.canceled && result.filePath) {
+        await writeFile(result.filePath, content, 'utf8')
+        return { success: true, path: result.filePath }
+      }
+
+      return { success: false, canceled: true }
+    } catch (error) {
+      console.error('Error saving file:', error)
+      return { success: false, error: error instanceof Error ? error.message : String(error) }
+    }
   })
 
   mainWindow.on('ready-to-show', () => {

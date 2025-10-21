@@ -58,7 +58,7 @@ void setup() {
   
   elevator.init();
   dosingWheel.init();
-  // loadCell.init();  // DISABLED - using direct HX711 instead
+  loadCell.init();
   grinder.init();
   transferSolenoid.init();
   capSolenoid.init();
@@ -113,6 +113,60 @@ void loop() {
   // Process serial commands
   commands.processSerialInput();
 
+  // ========== PHYSICAL BUTTON MONITORING ==========
+  // Check physical buttons continuously in BOTH manual and auto modes
+  static bool lastEmergencyState = false;
+  static bool lastStartState = false;
+  static unsigned long lastButtonCheck = 0;
+
+  if (millis() - lastButtonCheck > 50) {  // Check every 50ms to debounce
+    // Check emergency stop button (STOP_BUTTON_PIN)
+    bool emergencyPressed = !digitalRead(STOP_BUTTON_PIN);  // Active low with pull-up
+
+    if (emergencyPressed && !lastEmergencyState) {
+      // Emergency button just pressed
+      Serial.println(F("EMERGENCY:BUTTON_PRESSED"));
+
+      // Stop all hardware immediately
+      elevator.stop();
+      dosingWheel.stop();
+      grinder.stop();
+      transferSolenoid.deactivate();
+      capSolenoid.deactivate();
+
+      // In auto mode, pause the state machine
+      if (ManualMode::isAuto()) {
+        stateMachine.pause();
+      }
+
+      Serial.println(F("EMERGENCY:ACTIVATED"));
+    } else if (!emergencyPressed && lastEmergencyState) {
+      // Emergency button released
+      Serial.println(F("EMERGENCY:BUTTON_RELEASED"));
+      Serial.println(F("EMERGENCY:DEACTIVATED"));
+    }
+
+    // Check start button (START_BUTTON_PIN)
+    bool startPressed = !digitalRead(START_BUTTON_PIN);  // Active low with pull-up
+
+    if (startPressed && !lastStartState) {
+      // Start button just pressed
+      Serial.println(F("START:BUTTON_PRESSED"));
+
+      // In auto mode, set the virtual button state so state machine can process it
+      if (ManualMode::isAuto()) {
+        inputs.simulateStart(true);
+      }
+    } else if (!startPressed && lastStartState) {
+      // Start button released
+      Serial.println(F("START:BUTTON_RELEASED"));
+    }
+
+    lastEmergencyState = emergencyPressed;
+    lastStartState = startPressed;
+    lastButtonCheck = millis();
+  }
+
   // Run motors based on mode
   if (ManualMode::isManual()) {
     // Manual mode - run hardware directly
@@ -124,14 +178,20 @@ void loop() {
   }
   else if (ManualMode::isAuto()) {
     // Auto mode - run state machine
-    if (stateMachine.hasStateChanged()) {
-      stateMachine.clearStateChange();
-      stateMachine.executeStateEntry();
-    }
-    stateMachine.executeStateContinuous();
-    stateMachine.processTransitions();
 
-    // Run hardware for state machine
+    // Check if paused - if paused, don't process state machine
+    if (!stateMachine.getPausedState()) {
+      if (stateMachine.hasStateChanged()) {
+        stateMachine.clearStateChange();
+        stateMachine.executeStateEntry();
+      }
+      stateMachine.executeStateContinuous();
+      stateMachine.processTransitions();
+    }
+
+    // Always run hardware but check pause state
+    // The run() methods need to be called to maintain motor positions
+    // Motors are already stopped by the pause() method in state_machine.cpp
     elevator.run();
     dosingWheel.run();
     transferSolenoid.run();
@@ -166,7 +226,7 @@ void loop() {
   // Only report if distance changed by MORE than 5mm (filter oscillation)
   bool distChanged = abs((int)currentDistance - (int)lastReportedDistance) > 5;
 
-  // Report ONLY when something actually changes
+  // Report ONLY when something actually changes (no periodic updates)
   if (posChanged || distChanged) {
     Serial.print(F("PROX:"));
     Serial.print(currentDistance);
@@ -205,20 +265,26 @@ void loop() {
   }
 
   // ========== CONDITIONAL WEIGHT READING ==========
-  // Read weight when: 1) Auto mode in weighing state, 2) Manual command requests it
+  // Read weight when: 1) Auto mode in weighing state, 2) Manual mode (less frequent), 3) Explicitly requested
   static unsigned long lastWeightRead = 0;
 
   // Check if we're in weighing state
   bool inWeighingState = (stateMachine.getCurrentState() == ESTADO3_PESAJE);
 
-  if (needsWeightReading || inWeighingState) {
-    if (millis() - lastWeightRead >= 200) {  // Every 200ms when needed
+  // Adjust frequency: faster in weighing state, slower in manual to avoid blocking motors
+  unsigned long weightInterval = inWeighingState ? 200 : 1000;  // 200ms in weighing, 1000ms in manual
+
+  // In manual mode, read weight but less frequently to not block elevator sensor
+  bool shouldReadWeight = needsWeightReading || inWeighingState || ManualMode::isManual();
+
+  if (shouldReadWeight) {
+    if (millis() - lastWeightRead >= weightInterval) {
       float weight = loadCell.readWeight();
 
-      // Report weight continuously when in weighing state
-      if (inWeighingState) {
+      // Report weight in manual mode and weighing state
+      if (ManualMode::isManual() || inWeighingState) {
         Serial.print(F("WEIGHT:"));
-        Serial.print(weight, 1);
+        Serial.print(weight, 4);
         Serial.println(F(" g"));
       }
 

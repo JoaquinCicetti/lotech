@@ -12,7 +12,6 @@
 // =====================================================
 
 enum ControlMode {
-  MODE_SIMULATION,
   MODE_REAL,
   MODE_TEST  // Test mode for manual hardware control
 };
@@ -45,7 +44,6 @@ public:
   bool isMoving() const { return movingUp || movingDown; }
 
   void setMode(ControlMode m) { mode = m; }
-  void simulatePosition(bool top, bool bottom);
 };
 
 // =====================================================
@@ -57,6 +55,7 @@ public:  // Make motor and flag public for test mode access
   AccelStepper motor;
   bool dosingInProgress;
   bool continuousMode;  // For manual mode continuous movement
+  bool currentDirection;  // true = forward, false = backward
 
 public:
   DosingWheel();
@@ -66,7 +65,7 @@ public:
   void run();  // Call in loop
   bool isDispensing() const { return dosingInProgress; }
   bool isContinuousMode() const { return continuousMode; }
-  bool getDirection() const { return motor.speed() > 0; }  // true = forward, false = backward
+  bool getDirection() const { return currentDirection; }  // true = forward, false = backward
   void updateStepsPerDivision();  // Recalculate steps based on wheel_divisions
 
   // Manual mode continuous control
@@ -104,9 +103,6 @@ private:
   unsigned long tareStartTime;
   static const unsigned long TARE_TIMEOUT = 2000;  // 2 second timeout for tare
 
-  // Simulation variables
-  bool simWeightStable;
-
 public:
   LoadCell();
   void init();
@@ -115,10 +111,9 @@ public:
   void tare();  // Start non-blocking tare
   void run();   // Call in main loop to process tare
   void calibrate(float knownWeight);
-  
+
   void setMode(ControlMode m) { mode = m; }
   void setThreshold(float t) { weightThreshold = t; }
-  void simulateWeight(bool stable) { simWeightStable = stable; }
   bool isConnected() const { return isReady; }
 };
 
@@ -224,21 +219,21 @@ public:
 class InputSystem {
 private:
   ControlMode mode;
-  
-  // Simulation flags
-  bool simButtonStart;
-  bool simButtonReset;
-  bool simFrascoVacio;
-  bool simPastillasCargadas;
-  
+
+  // Virtual button and sensor states (set via serial commands)
+  bool virtualButtonStart;
+  bool virtualButtonReset;
+  bool virtualFrascoVacio;
+  bool virtualPastillasCargadas;
+
 public:
-  InputSystem() : mode(MODE_SIMULATION) {
-    simButtonStart = false;
-    simButtonReset = false;
-    simFrascoVacio = true;
-    simPastillasCargadas = true;
+  InputSystem() : mode(MODE_REAL) {
+    virtualButtonStart = false;
+    virtualButtonReset = false;
+    virtualFrascoVacio = true;
+    virtualPastillasCargadas = true;
   }
-  
+
   void init();  // Initialize pins
   void setMode(ControlMode m) { mode = m; }
 
@@ -246,16 +241,16 @@ public:
   bool isStartPressed();
   bool isResetPressed();
   void clearButtons();
-  
+
   // Condition functions
   bool isFrascoVacio() const;
   bool isPastillasCargadas() const;
-  
-  // Simulation controls
-  void simulateStart(bool pressed) { simButtonStart = pressed; }
-  void simulateReset(bool pressed) { simButtonReset = pressed; }
-  void simulateFrasco(bool empty) { simFrascoVacio = empty; }
-  void simulatePastillas(bool loaded) { simPastillasCargadas = loaded; }
+
+  // Virtual controls (for serial command interface)
+  void simulateStart(bool pressed) { virtualButtonStart = pressed; }
+  void simulateReset(bool pressed) { virtualButtonReset = pressed; }
+  void simulateFrasco(bool empty) { virtualFrascoVacio = empty; }
+  void simulatePastillas(bool loaded) { virtualPastillasCargadas = loaded; }
 };
 
 // =====================================================

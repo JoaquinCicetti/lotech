@@ -13,9 +13,9 @@ export interface ControllerStore {
   machineState: MachineState
   isRunning: boolean
   isPaused: boolean
-  isSimulating: boolean
   error: string | null
   physicalRestrictions: boolean
+  isEmergencyStopped: boolean
 
   sensorReadings: {
     loadCell: number
@@ -43,9 +43,9 @@ export interface ControllerStore {
   setMachineState: (state: MachineState) => void
   setRunning: (running: boolean) => void
   setPaused: (paused: boolean) => void
-  setSimulating: (simulating: boolean) => void
   setError: (error: string | null) => void
   setPhysicalRestrictions: (enabled: boolean) => void
+  setEmergencyStopped: (stopped: boolean) => void
   updateSensorReading: (sensor: string, value: number) => void
   resetState: () => void
 }
@@ -74,9 +74,9 @@ export const useControllerStateStore = create<ControllerStore>()(
     machineState: MachineState.INICIO,
     isRunning: false,
     isPaused: false,
-    isSimulating: false,
     error: null,
     physicalRestrictions: true,
+    isEmergencyStopped: false,
 
     sensorReadings: INITIAL_SENSORS,
     hardwareStatus: INITIAL_HARDWARE,
@@ -147,15 +147,19 @@ export const useControllerStateStore = create<ControllerStore>()(
           newState.physicalRestrictions = status.physicalRestrictions
         }
 
+        if (status.isEmergencyStopped !== undefined) {
+          newState.isEmergencyStopped = status.isEmergencyStopped
+        }
+
         return { ...state, ...newState }
       }),
 
     setMachineState: (machineState) => set({ machineState }),
     setRunning: (isRunning) => set({ isRunning }),
     setPaused: (isPaused) => set({ isPaused }),
-    setSimulating: (isSimulating) => set({ isSimulating }),
     setError: (error) => set({ error }),
     setPhysicalRestrictions: (physicalRestrictions) => set({ physicalRestrictions }),
+    setEmergencyStopped: (isEmergencyStopped) => set({ isEmergencyStopped }),
 
     updateSensorReading: (sensor, value) =>
       set((state) => ({
@@ -170,8 +174,8 @@ export const useControllerStateStore = create<ControllerStore>()(
         machineState: MachineState.INICIO,
         isRunning: false,
         isPaused: false,
-        isSimulating: false,
         error: null,
+        isEmergencyStopped: false,
         sensorReadings: INITIAL_SENSORS,
         hardwareStatus: INITIAL_HARDWARE,
         pillCount: 0,

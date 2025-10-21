@@ -1,8 +1,10 @@
 import { ElevatorIndicator } from '@renderer/components/ElevatorIndicator'
+import { Button } from '@renderer/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@renderer/components/ui/card'
 import { cn } from '@renderer/lib/utils'
+import { requestStatus } from '@renderer/serial/serialCommands'
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
-import { Cpu, Gauge, Move3d } from 'lucide-react'
+import { Cpu, Gauge, Move3d, RefreshCw } from 'lucide-react'
 import React from 'react'
 
 interface SensorIndicatorProps {
@@ -25,7 +27,8 @@ const SensorIndicator: React.FC<SensorIndicatorProps> = ({ label, active }) => (
 )
 
 export const SensorCards: React.FC = () => {
-  const { sensorReadings, pillCount, hardwareStatus } = useControllerStateStore()
+  const { sensorReadings, pillCount, hardwareStatus, isEmergencyStopped } =
+    useControllerStateStore()
 
   return (
     <div className="w-full space-y-4">
@@ -50,37 +53,25 @@ export const SensorCards: React.FC = () => {
                   </span>
                 </div>
               </div>
-              <div className="flex gap-2 text-xs">
-                <div className="flex items-center gap-1">
-                  <div
-                    className={cn(
-                      'h-1.5 w-1.5 rounded-full',
-                      sensorReadings.posAlta ? 'bg-green-500' : 'bg-gray-300'
-                    )}
-                  />
-                  <span className="text-muted-foreground">Alta</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div
-                    className={cn(
-                      'h-1.5 w-1.5 rounded-full',
-                      sensorReadings.posBaja ? 'bg-green-500' : 'bg-gray-300'
-                    )}
-                  />
-                  <span className="text-muted-foreground">Baja</span>
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* 2. Sensors Card */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="flex items-center gap-2 text-sm">
               <Gauge className="h-4 w-4" />
               Sensores
             </CardTitle>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => requestStatus()}
+              className="h-6 w-6 p-0"
+            >
+              <RefreshCw className="h-3 w-3" />
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -94,9 +85,8 @@ export const SensorCards: React.FC = () => {
                 <span className="text-muted-foreground text-xs">Contador de Píldoras</span>
                 <span className="font-mono text-lg font-semibold">{pillCount}</span>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-1">
+              <div className="mt-3 grid grid-cols-1 gap-1">
                 <SensorIndicator label="Peso OK" active={sensorReadings.weightStable} />
-                <SensorIndicator label="Frasco" active={sensorReadings.frascoVacio} />
               </div>
             </div>
           </CardContent>
@@ -111,6 +101,24 @@ export const SensorCards: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="mb-3">
+              <div
+                className={cn(
+                  'flex items-center justify-between rounded-lg px-3 py-2 text-sm font-medium',
+                  isEmergencyStopped
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                )}
+              >
+                <span>{isEmergencyStopped ? 'Parada de Emergencia ACTIVA' : 'Sistema Normal'}</span>
+                <div
+                  className={cn(
+                    'h-3 w-3 rounded-full',
+                    isEmergencyStopped ? 'animate-pulse bg-red-500' : 'bg-green-500'
+                  )}
+                />
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <SensorIndicator label="Dosificación" active={hardwareStatus.dosing === 'ACTIVE'} />
               <SensorIndicator label="Molino" active={hardwareStatus.grinder === 'ON'} />

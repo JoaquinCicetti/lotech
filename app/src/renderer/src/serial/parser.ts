@@ -1,4 +1,5 @@
 import { isValidMachineState } from '@renderer/constants/states'
+import { toast } from 'sonner'
 import { SystemStatus } from '../types'
 import {
   CapStatus,
@@ -35,11 +36,15 @@ export class SerialMessageParser {
 
     // PILLS: Pill counter
     if (cleanLine.startsWith(CommandPrefix.PILLS)) {
+      console.log('PILLS message detected:', cleanLine)
       const match = cleanLine.match(/^PILLS:(\d+)\/(\d+)/)
+      console.log('Regex match result:', match)
       if (match) {
         const count = parseInt(match[1])
         const lotSize = parseInt(match[2])
+        console.log('Parsed pill count:', count, 'lot size:', lotSize)
         if (!isNaN(count) && !isNaN(lotSize) && count >= 0 && lotSize > 0) {
+          console.log('Returning pillCount:', count)
           return { pillCount: count }
         }
       }
@@ -204,6 +209,17 @@ export class SerialMessageParser {
     // GRINDER: Motor status
     if (cleanLine.startsWith(CommandPrefix.GRINDER)) {
       const status = cleanLine.substring(CommandPrefix.GRINDER.length).trim()
+
+      // Handle safety block message
+      if (status === 'BLOCKED_NOT_AT_TOP') {
+        console.error('⚠️ GRINDER BLOCKED: Elevator must be at TOP position')
+        toast.error('Molino bloqueado: El elevador debe estar ARRIBA', {
+          duration: 5000,
+          id: 'grinder-safety-block',
+        })
+        return null
+      }
+
       const hardware = {
         elevator: currentStatus.hardware?.elevator || ElevatorStatus.IDLE,
         dosing: currentStatus.hardware?.dosing || DosingStatus.IDLE,
@@ -313,6 +329,35 @@ export class SerialMessageParser {
       }
     }
 
+    // EMERGENCY: Physical button events
+    if (cleanLine.startsWith(CommandPrefix.EMERGENCY)) {
+      const status = cleanLine.substring(CommandPrefix.EMERGENCY.length).trim()
+
+      // Handle button press/release
+      if (status === 'BUTTON_PRESSED' || status === 'ACTIVATED') {
+        return { isEmergencyStopped: true }
+      } else if (status === 'BUTTON_RELEASED' || status === 'DEACTIVATED') {
+        return { isEmergencyStopped: false }
+      }
+
+      // Ignore other emergency messages
+      return null
+    }
+
+    // START: Physical start button events
+    if (cleanLine.startsWith('START:')) {
+      const status = cleanLine.substring(6).trim()
+
+      // Just log these for now, UI can handle start button differently
+      if (status === 'BUTTON_PRESSED') {
+        console.log('Physical START button pressed')
+      } else if (status === 'BUTTON_RELEASED') {
+        console.log('Physical START button released')
+      }
+
+      return null
+    }
+
     // Ignore confirmation messages
     const ignorePrefixes = [
       CommandPrefix.BTN,
@@ -324,7 +369,6 @@ export class SerialMessageParser {
       CommandPrefix.MANUAL,
       CommandPrefix.WARNING,
       CommandPrefix.ERROR,
-      CommandPrefix.EMERGENCY,
       CommandPrefix.DEBUG,
     ]
 

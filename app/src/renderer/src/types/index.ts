@@ -87,6 +87,7 @@ export interface SystemStatus {
   proximityDistance?: number
   lastHeartbeat?: number
   physicalRestrictions?: boolean
+  isEmergencyStopped?: boolean
   stateProgress?: {
     state: string
     expectedDuration: number

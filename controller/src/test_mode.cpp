@@ -44,7 +44,7 @@ void TestMode::setActive(bool active) {
     Serial.println(F("  TEST_STATUS    - Get all hardware status"));
     Serial.println(F("  EXIT_TEST      - Exit test mode"));
   } else {
-    setGlobalMode(MODE_SIMULATION);
+    setGlobalMode(MODE_REAL);
     Serial.println(F("TEST_MODE:DISABLED"));
     Serial.println(F("Test mode disabled - Returning to normal mode"));
   }

@@ -58,6 +58,10 @@ private:
   // Process variables
   int pastillasCount;
 
+  // Pause state
+  bool isPaused;
+  State pausedFromState;
+
   // Error tracking
   const char* currentErrorMessage;
   
@@ -96,6 +100,11 @@ public:
   // Error handling
   void setErrorMessage(const char* message) { currentErrorMessage = message; }
   const char* getErrorMessage() const { return currentErrorMessage; }
+
+  // Pause/Resume functionality
+  void pause();
+  void resume();
+  bool getPausedState() const { return isPaused; }
 };
 
 extern StateMachine stateMachine;

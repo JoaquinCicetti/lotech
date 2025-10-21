@@ -1,6 +1,8 @@
 import { useConnectionStore } from '@renderer/store/connectionStore'
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
+import { usePillTrackingStore } from '@renderer/store/pillTrackingStore'
 import { useSettingsStore } from '@renderer/store/settingsStore'
+import { MachineState } from '@renderer/types'
 import { useCallback, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { StatusCommand } from './commands'
@@ -29,6 +31,9 @@ export function useSerialConnection(): UseSerialConnectionReturn {
   const { updateFromSystemStatus, setError } = useControllerStateStore()
   const { setDelays, setDosing, setElevator, setTimeouts } = useSettingsStore()
   const hasReceivedFirstMessage = useRef(false)
+
+  // Weight collection buffer for filtering/averaging during weighing
+  const weightBuffer = useRef(new Map<number, number[]>())
 
   const sendCommand = useCallback(
     async (cmd: string): Promise<void> => {
@@ -143,12 +148,16 @@ export function useSerialConnection(): UseSerialConnectionReturn {
           const { selectedPort } = useConnectionStore.getState()
           if (selectedPort) {
             await window.serial.write({ path: selectedPort, data: StatusCommand.GET_DELAYS + '\n' })
+
             setTimeout(() => {
               window.serial.write({ path: selectedPort, data: StatusCommand.GET_DOSING + '\n' })
               setTimeout(() => {
                 window.serial.write({ path: selectedPort, data: StatusCommand.GET_ELEVATOR + '\n' })
                 setTimeout(() => {
-                  window.serial.write({ path: selectedPort, data: StatusCommand.GET_TIMEOUTS + '\n' })
+                  window.serial.write({
+                    path: selectedPort,
+                    data: StatusCommand.GET_TIMEOUTS + '\n',
+                  })
                 }, 300)
               }, 200)
             }, 100)
@@ -167,8 +176,8 @@ export function useSerialConnection(): UseSerialConnectionReturn {
           transfer: delays.transfer ?? currentDelays.transfer,
           grind: delays.grind ?? currentDelays.grind,
           cap: delays.cap ?? currentDelays.cap,
-          elevUp: delays.elevUp ?? currentDelays.elevUp,  // Now properly mapped to camelCase
-          elevDown: delays.elevDown ?? currentDelays.elevDown,  // Now properly mapped to camelCase
+          elevUp: delays.elevUp ?? currentDelays.elevUp, // Now properly mapped to camelCase
+          elevDown: delays.elevDown ?? currentDelays.elevDown, // Now properly mapped to camelCase
         }
         setDelays(newDelays)
         return
@@ -182,7 +191,7 @@ export function useSerialConnection(): UseSerialConnectionReturn {
         const newDosing = {
           wheelDivisions: dosing.divisions ?? currentDosing.wheelDivisions,
           lotSize: dosing.lot_size ?? currentDosing.lotSize,
-          motorSpeed: dosing.motor_speed ? dosing.motor_speed / 400 : currentDosing.motorSpeed,  // Convert steps/sec to rad/sec (approx)
+          motorSpeed: dosing.motor_speed ? dosing.motor_speed / 400 : currentDosing.motorSpeed, // Convert steps/sec to rad/sec (approx)
         }
         setDosing(newDosing)
         return
@@ -216,8 +225,48 @@ export function useSerialConnection(): UseSerialConnectionReturn {
         return
       }
 
+      // Handle CYCLE:COMPLETE message
+      if (line.includes('CYCLE:COMPLETE')) {
+        const trackingStore = usePillTrackingStore.getState()
+        if (trackingStore.isTracking && trackingStore.currentCycle) {
+          // End the cycle
+          const completedCycle = trackingStore.endCycle()
+
+          if (completedCycle) {
+            // Automatically show save dialog
+            const csvContent = trackingStore.exportCycleData(completedCycle)
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+            const filename = `lotech_${completedCycle.lotNumber}_${timestamp}.csv`
+
+            setTimeout(async () => {
+              try {
+                const result = await window.file.saveDialog({
+                  content: csvContent,
+                  defaultFilename: filename,
+                })
+
+                if (result.success) {
+                  toast.success(`Ciclo completado y guardado en ${result.path}`)
+                  // // Reset system after successful save
+                  // setTimeout(() => {
+                  //   window.serial.write('RESET')
+                  // }, 500)
+                } else if (!result.canceled) {
+                  toast.error('Error al guardar el archivo')
+                }
+              } catch (error) {
+                console.error('Auto-save error:', error)
+                toast.error('Error al guardar datos del ciclo')
+              }
+            }, 500)
+          }
+        }
+        return
+      }
+
       // Parse system status
       try {
+        console.log('About to parse line:', line)
         const currentStatus = useControllerStateStore.getState()
         const statusUpdate = SerialMessageParser.parseMessage(line, {
           state: currentStatus.machineState,
@@ -228,6 +277,67 @@ export function useSerialConnection(): UseSerialConnectionReturn {
         })
 
         if (statusUpdate) {
+          // Collect weight readings during weighing state
+          const isWeighing = currentStatus.machineState === MachineState.PESAJE
+          if (isWeighing && statusUpdate.weight !== undefined && statusUpdate.weight > 0) {
+            // Add to weight collection buffer
+            if (!weightBuffer.current.has(currentStatus.pillCount)) {
+              weightBuffer.current.set(currentStatus.pillCount, [])
+            }
+            weightBuffer.current.get(currentStatus.pillCount)!.push(statusUpdate.weight)
+          }
+
+          // Track pill when counter increments (after transfer completes)
+          // IMPORTANT: Check BEFORE updating state!
+          const trackingStore = usePillTrackingStore.getState()
+          console.log('Tracking check:', {
+            isTracking: trackingStore.isTracking,
+            statusUpdatePillCount: statusUpdate.pillCount,
+            currentCycle: trackingStore.currentCycle?.lotNumber,
+          })
+
+          if (trackingStore.isTracking && statusUpdate.pillCount !== undefined) {
+            const currentPillCount = currentStatus.pillCount // Use OLD state before update
+            console.log('Pill count comparison:', {
+              new: statusUpdate.pillCount,
+              current: currentPillCount,
+            })
+
+            // Pill counter increased - record the pill with filtered average
+            if (statusUpdate.pillCount > currentPillCount) {
+              let finalWeight = currentStatus.currentWeight || 0
+
+              // Get collected weights for this pill
+              const weights = weightBuffer.current.get(currentPillCount) || []
+
+              if (weights.length > 0) {
+                // Filter extremes and calculate average
+                const sorted = [...weights].sort((a, b) => a - b)
+                // Remove top and bottom 10% if we have enough samples
+                const trimCount = weights.length > 10 ? Math.floor(weights.length * 0.1) : 0
+                const trimmed = sorted.slice(trimCount, sorted.length - trimCount)
+
+                // Calculate average
+                finalWeight = trimmed.reduce((sum, w) => sum + w, 0) / trimmed.length
+
+                console.log(
+                  `Pill #${statusUpdate.pillCount} weight filtered: ${weights.length} samples -> ${trimmed.length} used -> avg: ${(finalWeight * 1000).toFixed(4)} mg`
+                )
+              }
+
+              // Clear buffer for this pill
+              weightBuffer.current.delete(currentPillCount)
+
+              // Convert from grams to milligrams for recording
+              trackingStore.recordPillWeight(finalWeight * 1000)
+
+              console.log(
+                `Pill #${statusUpdate.pillCount} recorded: ${(finalWeight * 1000).toFixed(4)} mg`
+              )
+            }
+          }
+
+          // NOW update the state after we've checked for pill increment
           updateFromSystemStatus(statusUpdate)
         }
       } catch (error) {

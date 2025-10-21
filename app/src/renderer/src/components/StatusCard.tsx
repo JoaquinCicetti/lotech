@@ -74,7 +74,7 @@ export const StatusCard: React.FC<StatusCardProps> = (props) => {
         <div className="space-y-3">
           <StatusRow label="Estado" value={state} variant="primary" />
           <StatusRow label="Progreso" value={`${pillCount}/${targetPills}`} />
-          <StatusRow label="Peso" value={`${weight.toFixed(2)}g`} variant="secondary" />
+          <StatusRow label="Peso" value={`${weight.toFixed(4)}g`} variant="secondary" />
           {loadCellCount !== undefined && (
             <StatusRow label="Celdas Activas" value={`${loadCellCount}/9`} />
           )}

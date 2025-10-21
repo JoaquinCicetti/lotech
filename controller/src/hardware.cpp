@@ -197,17 +197,7 @@ void Elevator::updatePosition() {
   }
 }
 
-void Elevator::simulatePosition(bool top, bool bottom) {
-  if (mode == MODE_SIMULATION) {
-    // Prevent both positions being active at the same time
-    if (top && bottom) {
-      Serial.println("ERROR:No se puede estar arriba y abajo simultaneamente");
-      return;
-    }
-    atTop = top;
-    atBottom = bottom;
-  }
-}
+// Removed simulatePosition method - simulation mode no longer used
 
 // =====================================================
 // DOSING WHEEL IMPLEMENTATION
@@ -216,6 +206,7 @@ void Elevator::simulatePosition(bool top, bool bottom) {
 DosingWheel::DosingWheel() : motor(AccelStepper::DRIVER, MOTOR2_STEP_PIN, MOTOR2_DIR_PIN) {
   dosingInProgress = false;
   continuousMode = false;
+  currentDirection = true;  // true = forward, false = backward
 }
 
 void DosingWheel::init() {
@@ -313,6 +304,7 @@ void DosingWheel::updateStepsPerDivision() {
 void DosingWheel::startContinuous(bool forward) {
   continuousMode = true;
   dosingInProgress = false;  // Not a normal dosing operation
+  currentDirection = forward;  // Track direction
 
   // Set MS pins for microstepping if needed
   // digitalWrite(MOTOR2_MS1_PIN, HIGH);  // Half stepping
@@ -350,7 +342,6 @@ LoadCell::LoadCell() : scale() {
   calibrationFactor = 2280.f;
   weightThreshold = 1.0;
   weightStableTime = 0;
-  simWeightStable = false;
 
   // Initialize weight buffer
   weightBufferIndex = 0;
@@ -372,59 +363,103 @@ void LoadCell::init() {
 
   scale.begin(HX711_DOUT_PIN, HX711_SCK_PIN);
 
-  // Wait MORE for proper stabilization
+  // Set gain to 128 (channel A)
+  scale.set_gain(128);
+
+  // Set the calibration scale factor
+  scale.set_scale(calibrationFactor);
+
+  // Wait for proper stabilization
   delay(1000);
 
-  // Check multiple times
+  // Check multiple times with more attempts
   bool ready = false;
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 10; i++) {
     if (scale.is_ready()) {
       ready = true;
       break;
     }
-    delay(100);
+    Serial.print(F("LOADCELL:WAIT_READY:"));
+    Serial.println(i);
+    delay(200);
   }
 
   if (ready) {
     isReady = true;
     Serial.println(F("LOADCELL:INIT_OK"));
 
-    // Do a test read to verify it works
-    long testRead = scale.read();
-    Serial.print(F("LOADCELL:TEST_READ:"));
-    Serial.println(testRead);
+    // Do multiple test reads to verify it works
+    Serial.println(F("LOADCELL:TEST_READS:"));
+    for (int i = 0; i < 3; i++) {
+      if (scale.wait_ready_timeout(1000)) {
+        long testRead = scale.read();
+        Serial.print(F("  READ_"));
+        Serial.print(i);
+        Serial.print(F(": "));
+        Serial.println(testRead);
+      } else {
+        Serial.print(F("  READ_"));
+        Serial.print(i);
+        Serial.println(F(": TIMEOUT"));
+      }
+      delay(100);
+    }
+
+    // Perform initial tare
+    Serial.println(F("LOADCELL:INITIAL_TARE"));
+    if (scale.wait_ready_timeout(1000)) {
+      scale.tare(10);  // Average 10 readings for tare
+      Serial.println(F("LOADCELL:TARED"));
+    } else {
+      Serial.println(F("LOADCELL:TARE_TIMEOUT"));
+    }
   } else {
     isReady = false;
-    Serial.println(F("LOADCELL:INIT_FAIL"));
+    Serial.println(F("LOADCELL:INIT_FAIL - NOT_READY"));
   }
 }
 
 float LoadCell::readWeight() {
   // Return calibrated weight in grams
   if (!isReady) {
+    // Debug: report why not ready (throttled)
+    static unsigned long lastNotReadyMsg = 0;
+    if (millis() - lastNotReadyMsg > 5000) {
+      Serial.println(F("LOADCELL:NOT_READY"));
+      lastNotReadyMsg = millis();
+    }
     return 0.0;
   }
 
-  // Try to read if scale is ready (non-blocking attempt)
-  unsigned long now = millis();
-
-  if (scale.is_ready()) {
-    // Read and convert to weight using calibration factor
-    long raw = scale.read();
-    if (raw != -1) {  // Only update if valid reading
-      // Convert raw value to grams using calibration factor
-      currentWeight = (float)raw / calibrationFactor;
-
-      // Add to buffer for stability calculation (update every successful read)
-      weightBuffer[weightBufferIndex] = currentWeight;
-      weightBufferIndex = (weightBufferIndex + 1) % WEIGHT_BUFFER_SIZE;
-      if (weightBufferIndex == 0) {
-        bufferFilled = true;
-      }
-
-      lastWeightRead = now;
-    }
+  // CRITICAL: Only read if scale is ready - this is NON-BLOCKING
+  // If not ready, just return the last reading to avoid blocking motors
+  if (!scale.is_ready()) {
+    return currentWeight;
   }
+
+  // Scale is ready - do a quick read
+  // Use get_units() which respects the tare offset
+  float units = scale.get_units();
+
+  // Debug: print value periodically
+  static unsigned long lastDebugPrint = 0;
+  if (millis() - lastDebugPrint > 2000) {
+    Serial.print(F("LOADCELL:UNITS:"));
+    Serial.println(units, 2);
+    lastDebugPrint = millis();
+  }
+
+  // Update current weight with the calibrated value
+  currentWeight = units;
+
+  // Add to buffer for stability calculation
+  weightBuffer[weightBufferIndex] = currentWeight;
+  weightBufferIndex = (weightBufferIndex + 1) % WEIGHT_BUFFER_SIZE;
+  if (weightBufferIndex == 0) {
+    bufferFilled = true;
+  }
+
+  lastWeightRead = millis();
 
   return currentWeight;
 }
@@ -440,7 +475,7 @@ void LoadCell::tare() {
 }
 
 void LoadCell::run() {
-  // Process non-blocking tare operation
+  // Process NON-BLOCKING tare operation
   if (tareInProgress) {
     unsigned long elapsed = millis() - tareStartTime;
 
@@ -451,17 +486,21 @@ void LoadCell::run() {
       return;
     }
 
-    // Try to tare - this is still blocking, but limited to TARE_TIMEOUT
+    // COMPLETELY NON-BLOCKING tare - just do one quick tare and clear state
     if (scale.is_ready()) {
-      // Set all weights to zero (simplified tare without blocking HX711 reads)
+      // Do a simple tare (no averaging to avoid blocking)
       scale.tare();
 
-      // Clear weight buffer
+      // Clear weight buffer and reset state IMMEDIATELY
+      for (int i = 0; i < WEIGHT_BUFFER_SIZE; i++) {
+        weightBuffer[i] = 0;
+      }
       weightBufferIndex = 0;
       bufferFilled = false;
       currentWeight = 0.0;
       stableWeight = 0.0;
       stableStartTime = 0;
+      lastWeightRead = millis();
 
       Serial.println(F("LOADCELL:TARED"));
       tareInProgress = false;
@@ -702,7 +741,7 @@ bool ProximitySensor::hasSignificantChange() {
 void InputSystem::init() {
   // Initialize button pins with internal pull-up resistors
   pinMode(START_BUTTON_PIN, INPUT_PULLUP);
-  pinMode(RESET_BUTTON_PIN, INPUT_PULLUP);
+  pinMode(STOP_BUTTON_PIN, INPUT_PULLUP);
 
   // Initialize sensor pins (for future use)
   pinMode(FRASCO_SENSOR_PIN, INPUT_PULLUP);
@@ -712,40 +751,42 @@ void InputSystem::init() {
 }
 
 bool InputSystem::isStartPressed() {
-  if (mode == MODE_SIMULATION) {
-    return simButtonStart;
+  // Check physical button (active low with pull-up) and update virtual state
+  bool physicalPressed = !digitalRead(START_BUTTON_PIN);
+
+  // If physical button is pressed, set virtual button too
+  if (physicalPressed) {
+    virtualButtonStart = true;
   }
-  // Read physical button (active low with pull-up)
-  return !digitalRead(START_BUTTON_PIN);
+
+  return virtualButtonStart;
 }
 
 bool InputSystem::isResetPressed() {
-  if (mode == MODE_SIMULATION) {
-    return simButtonReset;
+  // Check physical button (active low with pull-up) and update virtual state
+  bool physicalPressed = !digitalRead(STOP_BUTTON_PIN);
+
+  // If physical button is pressed, set virtual button too
+  if (physicalPressed) {
+    virtualButtonReset = true;
   }
-  // Read physical button (active low with pull-up)
-  return !digitalRead(RESET_BUTTON_PIN);
+
+  return virtualButtonReset;
 }
 
 void InputSystem::clearButtons() {
-  simButtonStart = false;
-  simButtonReset = false;
+  virtualButtonStart = false;
+  virtualButtonReset = false;
 }
 
 bool InputSystem::isFrascoVacio() const {
-  if (mode == MODE_SIMULATION) {
-    return simFrascoVacio;
-  }
-  // Read actual sensor (active low)
-  return !digitalRead(FRASCO_SENSOR_PIN);
+  // Use virtual sensor state set via serial commands from UI
+  return virtualFrascoVacio;
 }
 
 bool InputSystem::isPastillasCargadas() const {
-  if (mode == MODE_SIMULATION) {
-    return simPastillasCargadas;
-  }
-  // Read actual sensor (active low)
-  return !digitalRead(PILLS_LOADED_SENSOR_PIN);
+  // Use virtual sensor state set via serial commands from UI
+  return virtualPastillasCargadas;
 }
 
 // =====================================================

@@ -224,7 +224,7 @@ export function SensorStatus({ onSendCommand }: SensorStatusProps) {
             <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
               <span className="text-sm font-medium text-gray-700">Current Weight</span>
               <span className="text-sm font-semibold text-gray-900">
-                {systemStatus.weight?.toFixed(2) || '0.00'} g
+                {systemStatus.weight?.toFixed(4) || '0.0000'} g
               </span>
             </div>
           </div>

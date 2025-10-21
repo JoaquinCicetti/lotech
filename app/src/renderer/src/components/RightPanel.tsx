@@ -4,12 +4,14 @@ import { cn } from '@renderer/lib/utils'
 import { useConnectionStore } from '@renderer/store/connectionStore'
 import { Terminal } from 'lucide-react'
 import React from 'react'
+import { PillTrackingPanel } from './PillTrackingPanel'
 
 export const RightPanel: React.FC = () => {
   const { serialData } = useConnectionStore()
   return (
     <div className="flex h-full flex-col space-y-4 p-2">
-      {/* Sensor Readings */}
+      {/* Pill Tracking Panel */}
+      <PillTrackingPanel />
 
       {/* Console - Takes remaining space */}
       <Card className="flex-1 overflow-hidden">
