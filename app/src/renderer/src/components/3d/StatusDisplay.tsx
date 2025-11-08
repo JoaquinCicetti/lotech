@@ -1,9 +1,9 @@
 import { Html } from '@react-three/drei'
-import React from 'react'
+import { cn } from '@renderer/lib/utils'
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
+import React from 'react'
 import { Badge } from '../ui/badge'
 import { Progress } from '../ui/progress'
-import { cn } from '@renderer/lib/utils'
 
 interface StatusDisplayProps {
   isConnected?: boolean
@@ -33,11 +33,9 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = (props) => {
         <div className="space-y-3">
           {/* Connection Status */}
           <div className="flex items-center justify-between border-b pb-2">
-            <span className="text-sm font-semibold">
-              Estado del Sistema
-            </span>
+            <span className="text-sm font-semibold">Estado del Sistema</span>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
+              <span className="text-muted-foreground text-xs">
                 {isConnected ? 'Conectado' : 'Desconectado'}
               </span>
               <div
@@ -51,8 +49,10 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = (props) => {
 
           {/* Machine State */}
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Estado</span>
-            <Badge variant="default" className="text-xs">{state}</Badge>
+            <span className="text-muted-foreground text-xs">Estado</span>
+            <Badge variant="default" className="text-xs">
+              {state}
+            </Badge>
           </div>
 
           {/* Progress */}
@@ -69,12 +69,14 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = (props) => {
           {/* Sensor Readings Grid */}
           <div className="grid grid-cols-2 gap-2 border-t pt-2">
             <div className="space-y-1">
-              <span className="text-xs text-muted-foreground">Peso</span>
+              <span className="text-muted-foreground text-xs">Peso</span>
               <div className="font-mono text-sm font-semibold">{(weight ?? 0).toFixed(4)}g</div>
             </div>
             <div className="space-y-1">
-              <span className="text-xs text-muted-foreground">Proximidad</span>
-              <div className="font-mono text-sm font-semibold">{sensorReadings.proximityDistance}</div>
+              <span className="text-muted-foreground text-xs">Proximidad</span>
+              <div className="font-mono text-sm font-semibold">
+                {sensorReadings.proximityDistance}
+              </div>
             </div>
           </div>
 
@@ -83,7 +85,9 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = (props) => {
             <div
               className={cn(
                 'flex-1 rounded px-1 py-0.5 text-center text-xs',
-                hardwareStatus.elevator !== 'IDLE' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
+                hardwareStatus.elevator !== 'IDLE'
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                  : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
               )}
             >
               Elev
@@ -91,7 +95,9 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = (props) => {
             <div
               className={cn(
                 'flex-1 rounded px-1 py-0.5 text-center text-xs',
-                hardwareStatus.dosing === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
+                hardwareStatus.dosing === 'ACTIVE'
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                  : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
               )}
             >
               Dos
@@ -99,7 +105,9 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = (props) => {
             <div
               className={cn(
                 'flex-1 rounded px-1 py-0.5 text-center text-xs',
-                hardwareStatus.grinder === 'ON' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
+                hardwareStatus.grinder === 'ON'
+                  ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400'
+                  : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
               )}
             >
               Mol
@@ -107,7 +115,9 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = (props) => {
             <div
               className={cn(
                 'flex-1 rounded px-1 py-0.5 text-center text-xs',
-                hardwareStatus.transfer === 'OPEN' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
+                hardwareStatus.transfer === 'OPEN'
+                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400'
+                  : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
               )}
             >
               Trans
@@ -115,7 +125,9 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = (props) => {
             <div
               className={cn(
                 'flex-1 rounded px-1 py-0.5 text-center text-xs',
-                hardwareStatus.cap === 'PUSHED' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
+                hardwareStatus.cap === 'PUSHED'
+                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400'
+                  : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
               )}
             >
               Tapa
@@ -125,15 +137,30 @@ export const StatusDisplay: React.FC<StatusDisplayProps> = (props) => {
           {/* Position Indicators */}
           <div className="flex gap-2 text-xs">
             <div className="flex items-center gap-1">
-              <div className={cn('h-1.5 w-1.5 rounded-full', sensorReadings.posAlta ? 'bg-green-500' : 'bg-gray-300')} />
+              <div
+                className={cn(
+                  'h-1.5 w-1.5 rounded-full',
+                  sensorReadings.posAlta ? 'bg-green-500' : 'bg-gray-300'
+                )}
+              />
               <span className="text-muted-foreground">Alta</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className={cn('h-1.5 w-1.5 rounded-full', sensorReadings.posBaja ? 'bg-green-500' : 'bg-gray-300')} />
+              <div
+                className={cn(
+                  'h-1.5 w-1.5 rounded-full',
+                  sensorReadings.posBaja ? 'bg-green-500' : 'bg-gray-300'
+                )}
+              />
               <span className="text-muted-foreground">Baja</span>
             </div>
             <div className="flex items-center gap-1">
-              <div className={cn('h-1.5 w-1.5 rounded-full', sensorReadings.frascoVacio ? 'bg-green-500' : 'bg-gray-300')} />
+              <div
+                className={cn(
+                  'h-1.5 w-1.5 rounded-full',
+                  sensorReadings.frascoVacio ? 'bg-green-500' : 'bg-gray-300'
+                )}
+              />
               <span className="text-muted-foreground">Frasco</span>
             </div>
           </div>

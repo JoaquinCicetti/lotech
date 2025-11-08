@@ -134,6 +134,31 @@ export const updateLoadCell = (calibrationFactor: number, deadband: number) => {
   return sendSerial(command)
 }
 
+// LED commands
+export const setLEDBrightness = (brightness: number) => {
+  return sendSerial(`SET_LED:BRIGHTNESS,${brightness}`)
+}
+
+export const setLEDColor = (index: number, r: number, g: number, b: number) => {
+  return sendSerial(`SET_LED:${index},${r},${g},${b}`)
+}
+
+export const setLEDRange = (start: number, end: number, r: number, g: number, b: number) => {
+  return sendSerial(`SET_LED:RANGE,${start},${end},${r},${g},${b}`)
+}
+
+export const setAllLEDs = (r: number, g: number, b: number) => {
+  return sendSerial(`SET_LED:ALL,${r},${g},${b}`)
+}
+
+export const clearLEDs = () => {
+  return sendSerial('SET_LED:CLEAR')
+}
+
+export const saveLEDs = () => {
+  return sendSerial('SET_LED:SAVE')
+}
+
 // Status request
 export const requestStatus = () => sendSerial(StatusCommand.STATUS)
 export const requestSensors = () => sendSerial(StatusCommand.SENSORS)

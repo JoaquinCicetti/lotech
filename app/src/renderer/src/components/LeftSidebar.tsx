@@ -1,5 +1,6 @@
 import { Button } from '@renderer/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@renderer/components/ui/card'
+
 import {
   Select,
   SelectContent,
@@ -8,6 +9,7 @@ import {
   SelectValue,
 } from '@renderer/components/ui/select'
 import { useTheme } from '@renderer/hooks/useTheme'
+
 import { useConnectionStore } from '@renderer/store/connectionStore'
 import { Moon, RefreshCw, Sun, Wifi, WifiOff } from 'lucide-react'
 import React, { useState } from 'react'
@@ -97,7 +99,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
       </div>
 
       {/* Theme Toggle Footer */}
-      <div className="border-border mt-2 border-t pt-2">
+      <div className="border-border border-t pt-2">
         <Button
           onClick={toggleTheme}
           variant="outline"

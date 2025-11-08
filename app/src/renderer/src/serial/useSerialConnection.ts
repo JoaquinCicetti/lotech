@@ -73,6 +73,10 @@ export function useSerialConnection(): UseSerialConnectionReturn {
       setConnected(false)
       clearSerialData()
       setConnectionError(null)
+
+      // Clear autoconnect settings when manually disconnecting
+      localStorage.removeItem('lotech_autoconnect_port')
+      localStorage.removeItem('lotech_autoconnect_enabled')
     } catch (error) {
       console.error('Error al desconectar:', error)
     }

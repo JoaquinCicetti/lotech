@@ -153,6 +153,19 @@ void StatePersistence::saveSettings() {
   EEPROM.write(EEPROM_LOADCELL_DEADBAND_ADDR + 2, deadbandBytes[2]);
   EEPROM.write(EEPROM_LOADCELL_DEADBAND_ADDR + 3, deadbandBytes[3]);
 
+  // Save LED brightness (1 byte)
+  EEPROM.write(EEPROM_LED_BRIGHTNESS_ADDR, rgbLed.getBrightness());
+
+  // Save LED colors (90 bytes: 30 LEDs × 3 RGB bytes)
+  for (uint8_t i = 0; i < LED_STRIP_COUNT; i++) {
+    uint8_t r, g, b;
+    rgbLed.getLED(i, r, g, b);
+    uint16_t addr = EEPROM_LED_COLORS_ADDR + (i * 3);
+    EEPROM.write(addr, r);
+    EEPROM.write(addr + 1, g);
+    EEPROM.write(addr + 2, b);
+  }
+
   // Calculate and save checksum - include all critical settings
   uint8_t checksum = wheel_divisions ^ (dosing_speed & 0xFF) ^
                      (t_step_settle & 0xFF) ^ (t_weight_settle & 0xFF) ^
@@ -331,6 +344,27 @@ bool StatePersistence::loadSettings() {
     loadCell.setDeadband(deadband);
   }
 
+  // Load LED brightness (1 byte)
+  uint8_t ledBrightness = EEPROM.read(EEPROM_LED_BRIGHTNESS_ADDR);
+  // Validate brightness (0-255 range, but check for uninitialized EEPROM)
+  if (ledBrightness != 0xFF) {  // 0xFF means uninitialized EEPROM
+    rgbLed.setBrightness(ledBrightness);
+  }
+
+  // Load LED colors (90 bytes: 30 LEDs × 3 RGB bytes)
+  for (uint8_t i = 0; i < LED_STRIP_COUNT; i++) {
+    uint16_t addr = EEPROM_LED_COLORS_ADDR + (i * 3);
+    uint8_t r = EEPROM.read(addr);
+    uint8_t g = EEPROM.read(addr + 1);
+    uint8_t b = EEPROM.read(addr + 2);
+    // Only load if not all 0xFF (uninitialized EEPROM)
+    if (r != 0xFF || g != 0xFF || b != 0xFF) {
+      rgbLed.setLED(i, r, g, b);
+    }
+  }
+  // Update the strip with loaded colors
+  rgbLed.show();
+
   Serial.println(F("SETTINGS:LOADED_FROM_EEPROM"));
 
   // Debug output to verify loaded values
@@ -359,6 +393,11 @@ void StatePersistence::resetSettings() {
   t_elev_down = T_ELEV_DOWN_DEFAULT;
   prox_threshold_down = PROX_THRESHOLD_DOWN_DEFAULT;
   prox_threshold_up = PROX_THRESHOLD_UP_DEFAULT;
+
+  // Reset LED settings to defaults
+  rgbLed.setBrightness(LED_DEFAULT_BRIGHTNESS);
+  rgbLed.clear();  // Turn off all LEDs
+  rgbLed.show();
 
   // Save defaults to EEPROM
   saveSettings();

@@ -32,7 +32,9 @@
 #define EEPROM_T_GRINDER_MAX_ADDR 57    // Grinder max time (4 bytes)
 #define EEPROM_LOADCELL_CALIBRATION_ADDR 62  // Load cell calibration factor (4 bytes, float)
 #define EEPROM_LOADCELL_DEADBAND_ADDR 66     // Load cell noise deadband (4 bytes, float)
-#define EEPROM_SETTINGS_CHECKSUM 70     // Settings checksum (1 byte)
+#define EEPROM_LED_BRIGHTNESS_ADDR 70        // LED brightness (1 byte)
+#define EEPROM_LED_COLORS_ADDR 71            // LED colors array (90 bytes: 30 LEDs × 3 RGB bytes)
+#define EEPROM_SETTINGS_CHECKSUM 161         // Settings checksum (1 byte)
 
 #define EEPROM_MAGIC_VALUE 0xAB55    // Magic value to verify EEPROM has been initialized
 

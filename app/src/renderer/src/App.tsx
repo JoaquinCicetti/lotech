@@ -16,7 +16,7 @@ import { usePillTrackingStore } from './store/pillTrackingStore'
 import { useUIStore } from './store/uiStore'
 
 // DEBUG: Uncomment to simulate elevator movement without hardware
-import { startElevatorSimulation } from './debug/elevatorSimulation'
+// import { startElevatorSimulation } from './debug/elevatorSimulation'
 
 function App(): React.JSX.Element {
   // Initialize theme
@@ -29,9 +29,9 @@ function App(): React.JSX.Element {
   const { connect, disconnect, sendCommand, isConnected, connectionError } = useSerialConnection()
   const { recoverFromStorage } = usePillTrackingStore()
 
-  useEffect(() => {
-    startElevatorSimulation()
-  }, [])
+  // useEffect(() => {
+  //   startElevatorSimulation()
+  // }, [])
   // Load ports on mount and check for recovered data
   useEffect(() => {
     window.serial.list().then(setPorts)

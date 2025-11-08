@@ -45,7 +45,6 @@ export const Layout: React.FC<LayoutProps> = (props) => {
             <Button
               onClick={onToggleLeftSidebar}
               variant={showLeftSidebar ? 'ghost' : 'secondary'}
-              size="sm"
               className="gap-1 shadow-lg"
             >
               <Settings2 className="h-4 w-4" />
@@ -59,7 +58,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
           </div>
 
           {/* Center Controls - Mode Switcher */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center space-x-6">
             <div className="flex gap-1">
               <Button
                 onClick={() => {
@@ -73,7 +72,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
                 <Hand className="h-4 w-4" />
                 Manual
               </Button>
-              <div className="bg-border h-6 w-px" />
+              <div className="bg-border w-px" />
               <Button
                 onClick={() => {
                   setMode(AppMode.AUTO)

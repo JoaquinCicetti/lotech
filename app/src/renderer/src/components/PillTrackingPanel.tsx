@@ -114,9 +114,7 @@ export const PillTrackingPanel: React.FC = () => {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Peso Promedio</p>
-                <p className="font-semibold">
-                  {currentCycle.averageWeight?.toFixed(2) || '—'} mg
-                </p>
+                <p className="font-semibold">{currentCycle.averageWeight?.toFixed(2) || '—'} mg</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Desv. Estándar</p>
@@ -126,15 +124,11 @@ export const PillTrackingPanel: React.FC = () => {
               </div>
               <div>
                 <p className="text-muted-foreground">Peso Mínimo</p>
-                <p className="font-semibold">
-                  {currentCycle.minWeight?.toFixed(2) || '—'} mg
-                </p>
+                <p className="font-semibold">{currentCycle.minWeight?.toFixed(2) || '—'} mg</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Peso Máximo</p>
-                <p className="font-semibold">
-                  {currentCycle.maxWeight?.toFixed(2) || '—'} mg
-                </p>
+                <p className="font-semibold">{currentCycle.maxWeight?.toFixed(2) || '—'} mg</p>
               </div>
             </div>
           </div>
@@ -149,13 +143,8 @@ export const PillTrackingPanel: React.FC = () => {
                 .slice(-5)
                 .reverse()
                 .map((pill) => (
-                  <div
-                    key={pill.pillNumber}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <span className="text-muted-foreground">
-                      Píldora #{pill.pillNumber}
-                    </span>
+                  <div key={pill.pillNumber} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Píldora #{pill.pillNumber}</span>
                     <span className="font-mono">{pill.weight.toFixed(4)} mg</span>
                   </div>
                 ))}

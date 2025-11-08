@@ -212,7 +212,7 @@ DosingWheel::DosingWheel() : motor(AccelStepper::DRIVER, MOTOR2_STEP_PIN, MOTOR2
 void DosingWheel::init() {
   motor.setMaxSpeed((float)DOSING_MAX_SPEED);
   motor.setAcceleration((float)DOSING_ACCELERATION);
-  motor.setSpeed((float)dosing_speed);  // Set default speed from global
+  // Speed is set when motor actually starts moving (not in init)
   motor.setCurrentPosition(0);  // Reset position
 
   // Configure microstepping pins
@@ -1018,6 +1018,95 @@ void OLEDDisplay::drawProgressBar(int x, int y, int width, int height, int perce
 }
 
 // =====================================================
+// RGB LED STRIP IMPLEMENTATION
+// =====================================================
+
+void RGBLed::init() {
+  // Initialize FastLED library
+  // WS2812B configuration: GRB color order, 800kHz
+  FastLED.addLeds<WS2812B, LED_STRIP_PIN, GRB>(leds, LED_STRIP_COUNT);
+
+  // Set default brightness
+  FastLED.setBrightness(brightness);
+
+  // Clear all LEDs on startup
+  clear();
+  show();
+
+  initialized = true;
+
+  Serial.print(F("LED:INIT_OK - COUNT:"));
+  Serial.print(LED_STRIP_COUNT);
+  Serial.print(F(" BRIGHTNESS:"));
+  Serial.println(brightness);
+}
+
+void RGBLed::setLED(uint8_t index, uint8_t r, uint8_t g, uint8_t b) {
+  if (!initialized) return;
+  if (index >= LED_STRIP_COUNT) return;  // Bounds check
+
+  leds[index] = CRGB(r, g, b);
+}
+
+void RGBLed::setAll(uint8_t r, uint8_t g, uint8_t b) {
+  if (!initialized) return;
+
+  for (uint8_t i = 0; i < LED_STRIP_COUNT; i++) {
+    leds[i] = CRGB(r, g, b);
+  }
+}
+
+void RGBLed::setBrightness(uint8_t level) {
+  if (!initialized) return;
+
+  // Clamp brightness to valid range
+  if (level > LED_MAX_BRIGHTNESS) {
+    level = LED_MAX_BRIGHTNESS;
+  }
+
+  brightness = level;
+  FastLED.setBrightness(brightness);
+
+  Serial.print(F("LED:BRIGHTNESS:"));
+  Serial.println(brightness);
+}
+
+void RGBLed::clear() {
+  if (!initialized) return;
+
+  // Turn off all LEDs
+  for (uint8_t i = 0; i < LED_STRIP_COUNT; i++) {
+    leds[i] = CRGB::Black;
+  }
+}
+
+void RGBLed::show() {
+  if (!initialized) return;
+
+  // Update the strip with current LED values
+  FastLED.show();
+}
+
+void RGBLed::update() {
+  if (!initialized) return;
+
+  // Non-blocking update for future animations
+  // Currently just calls show(), but can be extended for animations
+  show();
+}
+
+void RGBLed::getLED(uint8_t index, uint8_t& r, uint8_t& g, uint8_t& b) const {
+  if (index >= LED_STRIP_COUNT) {
+    r = g = b = 0;
+    return;
+  }
+
+  r = leds[index].r;
+  g = leds[index].g;
+  b = leds[index].b;
+}
+
+// =====================================================
 // GLOBAL INSTANCES
 // =====================================================
 
@@ -1030,6 +1119,7 @@ Solenoid capSolenoid(SOLENOID2_PIN, "Cap");
 ProximitySensor proxSensor;
 InputSystem inputs;
 OLEDDisplay oledDisplay;
+RGBLed rgbLed;
 
 // Mode tracking (start in real mode)
 ControlMode globalMode = MODE_REAL;

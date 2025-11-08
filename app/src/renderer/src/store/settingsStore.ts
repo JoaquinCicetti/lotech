@@ -1,5 +1,22 @@
-import { DEFAULT_DELAYS, DEFAULT_DOSING, DEFAULT_ELEVATOR, DEFAULT_LOADCELL, DEFAULT_PROXIMITY, DEFAULT_TIMEOUTS } from '@renderer/constants/settings'
-import { DelaySettings, DosingSettings, ElevatorSettings, HardwareTimeouts, LoadCellSettings, ProximitySettings } from '@renderer/types'
+import {
+  DEFAULT_DELAYS,
+  DEFAULT_DOSING,
+  DEFAULT_ELEVATOR,
+  DEFAULT_LED,
+  DEFAULT_LOADCELL,
+  DEFAULT_PROXIMITY,
+  DEFAULT_TIMEOUTS,
+} from '@renderer/constants/settings'
+import {
+  DelaySettings,
+  DosingSettings,
+  ElevatorSettings,
+  HardwareTimeouts,
+  LEDColor,
+  LEDSettings,
+  LoadCellSettings,
+  ProximitySettings,
+} from '@renderer/types'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
@@ -10,6 +27,7 @@ export interface SettingsStore {
   elevator: ElevatorSettings
   timeouts: HardwareTimeouts
   loadCell: LoadCellSettings
+  led: LEDSettings
 
   setDelays: (delays: DelaySettings) => void
   setDosing: (dosing: DosingSettings) => void
@@ -17,12 +35,17 @@ export interface SettingsStore {
   setElevator: (elevator: ElevatorSettings) => void
   setTimeouts: (timeouts: HardwareTimeouts) => void
   setLoadCell: (loadCell: LoadCellSettings) => void
+  setLED: (led: LEDSettings) => void
   updateDelay: (key: keyof DelaySettings, value: number) => void
   updateDosing: (key: keyof DosingSettings, value: number) => void
   updateProximity: (key: keyof ProximitySettings, value: number) => void
   updateElevator: (key: keyof ElevatorSettings, value: number) => void
   updateTimeout: (key: keyof HardwareTimeouts, value: number) => void
   updateLoadCell: (key: keyof LoadCellSettings, value: number) => void
+  updateLEDBrightness: (brightness: number) => void
+  updateLEDColor: (index: number, color: LEDColor) => void
+  setAllLEDColors: (color: LEDColor) => void
+  clearAllLEDs: () => void
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -34,6 +57,7 @@ export const useSettingsStore = create<SettingsStore>()(
       elevator: DEFAULT_ELEVATOR,
       timeouts: DEFAULT_TIMEOUTS,
       loadCell: DEFAULT_LOADCELL,
+      led: DEFAULT_LED,
 
       setDelays: (delays) => set({ delays }),
       setDosing: (dosing) => set({ dosing }),
@@ -41,6 +65,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setElevator: (elevator) => set({ elevator }),
       setTimeouts: (timeouts) => set({ timeouts }),
       setLoadCell: (loadCell) => set({ loadCell }),
+      setLED: (led) => set({ led }),
 
       updateDelay: (key, value) =>
         set((state) => ({
@@ -70,6 +95,34 @@ export const useSettingsStore = create<SettingsStore>()(
       updateLoadCell: (key, value) =>
         set((state) => ({
           loadCell: { ...state.loadCell, [key]: value },
+        })),
+
+      updateLEDBrightness: (brightness) =>
+        set((state) => ({
+          led: { ...state.led, brightness },
+        })),
+
+      updateLEDColor: (index, color) =>
+        set((state) => {
+          const newColors = [...state.led.colors]
+          newColors[index] = color
+          return { led: { ...state.led, colors: newColors } }
+        }),
+
+      setAllLEDColors: (color) =>
+        set((state) => ({
+          led: {
+            ...state.led,
+            colors: Array.from({ length: 30 }, () => ({ ...color })),
+          },
+        })),
+
+      clearAllLEDs: () =>
+        set((state) => ({
+          led: {
+            ...state.led,
+            colors: Array.from({ length: 30 }, () => ({ r: 0, g: 0, b: 0 })),
+          },
         })),
     }),
     {

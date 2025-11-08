@@ -193,7 +193,11 @@ export class SettingsCommands {
     return `SET_ELEVATOR:speed:${speed}`
   }
 
-  static buildTimeoutsCommand(timeouts: { transferMax: number; capMax: number; grinderMax: number }): string {
+  static buildTimeoutsCommand(timeouts: {
+    transferMax: number
+    capMax: number
+    grinderMax: number
+  }): string {
     return `SET_TIMEOUTS:transfer_max:${timeouts.transferMax},cap_max:${timeouts.capMax},grinder_max:${timeouts.grinderMax}`
   }
 

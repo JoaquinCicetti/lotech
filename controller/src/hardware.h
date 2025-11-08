@@ -5,6 +5,7 @@
 #include <AccelStepper.h>
 #include <HX711.h>
 #include <Adafruit_VL53L0X.h>
+#include <FastLED.h>
 #include "config.h"
 
 // =====================================================
@@ -259,6 +260,33 @@ public:
 };
 
 // =====================================================
+// RGB LED STRIP MODULE
+// =====================================================
+
+class RGBLed {
+private:
+  CRGB leds[LED_STRIP_COUNT];  // LED color array
+  uint8_t brightness;          // Current brightness (0-255)
+  bool initialized;            // Initialization flag
+
+public:
+  RGBLed() : brightness(LED_DEFAULT_BRIGHTNESS), initialized(false) {}
+
+  void init();                                     // Initialize FastLED
+  void setLED(uint8_t index, uint8_t r, uint8_t g, uint8_t b);  // Set individual LED color
+  void setAll(uint8_t r, uint8_t g, uint8_t b);  // Set all LEDs to same color
+  void setBrightness(uint8_t level);              // Global brightness control (0-255)
+  void clear();                                    // Turn off all LEDs
+  void show();                                     // Update strip with changes
+  void update();                                   // Non-blocking update (for future animations)
+
+  // Getters
+  bool isInitialized() const { return initialized; }
+  uint8_t getBrightness() const { return brightness; }
+  void getLED(uint8_t index, uint8_t& r, uint8_t& g, uint8_t& b) const;  // Get LED color
+};
+
+// =====================================================
 // GLOBAL HARDWARE INSTANCES
 // =====================================================
 
@@ -271,6 +299,7 @@ extern Solenoid capSolenoid;
 extern InputSystem inputs;
 extern ProximitySensor proxSensor;
 extern OLEDDisplay oledDisplay;
+extern RGBLed rgbLed;
 
 // Global control mode
 extern ControlMode globalMode;

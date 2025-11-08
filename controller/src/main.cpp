@@ -12,7 +12,7 @@
 
 unsigned long lastHeartbeat = 0;
 unsigned long lastProxReport = 0;
-uint16_t lastProxValue = 9999; // Set to impossible value to force first report
+uint16_t lastProxValue = 0; // Set to impossible value to force first report
 
 // Weight reading control - only enabled when needed (to avoid blocking motors)
 bool needsWeightReading = false;
@@ -66,6 +66,7 @@ void setup() {
   transferSolenoid.init();
   capSolenoid.init();
   inputs.init();  // Initialize input pins
+  rgbLed.init();  // Initialize RGB LED strip
 
   // Initialize manual mode (default)
   ManualMode::init();
@@ -73,8 +74,7 @@ void setup() {
   // Try to load saved settings from EEPROM (init already called at line 43)
   if (StatePersistence::loadSettings()) {
     Serial.println(F("SETTINGS:RESTORED"));
-    // Update hardware with loaded settings
-    dosingWheel.motor.setSpeed(dosing_speed);
+    // Hardware settings applied when motors actually start moving (like elevator)
   } else {
     Serial.println(F("SETTINGS:USING_DEFAULTS"));
   }
@@ -179,7 +179,7 @@ void loop() {
   }
 
   // Run motors based on mode
-  if (ManualMode::isManual()) {
+  if (ManualMode::isManual() && !isEmergencyActive) {
     // Manual mode - run hardware directly
     elevator.run();
     dosingWheel.run();
@@ -187,7 +187,7 @@ void loop() {
     capSolenoid.run();
     grinder.run();
   }
-  else if (ManualMode::isAuto()) {
+  else if (ManualMode::isAuto() && !isEmergencyActive) {
     // Auto mode - run state machine
 
     // Check if paused - if paused, don't process state machine
@@ -198,16 +198,14 @@ void loop() {
       }
       stateMachine.executeStateContinuous();
       stateMachine.processTransitions();
-    }
 
-    // Always run hardware but check pause state
-    // The run() methods need to be called to maintain motor positions
-    // Motors are already stopped by the pause() method in state_machine.cpp
-    elevator.run();
-    dosingWheel.run();
-    transferSolenoid.run();
-    capSolenoid.run();
-    grinder.run();
+      // Only run hardware when NOT paused
+      elevator.run();
+      dosingWheel.run();
+      transferSolenoid.run();
+      capSolenoid.run();
+      grinder.run();
+    }
   }
 
   // ========== LOAD CELL OPERATIONS (non-blocking tare) ==========
@@ -228,7 +226,7 @@ void loop() {
   // Report position and distance changes with better filtering
   static bool lastWasAtTop = false;
   static bool lastWasAtBottom = false;
-  static uint16_t lastReportedDistance = 9999;
+  static uint16_t lastReportedDistance = 0;
 
   bool atTop = elevator.isAtTop();
   bool atBottom = elevator.isAtBottom();

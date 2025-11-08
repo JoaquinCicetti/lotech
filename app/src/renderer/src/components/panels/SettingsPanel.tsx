@@ -58,6 +58,7 @@ import {
 import React from 'react'
 import { Button } from '../ui/button'
 import { Slider } from '../ui/slider'
+import { LEDControlPanel } from './LEDControlPanel'
 
 export const SettingsPanel: React.FC = () => {
   const {
@@ -703,6 +704,10 @@ export const SettingsPanel: React.FC = () => {
               )}
             </div>
           </div>
+          <div className="border-t" />
+
+          {/* 7. LEDs */}
+          <LEDControlPanel />
         </div>
       </CardContent>
     </Card>

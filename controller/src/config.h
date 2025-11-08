@@ -54,6 +54,20 @@
 // #define USE_SSD1331  // Uncomment if you have a color OLED
 
 // =====================================================
+// RGB LED STRIP (WS2812B / NeoPixel)
+// =====================================================
+// Addressable LED strip for status indication
+// NOTE: Requires external 5V power supply (2A+) for 30 LEDs
+//       Connect GND between Arduino and power supply!
+//       Add 330Ω resistor between DATA pin and strip
+//       Add 1000µF capacitor across power supply
+#define LED_STRIP_PIN 40          // Data pin for LED strip
+#define LED_STRIP_COUNT 30         // Number of LEDs in strip
+#define LED_DEFAULT_BRIGHTNESS 128 // Default brightness (0-255, half power)
+#define LED_MAX_BRIGHTNESS 255     // Maximum brightness
+#define LED_MIN_BRIGHTNESS 0       // Minimum brightness (off)
+
+// =====================================================
 // TIMING PARAMETERS (milliseconds)
 // =====================================================
 

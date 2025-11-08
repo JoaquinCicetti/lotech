@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react'
-import { PROCESS_STATES } from '../constants/states'
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
 import { usePillTrackingStore } from '@renderer/store/pillTrackingStore'
 import { useSettingsStore } from '@renderer/store/settingsStore'
+import React, { useEffect, useState } from 'react'
+import { PROCESS_STATES } from '../constants/states'
 import { Progress } from './ui/progress'
 
 export const ProcessStepper: React.FC = () => {
@@ -68,7 +68,7 @@ export const ProcessStepper: React.FC = () => {
                 <div
                   className={`flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300 ${
                     isActive
-                      ? 'from-primary to-primary/80 shadow-primary/30 scale-125 bg-gradient-to-br text-primary-foreground shadow-lg'
+                      ? 'from-primary to-primary/80 shadow-primary/30 text-primary-foreground scale-125 bg-gradient-to-br shadow-lg'
                       : isPast
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted text-muted-foreground'

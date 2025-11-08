@@ -1,4 +1,3 @@
-import { SCENE_COLORS } from '@renderer/constants/theme'
 import React from 'react'
 
 export const Lighting: React.FC = () => {
@@ -8,18 +7,7 @@ export const Lighting: React.FC = () => {
       <ambientLight intensity={0.8} color="#ffffff" />
 
       {/* Main key light - bright and clear */}
-      <directionalLight
-        position={[10, 15, 8]}
-        intensity={2.5}
-        color="#ffffff"
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-far={50}
-        shadow-camera-left={-15}
-        shadow-camera-right={15}
-        shadow-camera-top={15}
-        shadow-camera-bottom={-15}
-      />
+      <directionalLight position={[10, 15, 8]} intensity={2.5} color="#ffffff" castShadow />
 
       {/* Fill light - brighter */}
       <directionalLight position={[-8, 10, -8]} intensity={1.5} color="#e3f2fd" />
@@ -31,8 +19,8 @@ export const Lighting: React.FC = () => {
       <directionalLight position={[0, 20, 0]} intensity={1.2} color="#ffffff" />
 
       {/* Point lights for model highlights */}
-      <pointLight position={[5, 8, 5]} intensity={1.5} color="#ffffff" distance={25} decay={2} />
-      <pointLight position={[-5, 8, -5]} intensity={1.2} color="#e3f2fd" distance={25} decay={2} />
+      <pointLight position={[5, 8, 5]} args={['#ffffff', 1.5, 25, 2]} />
+      <pointLight position={[-5, 8, -5]} args={['#e3f2fd', 1.2, 25, 2]} />
 
       {/* Spotlight for dramatic effect and reflections */}
       <spotLight

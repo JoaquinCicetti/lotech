@@ -12,7 +12,16 @@ import { useControllerStateStore } from '@renderer/store/controllerStateStore'
 import { usePillTrackingStore } from '@renderer/store/pillTrackingStore'
 import { useUIStore } from '@renderer/store/uiStore'
 import { AppMode } from '@renderer/types'
-import { AlertTriangle, Pause, Play, RefreshCw, Shield, ShieldOff } from 'lucide-react'
+import {
+  AlertTriangle,
+  Download,
+  FileText,
+  Pause,
+  Play,
+  RefreshCw,
+  Shield,
+  ShieldOff,
+} from 'lucide-react'
 import React, { useState } from 'react'
 import { toast } from 'sonner'
 import { LotNumberDialog } from './LotNumberDialog'
@@ -167,7 +176,7 @@ const AutoController: React.FC = () => {
         onOpenChange={setShowLotDialog}
         onConfirm={handleLotConfirm}
       />
-      <div className="flex gap-4">
+      <div className="flex gap-2">
         <>
           {/* Single Play/Pause Button */}
           <Button
@@ -213,6 +222,20 @@ const AutoController: React.FC = () => {
             Emergencia
           </Button>
         </>
+        {/* Export/Finalize - Only when tracking */}
+        {isTracking && currentCycle && (
+          <>
+            <div className="bg-border mx-2 w-px" />
+            <Button onClick={handleExportCycle} variant="outline">
+              <Download className="mr-2 h-4 w-4" />
+              Exportar
+            </Button>
+            <Button onClick={handleEndCycle} variant="destructive">
+              <FileText className="mr-2 h-4 w-4" />
+              Finalizar
+            </Button>
+          </>
+        )}
       </div>
     </>
   )

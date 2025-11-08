@@ -98,6 +98,10 @@ void CommandProcessor::processCommand(const char* command) {
     parseLoadCellSettings(command + 13);
     return;
   }
+  else if (strncmp(command, "SET_LED:", 8) == 0) {
+    parseLEDSettings(command + 8);
+    return;
+  }
 
   // ========================================
   // STATUS QUERIES - ALWAYS WORK
@@ -678,6 +682,128 @@ void CommandProcessor::parseLoadCellSettings(const char* params) {
   // Save to EEPROM
   StatePersistence::saveSettings();
   Serial.println(F("LOADCELL:SETTINGS_SAVED"));
+}
+
+void CommandProcessor::parseLEDSettings(const char* params) {
+  // Parse LED commands:
+  // SET_LED:BRIGHTNESS,value - set brightness (0-255)
+  // SET_LED:index,r,g,b - set individual LED color (NO auto-save)
+  // SET_LED:ALL,r,g,b - set all LEDs to same color
+  // SET_LED:RANGE,start,end,r,g,b - set range of LEDs (NO auto-save)
+  // SET_LED:CLEAR - clear all LEDs
+  // SET_LED:SAVE - save current LED state to EEPROM
+
+  if (strncmp(params, "BRIGHTNESS,", 11) == 0) {
+    // Set brightness
+    int brightness = atoi(params + 11);
+    if (brightness >= 0 && brightness <= 255) {
+      rgbLed.setBrightness((uint8_t)brightness);
+      rgbLed.show();
+      Serial.print(F("LED:BRIGHTNESS_SET:"));
+      Serial.println(brightness);
+
+      // Save to EEPROM
+      StatePersistence::saveSettings();
+    } else {
+      Serial.println(F("LED:ERROR_INVALID_BRIGHTNESS"));
+    }
+  }
+  else if (strncmp(params, "RANGE,", 6) == 0) {
+    // Set range of LEDs: RANGE,start,end,r,g,b
+    int start, end, r, g, b;
+    if (sscanf(params + 6, "%d,%d,%d,%d,%d", &start, &end, &r, &g, &b) == 5) {
+      if (start >= 0 && start < LED_STRIP_COUNT &&
+          end >= 0 && end < LED_STRIP_COUNT &&
+          start <= end &&
+          r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255) {
+
+        // Set all LEDs in range
+        for (int i = start; i <= end; i++) {
+          rgbLed.setLED((uint8_t)i, (uint8_t)r, (uint8_t)g, (uint8_t)b);
+        }
+        rgbLed.show();
+
+        Serial.print(F("LED:RANGE_SET:"));
+        Serial.print(start);
+        Serial.print(F("-"));
+        Serial.print(end);
+        Serial.print(F(":"));
+        Serial.print(r);
+        Serial.print(F(","));
+        Serial.print(g);
+        Serial.print(F(","));
+        Serial.println(b);
+
+        // NO auto-save - caller should use SET_LED:SAVE
+      } else {
+        Serial.println(F("LED:ERROR_INVALID_RANGE"));
+      }
+    } else {
+      Serial.println(F("LED:ERROR_PARSE_RANGE"));
+    }
+  }
+  else if (strncmp(params, "ALL,", 4) == 0) {
+    // Set all LEDs to same color
+    int r, g, b;
+    if (sscanf(params + 4, "%d,%d,%d", &r, &g, &b) == 3) {
+      if (r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255) {
+        rgbLed.setAll((uint8_t)r, (uint8_t)g, (uint8_t)b);
+        rgbLed.show();
+        Serial.print(F("LED:ALL_SET:"));
+        Serial.print(r);
+        Serial.print(F(","));
+        Serial.print(g);
+        Serial.print(F(","));
+        Serial.println(b);
+
+        // Save to EEPROM
+        StatePersistence::saveSettings();
+      } else {
+        Serial.println(F("LED:ERROR_INVALID_COLOR"));
+      }
+    } else {
+      Serial.println(F("LED:ERROR_PARSE_COLOR"));
+    }
+  }
+  else if (strcmp(params, "CLEAR") == 0) {
+    // Clear all LEDs
+    rgbLed.clear();
+    rgbLed.show();
+    Serial.println(F("LED:CLEARED"));
+
+    // Save to EEPROM
+    StatePersistence::saveSettings();
+  }
+  else if (strcmp(params, "SAVE") == 0) {
+    // Explicit save to EEPROM (for batch operations)
+    StatePersistence::saveSettings();
+    Serial.println(F("LED:SAVED"));
+  }
+  else {
+    // Set individual LED: index,r,g,b (NO auto-save for batch operations)
+    int index, r, g, b;
+    if (sscanf(params, "%d,%d,%d,%d", &index, &r, &g, &b) == 4) {
+      if (index >= 0 && index < LED_STRIP_COUNT &&
+          r >= 0 && r <= 255 && g >= 0 && g <= 255 && b >= 0 && b <= 255) {
+        rgbLed.setLED((uint8_t)index, (uint8_t)r, (uint8_t)g, (uint8_t)b);
+        rgbLed.show();
+        Serial.print(F("LED:SET:"));
+        Serial.print(index);
+        Serial.print(F(":"));
+        Serial.print(r);
+        Serial.print(F(","));
+        Serial.print(g);
+        Serial.print(F(","));
+        Serial.println(b);
+
+        // NO auto-save - caller should use SET_LED:SAVE after batch
+      } else {
+        Serial.println(F("LED:ERROR_INVALID_PARAMS"));
+      }
+    } else {
+      Serial.println(F("LED:ERROR_PARSE_PARAMS"));
+    }
+  }
 }
 
 void CommandProcessor::sendStatus() {

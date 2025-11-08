@@ -7,6 +7,7 @@ import { SystemStatus } from '../../types'
 import { CameraController } from './CameraController'
 import { ElevatorIndicators } from './ElevatorIndicators'
 import { FloatingCards } from './FloatingCards'
+import { LEDStripVisualization } from './LEDStripVisualization'
 import { Lighting } from './Lighting'
 import { MachineModel } from './MachineModel'
 
@@ -191,6 +192,9 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
 
           {/* 3D Floating Cards */}
           <FloatingCards modelPosition={[-1.5, 0.55, -2.1]} modelScale={15} />
+
+          {/* LED Strip around machine */}
+          <LEDStripVisualization modelPosition={[-1.5, 0, -2.1]} modelScale={15} />
         </Suspense>
       </Canvas>
 

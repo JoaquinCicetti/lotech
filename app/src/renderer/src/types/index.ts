@@ -43,14 +43,25 @@ export interface ElevatorSettings {
 }
 
 export interface HardwareTimeouts {
-  transferMax: number  // Maximum time transfer solenoid can be ON (ms)
-  capMax: number       // Maximum time cap solenoid can be ON (ms)
-  grinderMax: number   // Maximum time grinder can run (ms)
+  transferMax: number // Maximum time transfer solenoid can be ON (ms)
+  capMax: number // Maximum time cap solenoid can be ON (ms)
+  grinderMax: number // Maximum time grinder can run (ms)
 }
 
 export interface LoadCellSettings {
   calibrationFactor: number // HX711 calibration factor
-  deadband: number          // Noise filter - ignore weight changes smaller than this (grams)
+  deadband: number // Noise filter - ignore weight changes smaller than this (grams)
+}
+
+export interface LEDColor {
+  r: number // Red (0-255)
+  g: number // Green (0-255)
+  b: number // Blue (0-255)
+}
+
+export interface LEDSettings {
+  brightness: number // Global brightness (0-255)
+  colors: LEDColor[] // Array of 30 LED colors
 }
 
 export enum AppMode {

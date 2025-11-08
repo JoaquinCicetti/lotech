@@ -74,10 +74,10 @@ export const ElevatorPositionCard: React.FC = () => {
 
           {/* Vertical Elevator Position Indicator */}
           <div className="flex flex-col items-center">
-            <div className="relative h-20 w-1 rounded-full bg-border/30">
+            <div className="bg-border/30 relative h-20 w-1 rounded-full">
               {/* Top sensor indicator */}
               <div
-                className={`absolute left-1/2 top-0 h-1 w-3 -translate-x-1/2 rounded-full transition-colors ${
+                className={`absolute top-0 left-1/2 h-1 w-3 -translate-x-1/2 rounded-full transition-colors ${
                   posAlta ? 'bg-lime-500' : 'bg-transparent'
                 }`}
               />
