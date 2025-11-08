@@ -3,9 +3,8 @@ import {
   DosingSettings,
   ElevatorSettings,
   HardwareTimeouts,
+  LoadCellSettings,
   ProximitySettings,
-  ViewMode,
-  ViewSettings,
 } from '@renderer/types'
 
 export const DEFAULT_DELAYS: DelaySettings = {
@@ -41,6 +40,7 @@ export const DEFAULT_TIMEOUTS: HardwareTimeouts = {
   grinderMax: 30000,   // 30 seconds maximum
 }
 
-export const DEFAULT_VIEW: ViewSettings = {
-  viewMode: ViewMode.STANDARD,
+export const DEFAULT_LOADCELL: LoadCellSettings = {
+  calibrationFactor: 2280.0,  // Default HX711 calibration factor (adjust for your load cell)
+  deadband: 0.05,             // Ignore weight changes smaller than 0.05g (50mg)
 }

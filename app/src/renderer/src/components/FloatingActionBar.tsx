@@ -64,8 +64,10 @@ const AutoController: React.FC = () => {
   }
 
   const handleLotConfirm = (lotNumber: string) => {
+    console.log('FloatingActionBar - handleLotConfirm called with:', lotNumber)
     // Start tracking with the lot number
     startNewCycle(lotNumber)
+    console.log('FloatingActionBar - Sending START command to Arduino')
     // Then start the production
     startProduction()
     // Update running state
@@ -199,15 +201,9 @@ const ManualController: React.FC = () => {
   return (
     <div className="flex gap-2">
       {/* Reset Button - Only show when emergency is/was activated */}
-      {isEmergencyStopped && (
-        <Button size="lg" variant="secondary" onClick={handleReset}>
-          <RefreshCw className="mr-2 h-5 w-5" />
-          Reset
-        </Button>
-      )}
 
       <Button
-        size="sm"
+        size="lg"
         variant={physicalRestrictions ? 'default' : 'destructive'}
         onClick={() => {
           const newState = !physicalRestrictions
@@ -229,10 +225,17 @@ const ManualController: React.FC = () => {
         {physicalRestrictions ? 'Seguro' : 'Sin restricciones'}
       </Button>
 
+      {isEmergencyStopped && (
+        <Button size="lg" variant="secondary" onClick={handleReset}>
+          <RefreshCw className="mr-2 h-5 w-5" />
+          Reset
+        </Button>
+      )}
+
       {/* Emergency Button */}
       <Button
         size="lg"
-        variant={isEmergencyStopped ? 'destructive' : 'outline'}
+        variant={'destructive'}
         onClick={handleEmergencyToggle}
         disabled={isEmergencyStopped}
       >

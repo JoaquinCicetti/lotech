@@ -1,7 +1,8 @@
+import { setAutoMode, setManualMode } from '@renderer/serial/serialCommands'
 import { useConnectionStore } from '@renderer/store/connectionStore'
 import { useUIStore } from '@renderer/store/uiStore'
-import { ViewMode } from '@renderer/types'
-import { Boxes, Settings2, Terminal, View, Wifi, WifiOff } from 'lucide-react'
+import { AppMode } from '@renderer/types'
+import { Hand, Settings2, Terminal, Wifi, WifiOff, Zap } from 'lucide-react'
 import React from 'react'
 import { cn } from '../lib/utils'
 import { Badge } from './ui/badge'
@@ -28,7 +29,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
     onToggleRightSidebar,
   } = props
 
-  const { currentView, setView } = useUIStore()
+  const { currentMode, setMode } = useUIStore()
   const { isConnected, selectedPort } = useConnectionStore()
 
   return (
@@ -68,28 +69,33 @@ export const Layout: React.FC<LayoutProps> = (props) => {
             </Badge>
           </div>
 
-          {/* Center Controls */}
+          {/* Center Controls - Mode Switcher */}
           <div className="flex items-center gap-3">
-            <div className="bg-border h-6 w-px" />
-
             <div className="flex gap-1">
               <Button
-                onClick={() => setView(ViewMode.STANDARD)}
-                variant={currentView === ViewMode.STANDARD ? 'default' : 'secondary'}
+                onClick={() => {
+                  setMode(AppMode.MANUAL)
+                  setManualMode()
+                }}
+                variant={currentMode === AppMode.MANUAL ? 'destructive' : 'secondary'}
                 size="sm"
-                className="gap-2"
+                className={cn('gap-2', currentMode === AppMode.MANUAL && 'shadow-sm')}
               >
-                <View className="h-4 w-4" />
-                Dashboard
+                <Hand className="h-4 w-4" />
+                Manual
               </Button>
+              <div className="bg-border h-6 w-px" />
               <Button
-                onClick={() => setView(ViewMode.MODEL)}
-                variant={currentView === ViewMode.MODEL ? 'default' : 'secondary'}
+                onClick={() => {
+                  setMode(AppMode.AUTO)
+                  setAutoMode()
+                }}
+                variant={currentMode === AppMode.AUTO ? 'default' : 'secondary'}
                 size="sm"
-                className="gap-2"
+                className={cn('gap-2', currentMode === AppMode.AUTO && 'shadow-sm')}
               >
-                <Boxes className="h-4 w-4" />
-                3D View
+                <Zap className="h-4 w-4" />
+                Auto
               </Button>
             </div>
           </div>

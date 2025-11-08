@@ -21,7 +21,7 @@ export const CommandPanel: React.FC<CommandPanelProps> = ({ onSendCommand, float
       <div className="flex items-center gap-3">
         <div className="flex gap-2">
           <Button
-            onClick={() => onSendCommand('BTN:START')}
+            onClick={() => onSendCommand('START')}
             size="sm"
             variant="default"
             className="gap-1"
@@ -30,7 +30,7 @@ export const CommandPanel: React.FC<CommandPanelProps> = ({ onSendCommand, float
             Start
           </Button>
           <Button
-            onClick={() => onSendCommand('BTN:PAUSE')}
+            onClick={() => onSendCommand('PAUSE')}
             size="sm"
             variant="outline"
             className="gap-1"
@@ -39,7 +39,7 @@ export const CommandPanel: React.FC<CommandPanelProps> = ({ onSendCommand, float
             Pausar
           </Button>
           <Button
-            onClick={() => onSendCommand('BTN:STOP')}
+            onClick={() => onSendCommand('STOP')}
             size="sm"
             variant="outline"
             className="gap-1"
@@ -53,7 +53,7 @@ export const CommandPanel: React.FC<CommandPanelProps> = ({ onSendCommand, float
 
         <div className="flex gap-2">
           <Button
-            onClick={() => onSendCommand('BTN:RESET')}
+            onClick={() => onSendCommand('RESET')}
             variant="outline"
             size="sm"
             className="gap-1"

@@ -196,6 +196,10 @@ export class SettingsCommands {
   static buildTimeoutsCommand(timeouts: { transferMax: number; capMax: number; grinderMax: number }): string {
     return `SET_TIMEOUTS:transfer_max:${timeouts.transferMax},cap_max:${timeouts.capMax},grinder_max:${timeouts.grinderMax}`
   }
+
+  static buildLoadCellCommand(calibrationFactor: number, deadband: number): string {
+    return `SET_LOADCELL:${calibrationFactor},${deadband}`
+  }
 }
 
 // Type guards

@@ -82,7 +82,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = (props) => {
         <CardContent className="space-y-3">
           <div className="flex gap-3">
             <Button
-              onClick={() => onSendCommand('BTN:START')}
+              onClick={() => onSendCommand('START')}
               disabled={!isStartEnabled}
               className="flex-1 gap-2"
               variant={isStartEnabled ? 'default' : 'secondary'}
@@ -91,7 +91,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = (props) => {
               INICIO
             </Button>
             <Button
-              onClick={() => onSendCommand('BTN:RESET')}
+              onClick={() => onSendCommand('RESET')}
               variant="outline"
               className="flex-1 gap-2"
             >

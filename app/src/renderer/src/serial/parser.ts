@@ -16,7 +16,11 @@ import {
 } from './commands'
 
 export class SerialMessageParser {
-  static parseMessage(line: string, currentStatus: SystemStatus): Partial<SystemStatus> | null {
+  static parseMessage(
+    line: string,
+    currentStatus: SystemStatus,
+    calibrationFactor?: number
+  ): Partial<SystemStatus> | null {
     // Remove any trailing/leading whitespace and control characters
     // eslint-disable-next-line no-control-regex
     const cleanLine = line.trim().replace(/[\r\x00-\x1F\x7F]/g, '')
@@ -57,10 +61,11 @@ export class SerialMessageParser {
       // Check format
       let weight = 0
       if (weightStr.startsWith('RAW:')) {
-        // Raw value from load cell - just display as is for debugging
+        // Raw value from load cell - apply calibration factor
         const rawValue = parseFloat(weightStr.replace('RAW:', ''))
-        // For now, just show raw value divided by 1000 to keep it readable
-        weight = rawValue / 1000
+        // Apply calibration factor if provided, otherwise use default division
+        const factor = calibrationFactor || 1000
+        weight = rawValue / factor
       } else if (weightStr.endsWith(' mg')) {
         // Weight in milligrams - convert to grams for display
         weight = parseFloat(weightStr.replace(' mg', '')) / 1000
@@ -332,15 +337,19 @@ export class SerialMessageParser {
     // EMERGENCY: Physical button events
     if (cleanLine.startsWith(CommandPrefix.EMERGENCY)) {
       const status = cleanLine.substring(CommandPrefix.EMERGENCY.length).trim()
+      console.log(`[EMERGENCY] Received status: "${status}"`)
 
       // Handle button press/release
       if (status === 'BUTTON_PRESSED' || status === 'ACTIVATED') {
+        console.log('[EMERGENCY] Setting isEmergencyStopped = TRUE')
         return { isEmergencyStopped: true }
       } else if (status === 'BUTTON_RELEASED' || status === 'DEACTIVATED') {
+        console.log('[EMERGENCY] Setting isEmergencyStopped = FALSE')
         return { isEmergencyStopped: false }
       }
 
       // Ignore other emergency messages
+      console.log(`[EMERGENCY] Ignored status: "${status}"`)
       return null
     }
 

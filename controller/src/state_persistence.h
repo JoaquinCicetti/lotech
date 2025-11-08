@@ -26,7 +26,13 @@
 #define EEPROM_PROX_MIN_ADDR 41         // Proximity min (2 bytes)
 #define EEPROM_PROX_MAX_ADDR 43         // Proximity max (2 bytes)
 #define EEPROM_ELEVATOR_SPEED_ADDR 45   // Elevator speed (2 bytes)
-#define EEPROM_SETTINGS_CHECKSUM 47     // Settings checksum (1 byte)
+#define EEPROM_SETTINGS_LOT_SIZE_ADDR 47  // Lot size setting (1 byte)
+#define EEPROM_T_TRANSFER_MAX_ADDR 49   // Transfer solenoid max time (4 bytes)
+#define EEPROM_T_CAP_MAX_ADDR 53        // Cap solenoid max time (4 bytes)
+#define EEPROM_T_GRINDER_MAX_ADDR 57    // Grinder max time (4 bytes)
+#define EEPROM_LOADCELL_CALIBRATION_ADDR 62  // Load cell calibration factor (4 bytes, float)
+#define EEPROM_LOADCELL_DEADBAND_ADDR 66     // Load cell noise deadband (4 bytes, float)
+#define EEPROM_SETTINGS_CHECKSUM 70     // Settings checksum (1 byte)
 
 #define EEPROM_MAGIC_VALUE 0xAB55    // Magic value to verify EEPROM has been initialized
 

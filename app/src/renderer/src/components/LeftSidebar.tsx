@@ -8,11 +8,8 @@ import {
   SelectValue,
 } from '@renderer/components/ui/select'
 import { useConnectionStore } from '@renderer/store/connectionStore'
-import { useUIStore } from '@renderer/store/uiStore'
 import { RefreshCw, Wifi, WifiOff } from 'lucide-react'
 import React, { useState } from 'react'
-import { ModeSwitcher } from './ModeSwitcher'
-import { ManualControlPanel } from './panels/ManualControlPanel'
 import { SettingsPanel } from './panels/SettingsPanel'
 
 interface LeftSidebarProps {
@@ -26,7 +23,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
   const { ports, selectedPort, isConnected, connectionError, setSelectedPort } =
     useConnectionStore()
 
-  const { currentMode } = useUIStore()
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const handleRefreshPorts = async () => {
@@ -95,10 +91,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
 
       {/* Settings - Always visible, scrollable */}
       <div className="flex-1 space-y-4 overflow-y-auto">
-        <ModeSwitcher />
         <SettingsPanel />
-        {/* Manual Controls - Only visible in manual mode */}
-        {currentMode === 'manual' && <ManualControlPanel />}
       </div>
     </div>
   )

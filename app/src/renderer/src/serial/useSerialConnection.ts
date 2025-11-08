@@ -268,13 +268,18 @@ export function useSerialConnection(): UseSerialConnectionReturn {
       try {
         console.log('About to parse line:', line)
         const currentStatus = useControllerStateStore.getState()
-        const statusUpdate = SerialMessageParser.parseMessage(line, {
-          state: currentStatus.machineState,
-          pillCount: currentStatus.pillCount,
-          weight: currentStatus.currentWeight,
-          sensors: currentStatus.sensorReadings,
-          hardware: currentStatus.hardwareStatus,
-        })
+        const calibrationFactor = useSettingsStore.getState().loadCell.calibrationFactor
+        const statusUpdate = SerialMessageParser.parseMessage(
+          line,
+          {
+            state: currentStatus.machineState,
+            pillCount: currentStatus.pillCount,
+            weight: currentStatus.currentWeight,
+            sensors: currentStatus.sensorReadings,
+            hardware: currentStatus.hardwareStatus,
+          },
+          calibrationFactor
+        )
 
         if (statusUpdate) {
           // Collect weight readings during weighing state

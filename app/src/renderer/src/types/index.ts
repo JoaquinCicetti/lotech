@@ -48,18 +48,14 @@ export interface HardwareTimeouts {
   grinderMax: number   // Maximum time grinder can run (ms)
 }
 
-export enum ViewMode {
-  STANDARD = 'dashboard',
-  MODEL = '3d',
+export interface LoadCellSettings {
+  calibrationFactor: number // HX711 calibration factor
+  deadband: number          // Noise filter - ignore weight changes smaller than this (grams)
 }
 
 export enum AppMode {
   AUTO = 'auto',
   MANUAL = 'manual',
-}
-
-export interface ViewSettings {
-  viewMode: ViewMode
 }
 
 import type {

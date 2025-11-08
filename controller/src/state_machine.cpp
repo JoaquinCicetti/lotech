@@ -9,6 +9,9 @@ StateMachine stateMachine;
 // Weight reading control flag (extern from main.cpp)
 extern bool needsWeightReading;
 
+// Emergency state flag (extern from main.cpp)
+extern bool isEmergencyActive;
+
 // Global delay variables for state transitions (definitions with default values)
 unsigned long t_step_settle = T_STEP_SETTLE_DEFAULT;
 unsigned long t_weight_settle = T_WEIGHT_SETTLE_DEFAULT;
@@ -43,6 +46,7 @@ StateMachine::StateMachine() {
   pastillasCount = 0;
   isPaused = false;
   pausedFromState = ESTADO0_INICIO;
+  appHasStarted = false;  // Require app to start first
   currentErrorMessage = nullptr;
 }
 
@@ -108,15 +112,15 @@ const char* StateMachine::getStateName() const {
 
 const char* StateMachine::getStateName(State state) const {
   switch(state) {
-    case ESTADO0_INICIO: return "0_INICIO";
-    case ESTADO1_ASCENSOR: return "1_ASCENSOR";
-    case ESTADO2_DOSIFICACION: return "2_DOSIFICACION";
-    case ESTADO3_PESAJE: return "3_PESAJE";
-    case ESTADO4_TRASPASO: return "4_TRASPASO";
-    case ESTADO5_MOLIENDA: return "5_MOLIENDA";
-    case ESTADO6_DESCARGA: return "6_DESCARGA";
-    case ESTADO7_CIERRE: return "7_CIERRE";
-    case ESTADO8_RETIRO: return "8_RETIRO";
+    case ESTADO0_INICIO: return "INICIO";
+    case ESTADO1_ASCENSOR: return "ASCENSOR";
+    case ESTADO2_DOSIFICACION: return "DOSIF";
+    case ESTADO3_PESAJE: return "PESAJE";
+    case ESTADO4_TRASPASO: return "TRASPASO";
+    case ESTADO5_MOLIENDA: return "MOLIENDA";
+    case ESTADO6_DESCARGA: return "DESCARGA";
+    case ESTADO7_CIERRE: return "CIERRE";
+    case ESTADO8_RETIRO: return "RETIRO";
     case ESTADO_ERROR: return "ERROR";
     default: return "UNKNOWN";
   }
@@ -337,6 +341,13 @@ void StateMachine::executeStateContinuous() {
 }
 
 void StateMachine::processTransitions() {
+  // CRITICAL: Block ALL state transitions if emergency is active
+  if (isEmergencyActive) {
+    // Emergency is active - do not process any state transitions
+    // State machine is frozen until RESET command clears emergency
+    return;
+  }
+
   // Check transition conditions and change state if needed
   switch(currentState) {
     case ESTADO0_INICIO:
@@ -482,7 +493,7 @@ void StateMachine::processTransitions() {
         changeState(ESTADO0_INICIO);
         inputs.simulateReset(false);  // Clear reset button
         if (oledDisplay.isInitialized()) {
-          oledDisplay.showState("0_INICIO", 0, lot_size);
+          oledDisplay.showState("INICIO", 0, lot_size);
         }
       }
       break;
@@ -502,7 +513,8 @@ bool StateMachine::recoverStateFromEEPROM() {
     currentState = (State)data.currentState;
     previousState = currentState;
     pastillasCount = data.pillCount;
-    lot_size = data.lotSize;
+    // DON'T restore lot_size - it's a setting, not state
+    // lot_size is loaded from settings persistence instead
     stateTimer = millis();
     stateJustChanged = false;
 

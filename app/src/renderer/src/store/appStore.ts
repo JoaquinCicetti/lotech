@@ -1,4 +1,4 @@
-import { DEFAULT_DELAYS, DEFAULT_DOSING, DEFAULT_VIEW } from '@renderer/constants/settings'
+import { DEFAULT_DELAYS, DEFAULT_DOSING } from '@renderer/constants/settings'
 import {
   CapStatus,
   DosingStatus,
@@ -12,7 +12,6 @@ import {
   MachineState,
   SerialPortInfo,
   SystemStatus,
-  ViewMode,
 } from '@renderer/types'
 import { create } from 'zustand'
 
@@ -42,7 +41,6 @@ export interface AppStore {
   showConsole: boolean
   simulationMode: boolean
   testMode: boolean
-  currentView: ViewMode
 
   // Settings
   currentDelays: DelaySettings
@@ -65,7 +63,6 @@ export interface AppStore {
   setShowConsole: (show: boolean) => void
   setSimulationMode: (mode: boolean) => void
   setTestMode: (mode: boolean) => void
-  setCurrentView: (view: ViewMode) => void
   setCurrentDelays: (delays: DelaySettings) => void
   setCurrentDosing: (dosing: DosingSettings) => void
 
@@ -111,7 +108,6 @@ export const useAppStore = create<AppStore>((set) => ({
   showConsole: true,
   simulationMode: true,
   testMode: false,
-  currentView: DEFAULT_VIEW.viewMode,
   currentDelays: DEFAULT_DELAYS,
   currentDosing: DEFAULT_DOSING,
   commandQueue: [],
@@ -136,7 +132,6 @@ export const useAppStore = create<AppStore>((set) => ({
   setShowConsole: (showConsole) => set({ showConsole }),
   setSimulationMode: (simulationMode) => set({ simulationMode }),
   setTestMode: (testMode) => set({ testMode }),
-  setCurrentView: (currentView) => set({ currentView }),
   setCurrentDelays: (currentDelays) => set({ currentDelays }),
   setCurrentDosing: (currentDosing) => set({ currentDosing }),
 

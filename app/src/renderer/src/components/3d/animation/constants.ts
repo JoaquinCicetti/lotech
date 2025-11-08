@@ -1,9 +1,10 @@
+import { THREE_COLORS } from '@renderer/constants/theme'
 import * as THREE from 'three'
 import { AnimationColors, AnimationConfig } from './types'
 
 export const ANIMATION_COLORS: AnimationColors = {
-  base: new THREE.Color(0xfafafa),
-  pulse: new THREE.Color(0x344496),
+  base: new THREE.Color(THREE_COLORS.model.base),
+  pulse: new THREE.Color(THREE_COLORS.model.pulse),
 }
 
 export const DEFAULT_ANIMATION_CONFIG: AnimationConfig = {

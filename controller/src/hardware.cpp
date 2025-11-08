@@ -341,6 +341,7 @@ LoadCell::LoadCell() : scale() {
   lastStableWeight = 0;
   calibrationFactor = 2280.f;
   weightThreshold = 1.0;
+  weightDeadband = 0.05;  // Ignore changes smaller than 0.05g (noise filter)
   weightStableTime = 0;
 
   // Initialize weight buffer
@@ -449,8 +450,12 @@ float LoadCell::readWeight() {
     lastDebugPrint = millis();
   }
 
-  // Update current weight with the calibrated value
-  currentWeight = units;
+  // Apply deadband filter to reduce noise
+  // Only update if change is significant
+  if (abs(units - currentWeight) > weightDeadband) {
+    currentWeight = units;
+  }
+  // Otherwise keep previous value (noise suppression)
 
   // Add to buffer for stability calculation
   weightBuffer[weightBufferIndex] = currentWeight;
@@ -556,6 +561,23 @@ void LoadCell::calibrate(float knownWeight) {
   if (knownWeight > 0) {
     calibrationFactor = scale.get_units(10) / knownWeight;
     scale.set_scale(calibrationFactor);
+  }
+}
+
+void LoadCell::setCalibrationFactor(float factor) {
+  if (factor > 0) {
+    calibrationFactor = factor;
+    scale.set_scale(calibrationFactor);
+    Serial.print(F("LOADCELL:CALIBRATION_SET:"));
+    Serial.println(calibrationFactor, 2);
+  }
+}
+
+void LoadCell::setDeadband(float deadband) {
+  if (deadband >= 0) {
+    weightDeadband = deadband;
+    Serial.print(F("LOADCELL:DEADBAND_SET:"));
+    Serial.println(weightDeadband, 3);
   }
 }
 
@@ -751,14 +773,9 @@ void InputSystem::init() {
 }
 
 bool InputSystem::isStartPressed() {
-  // Check physical button (active low with pull-up) and update virtual state
-  bool physicalPressed = !digitalRead(START_BUTTON_PIN);
-
-  // If physical button is pressed, set virtual button too
-  if (physicalPressed) {
-    virtualButtonStart = true;
-  }
-
+  // Only return the virtual button state set by the UI
+  // Physical button presses are reported via serial but don't trigger the virtual button
+  // This ensures the cycle can only be started from the UI app
   return virtualButtonStart;
 }
 
@@ -856,12 +873,30 @@ void OLEDDisplay::showState(const char* stateName, int pillCount, int totalPills
 
   display.clearDisplay();
 
-  // Use yellow zone (0-15) for important info
+  // Check for special states
+  bool isPaused = (strcmp(stateName, "PAUSADO") == 0);
+  bool isError = (strcmp(stateName, "ERROR") == 0);
+
+  // Use yellow zone (0-15) for status indicator
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 4);  // Center in yellow zone
-  display.print(F("Estado: "));
-  display.println(stateName);
+
+  if (isPaused) {
+    // Show PAUSED indicator
+    display.setCursor(0, 4);
+    display.print(F("[PAUSA] "));
+    display.println(stateName);
+  } else if (isError) {
+    // Show ERROR indicator
+    display.setCursor(0, 4);
+    display.print(F("[ERROR] "));
+    display.println(stateName);
+  } else {
+    // Normal state display
+    display.setCursor(0, 4);
+    display.print(F("Estado: "));
+    display.println(stateName);
+  }
 
   // Use blue zone (16-63) for details
   display.setCursor(0, 20);

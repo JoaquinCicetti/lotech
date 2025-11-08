@@ -1,13 +1,17 @@
-import { useControllerStateStore } from '@renderer/store/controllerStateStore'
-import { useSettingsStore } from '@renderer/store/settingsStore'
+import { Download, FileText } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { PROCESS_STATES } from '../constants/states'
+import { useControllerStateStore } from '@renderer/store/controllerStateStore'
+import { usePillTrackingStore } from '@renderer/store/pillTrackingStore'
+import { useSettingsStore } from '@renderer/store/settingsStore'
+import { Button } from './ui/button'
 import { Progress } from './ui/progress'
 
 export const ProcessStepper: React.FC = () => {
   const { machineState, pillCount, stateProgress } = useControllerStateStore()
-
   const { dosing } = useSettingsStore()
+  const { currentCycle, isTracking, endCycle, exportCycleData } = usePillTrackingStore()
 
   const [progressPercent, setProgressPercent] = useState(0)
 
@@ -34,6 +38,65 @@ export const ProcessStepper: React.FC = () => {
 
   const currentIndex = getCurrentStateIndex()
   const progressPercentage = (currentIndex / (PROCESS_STATES.length - 1)) * 100
+
+  const formatDuration = (startTime: number) => {
+    const duration = Date.now() - startTime
+    const minutes = Math.floor(duration / 60000)
+    const seconds = Math.floor((duration % 60000) / 1000)
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  const handleExportCycle = async () => {
+    if (!currentCycle) {
+      toast.error('No hay datos de ciclo para exportar')
+      return
+    }
+
+    const csvContent = exportCycleData(currentCycle)
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+    const filename = `lotech_${currentCycle.lotNumber}_${timestamp}.csv`
+
+    try {
+      const result = await window.file.saveDialog({
+        content: csvContent,
+        defaultFilename: filename,
+      })
+
+      if (result.success) {
+        toast.success(`Datos del ciclo guardados en ${result.path}`)
+      } else if (!result.canceled) {
+        toast.error('Error al guardar el archivo')
+      }
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('Error al exportar datos del ciclo')
+    }
+  }
+
+  const handleEndCycle = async () => {
+    const completedCycle = endCycle()
+    if (completedCycle) {
+      const csvContent = exportCycleData(completedCycle)
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+      const filename = `lotech_${completedCycle.lotNumber}_${timestamp}.csv`
+
+      try {
+        const result = await window.file.saveDialog({
+          content: csvContent,
+          defaultFilename: filename,
+        })
+
+        if (result.success) {
+          toast.success(`Ciclo finalizado y datos guardados en ${result.path}`)
+        } else {
+          toast.warning('Ciclo finalizado pero los datos no se guardaron')
+        }
+      } catch (error) {
+        console.error('Export error:', error)
+        toast.error('Ciclo finalizado pero fallo al guardar datos')
+      }
+    }
+  }
 
   return (
     <div className="space-y-4 p-8">
@@ -108,15 +171,48 @@ export const ProcessStepper: React.FC = () => {
         })}
       </div>
 
-      {/* Pill Counter */}
-      <div className="py-5 text-center">
-        <div className="text-muted-foreground mb-2 text-sm">Progreso del lote</div>
-        <div className="text-5xl font-light">
-          {pillCount} <span className="text-muted-foreground">/ {dosing.lotSize}</span>
+      {/* Pill Counter and Cycle Info */}
+      <div className="space-y-4 py-5">
+        {/* Lot Number if tracking */}
+        {isTracking && currentCycle && (
+          <div className="text-center">
+            <div className="text-muted-foreground text-xs">Lote Activo</div>
+            <div className="text-primary text-lg font-semibold">{currentCycle.lotNumber}</div>
+          </div>
+        )}
+
+        {/* Pill Counter */}
+        <div className="text-center">
+          <div className="text-muted-foreground mb-2 text-sm">Progreso del lote</div>
+          <div className="text-5xl font-light">
+            {pillCount} <span className="text-muted-foreground">/ {dosing.lotSize}</span>
+          </div>
+          <div className="mt-4">
+            <Progress value={(pillCount / dosing.lotSize) * 100} className="h-1" />
+          </div>
         </div>
-        <div className="mt-4">
-          <Progress value={(pillCount / dosing.lotSize) * 100} className="h-1" />
-        </div>
+
+        {/* Cycle Duration if tracking */}
+        {isTracking && currentCycle && (
+          <div className="text-center">
+            <div className="text-muted-foreground text-xs">Duración</div>
+            <div className="font-mono text-2xl">{formatDuration(currentCycle.startTime)}</div>
+          </div>
+        )}
+
+        {/* Cycle Actions - Only if tracking */}
+        {isTracking && currentCycle && (
+          <div className="flex justify-center gap-2 pt-2">
+            <Button onClick={handleExportCycle} variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              Exportar
+            </Button>
+            <Button onClick={handleEndCycle} variant="destructive" size="sm" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Finalizar
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -87,6 +87,7 @@ private:
   float lastStableWeight;
   float calibrationFactor;
   float weightThreshold;
+  float weightDeadband;  // Noise filter - ignore changes smaller than this
   unsigned long weightStableTime;
 
   // Weight stabilization - reduced buffer for faster response
@@ -114,6 +115,10 @@ public:
 
   void setMode(ControlMode m) { mode = m; }
   void setThreshold(float t) { weightThreshold = t; }
+  void setCalibrationFactor(float factor);
+  float getCalibrationFactor() const { return calibrationFactor; }
+  void setDeadband(float deadband);
+  float getDeadband() const { return weightDeadband; }
   bool isConnected() const { return isReady; }
 };
 

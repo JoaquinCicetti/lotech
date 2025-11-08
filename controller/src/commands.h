@@ -15,6 +15,7 @@ private:
   void parseProximitySettings(const char* params);
   void parseElevatorSettings(const char* params);
   void parseTimeoutSettings(const char* params);
+  void parseLoadCellSettings(const char* params);
 
   // Helper functions for sending status
   void sendStatus();

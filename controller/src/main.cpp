@@ -18,6 +18,9 @@ uint16_t lastProxValue = 9999; // Set to impossible value to force first report
 bool needsWeightReading = false;
 bool forceWeightRead = false;  // Set by commands to force a weight reading
 
+// EMERGENCY STATE - Global flag that blocks ALL operations when true
+bool isEmergencyActive = false;
+
 void setup() {
   // Disable watchdog on startup (in case of reset)
   wdt_disable();
@@ -67,10 +70,7 @@ void setup() {
   // Initialize manual mode (default)
   ManualMode::init();
 
-  // Initialize EEPROM persistence
-  StatePersistence::init();
-
-  // Try to load saved settings from EEPROM
+  // Try to load saved settings from EEPROM (init already called at line 43)
   if (StatePersistence::loadSettings()) {
     Serial.println(F("SETTINGS:RESTORED"));
     // Update hardware with loaded settings
@@ -106,6 +106,17 @@ void setup() {
       oledDisplay.showState(stateMachine.getStateName(), 0, lot_size);
     }
   }
+
+  // Report initial emergency button state and set global flag if pressed
+  bool initialEmergency = !digitalRead(STOP_BUTTON_PIN);
+  Serial.print(F("EMERGENCY:INITIAL_STATE:"));
+  Serial.println(initialEmergency ? F("PRESSED") : F("NOT_PRESSED"));
+  if (initialEmergency) {
+    isEmergencyActive = true;  // BLOCK everything if emergency pressed at startup
+    Serial.println(F("WARNING: Emergency button is PRESSED at startup!"));
+    Serial.println(F("EMERGENCY:ACTIVATED"));
+    Serial.println(F("System BLOCKED until RESET command"));
+  }
 }
 
 void loop() {
@@ -121,11 +132,13 @@ void loop() {
 
   if (millis() - lastButtonCheck > 50) {  // Check every 50ms to debounce
     // Check emergency stop button (STOP_BUTTON_PIN)
+    // CRITICAL: Emergency button MUST always work and stop everything!
     bool emergencyPressed = !digitalRead(STOP_BUTTON_PIN);  // Active low with pull-up
 
     if (emergencyPressed && !lastEmergencyState) {
-      // Emergency button just pressed
+      // Emergency button just pressed - STOP AND BLOCK EVERYTHING
       Serial.println(F("EMERGENCY:BUTTON_PRESSED"));
+      isEmergencyActive = true;  // BLOCK ALL OPERATIONS
 
       // Stop all hardware immediately
       elevator.stop();
@@ -141,28 +154,26 @@ void loop() {
 
       Serial.println(F("EMERGENCY:ACTIVATED"));
     } else if (!emergencyPressed && lastEmergencyState) {
-      // Emergency button released
+      // Emergency button released - system still blocked until RESET
       Serial.println(F("EMERGENCY:BUTTON_RELEASED"));
+      // DON'T clear isEmergencyActive here - only RESET command clears it
       Serial.println(F("EMERGENCY:DEACTIVATED"));
     }
+
+    lastEmergencyState = emergencyPressed;
 
     // Check start button (START_BUTTON_PIN)
     bool startPressed = !digitalRead(START_BUTTON_PIN);  // Active low with pull-up
 
     if (startPressed && !lastStartState) {
-      // Start button just pressed
+      // Start button just pressed - only report to UI, do not start cycle
       Serial.println(F("START:BUTTON_PRESSED"));
-
-      // In auto mode, set the virtual button state so state machine can process it
-      if (ManualMode::isAuto()) {
-        inputs.simulateStart(true);
-      }
+      Serial.println(F("START:IGNORED_USE_UI"));
     } else if (!startPressed && lastStartState) {
       // Start button released
       Serial.println(F("START:BUTTON_RELEASED"));
     }
 
-    lastEmergencyState = emergencyPressed;
     lastStartState = startPressed;
     lastButtonCheck = millis();
   }

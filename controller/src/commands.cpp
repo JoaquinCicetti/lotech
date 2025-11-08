@@ -5,6 +5,9 @@
 #include "config.h"
 #include "manual_mode.h"
 
+// Access to global emergency state from main.cpp
+extern bool isEmergencyActive;
+
 CommandProcessor commands;
 
 void CommandProcessor::processSerialInput() {
@@ -89,6 +92,10 @@ void CommandProcessor::processCommand(const char* command) {
   }
   else if (strncmp(command, "SET_TIMEOUTS:", 13) == 0) {
     parseTimeoutSettings(command + 13);
+    return;
+  }
+  else if (strncmp(command, "SET_LOADCELL:", 13) == 0) {
+    parseLoadCellSettings(command + 13);
     return;
   }
 
@@ -394,8 +401,16 @@ void CommandProcessor::processCommand(const char* command) {
   // AUTO MODE PRODUCTION CONTROL
   // ========================================
   else if (strcmp(command, "START") == 0) {
+    // CRITICAL: Block START if emergency is active
+    if (isEmergencyActive) {
+      Serial.println(F("ERROR:EMERGENCY_ACTIVE_CANNOT_START"));
+      Serial.println(F("EMERGENCY:BLOCKED_START"));
+      return;
+    }
+
     if (ManualMode::isAuto()) {
       inputs.simulateStart(true);
+      stateMachine.setAppStarted(true);  // Mark that app has initiated process
       Serial.println(F("AUTO:STARTED"));
     } else {
       Serial.println(F("ERROR:START_REQUIRES_AUTO"));
@@ -438,6 +453,9 @@ void CommandProcessor::processCommand(const char* command) {
 
   // RESET command - clears errors and resets state
   else if (strcmp(command, "RESET") == 0) {
+    // CRITICAL: Clear emergency state to allow operations again
+    isEmergencyActive = false;
+
     // Stop all motors and actuators
     elevator.stop();
     dosingWheel.stop();
@@ -609,6 +627,57 @@ void CommandProcessor::parseProximitySettings(const char* params) {
     // Save to EEPROM
     StatePersistence::saveSettings();
   }
+}
+
+void CommandProcessor::parseLoadCellSettings(const char* params) {
+  // Parse format: "calibration,deadband"
+  // NOTE: Arduino's sscanf with %f is BROKEN on many boards!
+  // Use manual parsing with atof() instead
+
+  Serial.print(F("LOADCELL:PARSING:"));
+  Serial.println(params);
+
+  // Find the comma separator
+  char* commaPos = strchr(params, ',');
+
+  if (commaPos == NULL) {
+    Serial.println(F("LOADCELL:ERROR_NO_COMMA"));
+    return;
+  }
+
+  // Parse calibration factor (before comma)
+  float calibration = atof(params);
+
+  // Parse deadband (after comma)
+  float deadband = atof(commaPos + 1);
+
+  Serial.print(F("LOADCELL:PARSED_CALIBRATION:"));
+  Serial.println(calibration, 2);
+  Serial.print(F("LOADCELL:PARSED_DEADBAND:"));
+  Serial.println(deadband, 4);
+
+  // Apply calibration factor
+  if (calibration > 0) {
+    Serial.print(F("LOADCELL:SETTING_CALIBRATION:"));
+    Serial.println(calibration, 2);
+    loadCell.setCalibrationFactor(calibration);
+    Serial.println(F("LOADCELL:CALIBRATION_APPLIED"));
+  } else {
+    Serial.print(F("LOADCELL:CALIBRATION_INVALID:"));
+    Serial.println(calibration, 2);
+    return;
+  }
+
+  // Apply deadband
+  if (deadband >= 0) {
+    Serial.print(F("LOADCELL:SETTING_DEADBAND:"));
+    Serial.println(deadband, 4);
+    loadCell.setDeadband(deadband);
+  }
+
+  // Save to EEPROM
+  StatePersistence::saveSettings();
+  Serial.println(F("LOADCELL:SETTINGS_SAVED"));
 }
 
 void CommandProcessor::sendStatus() {

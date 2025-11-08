@@ -1,9 +1,11 @@
 import { Grid, Loader } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { SCENE_COLORS } from '@renderer/constants/theme'
 import React, { Suspense } from 'react'
 import { CatmullRomCurve3, MathUtils, Vector3 } from 'three'
 import { SystemStatus } from '../../types'
 import { CameraController } from './CameraController'
+import { ElevatorIndicators } from './ElevatorIndicators'
 import { Lighting } from './Lighting'
 import { MachineModel } from './MachineModel'
 
@@ -135,33 +137,56 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
   const { systemStatus } = props
 
   return (
-    <div className="from-background to-muted/20 relative h-[100vh] w-full overflow-hidden rounded-lg bg-gradient-to-b">
-      <Canvas shadows camera={{ fov: 80 }}>
+    <div
+      className="relative h-[100vh] w-full overflow-hidden rounded-lg"
+      style={{
+        background: `linear-gradient(to bottom, ${SCENE_COLORS.background.gradient.from}, ${SCENE_COLORS.background.gradient.via}, ${SCENE_COLORS.background.gradient.to})`,
+      }}
+    >
+      <Canvas shadows camera={{ fov: 50, position: [8, 6, 8] }}>
         <Suspense fallback={null}>
           <CameraController autoRotate={false} />
           {/* <CameraPathAnimator
             mode={currentDosing?.lotSize ? 'path' : 'orbit'}
             stateKey={systemStatus.state as unknown as string}
           /> */}
+
+          {/* Lighting */}
           <Lighting />
+
+          {/* Fog for depth */}
+          <fog attach="fog" args={[SCENE_COLORS.background.fog, 10, 35]} />
+
+          {/* Ground plane */}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+            <planeGeometry args={[30, 30]} />
+            <meshStandardMaterial
+              color={SCENE_COLORS.ground.base}
+              roughness={0.3}
+              metalness={0.4}
+            />
+          </mesh>
 
           {/* Grid floor */}
           <Grid
             args={[20, 20]}
             cellSize={1}
             cellThickness={0.5}
-            cellColor="#a3e635"
+            cellColor={SCENE_COLORS.ground.grid.cell}
             sectionSize={5}
             sectionThickness={1}
-            sectionColor="#84cc16"
-            fadeDistance={30}
+            sectionColor={SCENE_COLORS.ground.grid.section}
+            fadeDistance={25}
             fadeStrength={1}
-            infiniteGrid
+            position={[0, 0.01, 0]}
           />
 
           {/* Use SimpleMachine instead of MachineModel for now */}
           {/* <SimpleMachine systemStatus={systemStatus} /> */}
           <MachineModel systemStatus={systemStatus} />
+
+          {/* Elevator position and sensor indicators */}
+          <ElevatorIndicators modelPosition={[-2.1, 0.6, -2.1]} modelScale={15} />
         </Suspense>
       </Canvas>
 

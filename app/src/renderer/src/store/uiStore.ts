@@ -1,5 +1,4 @@
-import { DEFAULT_VIEW } from '@renderer/constants/settings'
-import { AppMode, ViewMode } from '@renderer/types'
+import { AppMode } from '@renderer/types'
 import { create } from 'zustand'
 
 interface Notification {
@@ -11,14 +10,12 @@ interface Notification {
 
 export interface UIStore {
   currentMode: AppMode
-  currentView: ViewMode
   showConsole: boolean
   showSettings: boolean
   activeModal: string | null
   notifications: Notification[]
 
   setMode: (mode: AppMode) => void
-  setView: (view: ViewMode) => void
   toggleConsole: () => void
   setShowConsole: (show: boolean) => void
   toggleSettings: () => void
@@ -32,14 +29,12 @@ export interface UIStore {
 
 export const useUIStore = create<UIStore>((set) => ({
   currentMode: AppMode.MANUAL,
-  currentView: DEFAULT_VIEW.viewMode,
   showConsole: false,
   showSettings: true,
   activeModal: null,
   notifications: [],
 
   setMode: (currentMode) => set({ currentMode }),
-  setView: (currentView) => set({ currentView }),
 
   toggleConsole: () => set((state) => ({ showConsole: !state.showConsole })),
   setShowConsole: (showConsole) => set({ showConsole }),

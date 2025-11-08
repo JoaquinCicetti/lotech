@@ -62,6 +62,7 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
     lastProximityDistance: 0,
     isDosingMotorMoving: false,
     dosingStepCount: 0,
+    smoothedElevatorTarget: 0, // Smoothed target to prevent jumps
   })
 
   const testMode = useAppStore((state) => state.testMode)
@@ -72,41 +73,47 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
   const proximity = useSettingsStore((state) => state.proximity)
   const dosingSettings = useSettingsStore((state) => state.dosing)
 
-  // Set initial elevator position on mount - use refs to avoid dependency issues
-  const initializedRef = React.useRef(false)
+  // Track if refs are ready and initialized
+  const refsReadyRef = React.useRef(false)
+  const positionInitializedRef = React.useRef(false)
 
   React.useEffect(() => {
-    // Only initialize once when we have valid data
-    if (
-      !initializedRef.current &&
-      elevatorRef.current &&
-      containerRef.current &&
-      proximityDistance > 0 &&
-      proximity.minProximity > 0 &&
-      proximity.maxProximity > 0
-    ) {
-      const elevatorParams: ElevatorCalculationParams = {
-        proximityDistance,
-        minProximity: proximity.minProximity,
-        maxProximity: proximity.maxProximity,
-        maxHeight: ELEVATOR_MAX_HEIGHT,
+    // Check if refs are ready
+    if (elevatorRef.current && containerRef.current) {
+      refsReadyRef.current = true
+
+      // Initialize position once when we have valid sensor data
+      if (
+        !positionInitializedRef.current &&
+        proximityDistance > 0 &&
+        proximity.minProximity > 0 &&
+        proximity.maxProximity > 0
+      ) {
+        const elevatorParams: ElevatorCalculationParams = {
+          proximityDistance,
+          minProximity: proximity.minProximity,
+          maxProximity: proximity.maxProximity,
+          maxHeight: ELEVATOR_MAX_HEIGHT,
+        }
+        const initialPosition = calculateElevatorPosition(elevatorParams)
+
+        // Set initial positions without animation
+        // Note: Divide by 34 to match actual elevator travel (empirically determined, same as ElevatorIndicators)
+        const elevatorScale = 34
+        animationState.current.elevatorY = initialPosition
+        animationState.current.containerZ = -initialPosition
+        animationState.current.smoothedElevatorTarget = initialPosition // CRITICAL: Initialize smoothed target!
+        elevatorRef.current.position.y = initialPosition / elevatorScale
+        containerRef.current.position.z = -initialPosition / elevatorScale
+
+        positionInitializedRef.current = true
       }
-      const initialPosition = calculateElevatorPosition(elevatorParams)
-
-      // Set initial positions without animation
-      animationState.current.elevatorY = initialPosition
-      animationState.current.containerZ = -initialPosition
-      animationState.current.elevatorTarget = initialPosition
-      elevatorRef.current.position.y = initialPosition
-      containerRef.current.position.z = -initialPosition
-
-      initializedRef.current = true
     }
-  }, [proximityDistance, proximity.minProximity, proximity.maxProximity])
+  }, [elevatorRef, containerRef, proximityDistance, proximity.minProximity, proximity.maxProximity])
 
   useFrame((state, delta) => {
-    // Don't animate until initialized
-    if (!initializedRef.current) return
+    // Don't animate until refs are ready
+    if (!refsReadyRef.current) return
 
     const { state: currentState, hardware } = systemStatus
 
@@ -119,16 +126,41 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
 
     // Calculate elevator position
     const getElevatorTarget = (): number => {
-      const elevatorParams: ElevatorCalculationParams = {
-        proximityDistance,
-        minProximity: proximity.minProximity,
-        maxProximity: proximity.maxProximity,
-        maxHeight: ELEVATOR_MAX_HEIGHT,
+      // Debug proximity settings
+      const debugInterval = 2000
+      if (
+        !animationState.current.lastSettingsLog ||
+        Date.now() - animationState.current.lastSettingsLog > debugInterval
+      ) {
+        console.log(
+          '[ELEVATOR] Settings - minProx:',
+          proximity.minProximity,
+          'maxProx:',
+          proximity.maxProximity,
+          'currentProx:',
+          proximityDistance
+        )
+        animationState.current.lastSettingsLog = Date.now()
       }
 
-      const target = calculateElevatorPosition(elevatorParams)
+      // Only calculate if we have valid proximity data
+      if (proximityDistance > 0 && proximity.minProximity > 0 && proximity.maxProximity > 0) {
+        const elevatorParams: ElevatorCalculationParams = {
+          proximityDistance,
+          minProximity: proximity.minProximity,
+          maxProximity: proximity.maxProximity,
+          maxHeight: ELEVATOR_MAX_HEIGHT,
+        }
 
-      return target
+        const target = calculateElevatorPosition(elevatorParams)
+        return target
+      }
+      // Return current position if no valid data
+      console.log(
+        '[ELEVATOR] Invalid proximity data, returning current position:',
+        animationState.current.elevatorY
+      )
+      return animationState.current.elevatorY
     }
 
     // Animate container (moves opposite to elevator)
@@ -138,16 +170,18 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
       // Apply pulse effect for state changes
       applyPulseToChildren(containerRef.current, shouldPulse, state.clock.elapsedTime)
 
-      // Smooth container movement with slower, more natural lerp
-      const targetZ = -getElevatorTarget()
+      // Use the smoothed target from elevator calculation
+      const targetZ = -animationState.current.smoothedElevatorTarget
       const lerpParams: LerpParams = {
         current: animationState.current.containerZ,
         target: targetZ,
         delta,
-        speed: 3.0, // Smoother interpolation
+        speed: 2.5, // Match elevator speed for synchronized movement
       }
       animationState.current.containerZ = smoothLerp(lerpParams)
-      containerRef.current.position.z = animationState.current.containerZ
+      // Divide by 34 to match actual elevator travel (empirically determined, same as ElevatorIndicators)
+      const elevatorScale = 34
+      containerRef.current.position.z = animationState.current.containerZ / elevatorScale
     }
 
     // Animate elevator
@@ -160,16 +194,47 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
       }
       applyPulseEffect(pulseParams)
 
-      // Smooth elevator movement with slower, more natural lerp
-      const targetY = getElevatorTarget()
+      // SMOOTH TARGET FIRST to prevent jumps from discrete sensor readings
+      const rawTarget = getElevatorTarget()
+      const targetSmoothParams: LerpParams = {
+        current: animationState.current.smoothedElevatorTarget,
+        target: rawTarget,
+        delta,
+        speed: 2.0, // Fast smoothing of target
+      }
+      animationState.current.smoothedElevatorTarget = smoothLerp(targetSmoothParams)
+
+      // Then smooth elevator movement to the smoothed target
       const lerpParams: LerpParams = {
         current: animationState.current.elevatorY,
-        target: targetY,
+        target: animationState.current.smoothedElevatorTarget,
         delta,
-        speed: 3.0, // Smoother interpolation
+        speed: 2.5, // Slower, smoother interpolation for visible movement
       }
       animationState.current.elevatorY = smoothLerp(lerpParams)
-      elevatorRef.current.position.y = animationState.current.elevatorY
+
+      // Debug logging (remove after testing)
+      const debugInterval = 2000 // ms
+      if (
+        !animationState.current.lastDebugLog ||
+        Date.now() - animationState.current.lastDebugLog > debugInterval
+      ) {
+        console.log(
+          '[ELEVATOR] rawTarget:',
+          rawTarget.toFixed(2),
+          'smoothed:',
+          animationState.current.smoothedElevatorTarget.toFixed(2),
+          'elevatorY:',
+          animationState.current.elevatorY.toFixed(2),
+          'prox:',
+          proximityDistance
+        )
+        animationState.current.lastDebugLog = Date.now()
+      }
+
+      // Divide by 34 to match actual elevator travel (empirically determined, same as ElevatorIndicators)
+      const elevatorScale = 34
+      elevatorRef.current.position.y = animationState.current.elevatorY / elevatorScale
     }
 
     // Animate dosing wheel

@@ -62,6 +62,9 @@ private:
   bool isPaused;
   State pausedFromState;
 
+  // App initialization tracking
+  bool appHasStarted;  // True once app sends START command
+
   // Error tracking
   const char* currentErrorMessage;
   
@@ -105,6 +108,10 @@ public:
   void pause();
   void resume();
   bool getPausedState() const { return isPaused; }
+
+  // App initialization tracking
+  void setAppStarted(bool started) { appHasStarted = started; }
+  bool hasAppStarted() const { return appHasStarted; }
 };
 
 extern StateMachine stateMachine;

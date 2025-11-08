@@ -127,6 +127,13 @@ export const updateElevator = (speed: number) =>
 export const updateTimeouts = (timeouts: HardwareTimeouts) =>
   sendSerial(SettingsCommands.buildTimeoutsCommand(timeouts))
 
+export const updateLoadCell = (calibrationFactor: number, deadband: number) => {
+  const command = SettingsCommands.buildLoadCellCommand(calibrationFactor, deadband)
+  console.log(`[LOADCELL] Sending command: ${command}`)
+  console.log(`[LOADCELL] Calibration: ${calibrationFactor}, Deadband: ${deadband}`)
+  return sendSerial(command)
+}
+
 // Status request
 export const requestStatus = () => sendSerial(StatusCommand.STATUS)
 export const requestSensors = () => sendSerial(StatusCommand.SENSORS)

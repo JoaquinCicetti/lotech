@@ -67,6 +67,9 @@ export interface AnimationState {
   lastProximityDistance: number
   isDosingMotorMoving: boolean
   dosingStepCount: number
+  smoothedElevatorTarget: number // Smoothed target to prevent jumps from discrete sensor readings
+  lastDebugLog?: number // For debug logging throttling
+  lastSettingsLog?: number // For settings debug logging throttling
 }
 
 export interface AnimationRefs {

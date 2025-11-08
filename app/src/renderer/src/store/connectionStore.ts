@@ -34,7 +34,7 @@ export const useConnectionStore = create<ConnectionState>((set) => ({
 
   addSerialData: (line) =>
     set((state) => ({
-      serialData: [...state.serialData, `[${new Date().toLocaleTimeString()}] ${line}`].slice(-100),
+      serialData: [...state.serialData, `[${new Date().toLocaleTimeString()}] ${line}`].slice(-500),
     })),
 
   clearSerialData: () => set({ serialData: [] }),
