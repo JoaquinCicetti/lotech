@@ -73,46 +73,10 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
   const proximity = useSettingsStore((state) => state.proximity)
   const dosingSettings = useSettingsStore((state) => state.dosing)
 
-  // Track if refs are ready and initialized
-  const refsReadyRef = React.useRef(false)
+  // Track if position has been initialized
   const positionInitializedRef = React.useRef(false)
 
-  React.useEffect(() => {
-    // Check if refs are ready
-    if (elevatorRef.current && containerRef.current) {
-      refsReadyRef.current = true
-
-      // Initialize position once when we have valid sensor data
-      if (
-        !positionInitializedRef.current &&
-        proximityDistance > 0 &&
-        proximity.minProximity > 0 &&
-        proximity.maxProximity > 0
-      ) {
-        const elevatorParams: ElevatorCalculationParams = {
-          proximityDistance,
-          minProximity: proximity.minProximity,
-          maxProximity: proximity.maxProximity,
-          maxHeight: ELEVATOR_MAX_HEIGHT,
-        }
-        const initialPosition = calculateElevatorPosition(elevatorParams)
-
-        // Set initial positions without animation
-        animationState.current.elevatorY = initialPosition
-        animationState.current.containerZ = -initialPosition
-        elevatorRef.current.position.y = initialPosition
-        containerRef.current.position.z = -initialPosition
-
-        positionInitializedRef.current = true
-        console.log('[ELEVATOR] Initialized at position:', initialPosition)
-      }
-    }
-  }, [elevatorRef, containerRef, proximityDistance, proximity.minProximity, proximity.maxProximity])
-
   useFrame((state, delta) => {
-    // Don't animate until refs are ready
-    if (!refsReadyRef.current) return
-
     const { state: currentState, hardware } = systemStatus
 
     // Create check params for animation decisions
@@ -157,41 +121,56 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
       return 0
     }
 
-    // Animate container (moves opposite to elevator) - SMOOTH LERP
-    if (containerRef.current) {
-      const shouldPulse = shouldAnimateElevator(checkParams)
-      applyPulseToChildren(containerRef.current, shouldPulse, state.clock.elapsedTime)
+    // Get target position
+    const targetPosition = getElevatorPosition()
 
-      const targetPosition = getElevatorPosition()
-      const lerpParams: LerpParams = {
-        current: animationState.current.containerZ,
-        target: -targetPosition,
-        delta,
-        speed: 4, // ~4mm/s = 40mm in 10 seconds
-      }
-      animationState.current.containerZ = smoothLerp(lerpParams)
-      containerRef.current.position.z = animationState.current.containerZ
+    // Initialize position on first valid data (skip lerp)
+    if (
+      !positionInitializedRef.current &&
+      proximityDistance > 0 &&
+      proximity.minProximity > 0 &&
+      proximity.maxProximity > 0 &&
+      containerRef.current &&
+      elevatorRef.current
+    ) {
+      animationState.current.elevatorY = targetPosition
+      animationState.current.containerZ = -targetPosition
+      elevatorRef.current.position.y = targetPosition
+      containerRef.current.position.z = -targetPosition
+      positionInitializedRef.current = true
+      console.log('[ELEVATOR] Initialized position directly:', targetPosition)
+      return // Skip rest of animation for this frame
     }
 
-    // Animate elevator - SMOOTH LERP
+    // Animate elevator and container together as a solid unit - SAME LERP
+    const shouldPulse = shouldAnimateElevator(checkParams)
+
+    // Calculate single lerped position for both (they move together)
+    const lerpParams: LerpParams = {
+      current: animationState.current.elevatorY,
+      target: targetPosition,
+      delta,
+      speed: 6, // Unified speed for both elevator and container
+    }
+    const newPosition = smoothLerp(lerpParams)
+    animationState.current.elevatorY = newPosition
+    animationState.current.containerZ = -newPosition
+
+    // Apply to elevator
     if (elevatorRef.current) {
-      const shouldPulse = shouldAnimateElevator(checkParams)
       const pulseParams: PulseEffectParams = {
         object: elevatorRef.current,
         shouldPulse,
         elapsedTime: state.clock.elapsedTime,
       }
       applyPulseEffect(pulseParams)
+      elevatorRef.current.position.y = newPosition
+    }
 
-      const targetPosition = getElevatorPosition()
-      const lerpParams: LerpParams = {
-        current: animationState.current.elevatorY,
-        target: targetPosition,
-        delta,
-        speed: 6, // ~4mm/s = 40mm in 10 seconds
-      }
-      animationState.current.elevatorY = smoothLerp(lerpParams)
-      elevatorRef.current.position.y = animationState.current.elevatorY
+    // Apply to container (moves opposite direction)
+    if (containerRef.current) {
+      applyPulseToChildren(containerRef.current, shouldPulse, state.clock.elapsedTime)
+      containerRef.current.position.z = -newPosition
     }
 
     // Animate dosing wheel

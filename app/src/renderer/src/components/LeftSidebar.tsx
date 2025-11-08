@@ -7,8 +7,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@renderer/components/ui/select'
+import { useTheme } from '@renderer/hooks/useTheme'
 import { useConnectionStore } from '@renderer/store/connectionStore'
-import { RefreshCw, Wifi, WifiOff } from 'lucide-react'
+import { Moon, RefreshCw, Sun, Wifi, WifiOff } from 'lucide-react'
 import React, { useState } from 'react'
 import { SettingsPanel } from './panels/SettingsPanel'
 
@@ -23,6 +24,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
   const { ports, selectedPort, isConnected, connectionError, setSelectedPort } =
     useConnectionStore()
 
+  const { theme, toggleTheme } = useTheme()
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const handleRefreshPorts = async () => {
@@ -92,6 +94,29 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
       {/* Settings - Always visible, scrollable */}
       <div className="flex-1 space-y-4 overflow-y-auto">
         <SettingsPanel />
+      </div>
+
+      {/* Theme Toggle Footer */}
+      <div className="border-border mt-2 border-t pt-2">
+        <Button
+          onClick={toggleTheme}
+          variant="outline"
+          size="sm"
+          className="w-full gap-2"
+          title={`Cambiar a tema ${theme === 'dark' ? 'claro' : 'oscuro'}`}
+        >
+          {theme === 'dark' ? (
+            <>
+              <Sun className="h-4 w-4" />
+              Cambiar a modo claro
+            </>
+          ) : (
+            <>
+              <Moon className="h-4 w-4" />
+              Cambiar a modo oscuro
+            </>
+          )}
+        </Button>
       </div>
     </div>
   )

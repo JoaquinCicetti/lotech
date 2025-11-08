@@ -12,7 +12,7 @@ import { useControllerStateStore } from '@renderer/store/controllerStateStore'
 import { usePillTrackingStore } from '@renderer/store/pillTrackingStore'
 import { useUIStore } from '@renderer/store/uiStore'
 import { AppMode } from '@renderer/types'
-import { AlertTriangle, Download, FileText, Pause, Play, RefreshCw, Shield, ShieldOff } from 'lucide-react'
+import { AlertTriangle, Pause, Play, RefreshCw, Shield, ShieldOff } from 'lucide-react'
 import React, { useState } from 'react'
 import { toast } from 'sonner'
 import { LotNumberDialog } from './LotNumberDialog'
@@ -22,7 +22,7 @@ export const FloatingActionBar: React.FC = () => {
   const { currentMode } = useUIStore()
 
   return (
-    <div className="fixed bottom-2 left-1/2 z-50 -translate-x-1/2 transform gap-2 rounded-lg border bg-black/30 p-2 shadow-lg backdrop-blur-md">
+    <div className="bg-background/80 fixed bottom-2 left-1/2 z-50 -translate-x-1/2 transform gap-2 rounded-lg border p-2 shadow-lg backdrop-blur-md">
       <ProcessStepper />
       {currentMode === AppMode.AUTO ? <AutoController /> : <ManualController />}
     </div>
@@ -38,7 +38,8 @@ const AutoController: React.FC = () => {
     setRunning,
     setPaused,
   } = useControllerStateStore()
-  const { startNewCycle, isTracking, currentCycle, endCycle, exportCycleData } = usePillTrackingStore()
+  const { startNewCycle, isTracking, currentCycle, endCycle, exportCycleData } =
+    usePillTrackingStore()
   const [showLotDialog, setShowLotDialog] = useState(false)
 
   const handlePlayPauseToggle = () => {
@@ -166,66 +167,52 @@ const AutoController: React.FC = () => {
         onOpenChange={setShowLotDialog}
         onConfirm={handleLotConfirm}
       />
-      <div className="flex gap-2">
-        {/* Export/Finalize - Only when tracking */}
-        {isTracking && currentCycle && (
-          <>
-            <Button onClick={handleExportCycle} variant="outline" size="sm">
-              <Download className="mr-2 h-4 w-4" />
-              Exportar
-            </Button>
-            <Button onClick={handleEndCycle} variant="destructive" size="sm">
-              <FileText className="mr-2 h-4 w-4" />
-              Finalizar
-            </Button>
-            <div className="bg-border mx-2 w-px" />
-          </>
-        )}
-
-        {/* Single Play/Pause Button */}
-        <Button
-          size="sm"
-          variant={isRunning && !isPaused ? 'default' : 'secondary'}
-          onClick={handlePlayPauseToggle}
-          disabled={isEmergencyStopped}
-          className="min-w-[100px]"
-        >
-          {!isRunning ? (
-            <>
-              <Play className="mr-2 h-4 w-4" />
-              Iniciar
-            </>
-          ) : isPaused ? (
-            <>
-              <Play className="mr-2 h-4 w-4" />
-              Reanudar
-            </>
-          ) : (
-            <>
-              <Pause className="mr-2 h-4 w-4" />
-              Pausar
-            </>
-          )}
-        </Button>
-
-        {/* Emergency Button */}
-        <Button
-          size="sm"
-          variant={isEmergencyStopped ? 'destructive' : 'outline'}
-          onClick={handleEmergencyToggle}
-          disabled={isEmergencyStopped}
-        >
-          <AlertTriangle className="mr-2 h-4 w-4" />
-          Emergencia
-        </Button>
-
-        {/* Reset Button - Only show when emergency is/was activated */}
-        {isEmergencyStopped && (
-          <Button size="sm" variant="secondary" onClick={handleReset}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Reset
+      <div className="flex gap-4">
+        <>
+          {/* Single Play/Pause Button */}
+          <Button
+            variant={isRunning && !isPaused ? 'default' : 'secondary'}
+            onClick={handlePlayPauseToggle}
+            disabled={isEmergencyStopped}
+            className="min-w-[100px]"
+          >
+            {!isRunning ? (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                Iniciar
+              </>
+            ) : isPaused ? (
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                Reanudar
+              </>
+            ) : (
+              <>
+                <Pause className="mr-2 h-4 w-4" />
+                Pausar
+              </>
+            )}
           </Button>
-        )}
+
+          {/* Reset Button - Only show when emergency is/was activated */}
+          {isEmergencyStopped && (
+            <Button variant="secondary" onClick={handleReset}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Reset
+            </Button>
+          )}
+
+          {/* Emergency Button */}
+          <Button
+            className="grow-1"
+            variant={'destructive'}
+            onClick={handleEmergencyToggle}
+            disabled={isEmergencyStopped}
+          >
+            <AlertTriangle className="mr-2 h-4 w-4" />
+            Emergencia
+          </Button>
+        </>
       </div>
     </>
   )
@@ -264,10 +251,9 @@ const ManualController: React.FC = () => {
 
   // Simplified MANUAL mode - only Emergency and Reset when needed
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-4">
       {/* Safety Toggle */}
       <Button
-        size="sm"
         variant={physicalRestrictions ? 'default' : 'destructive'}
         onClick={() => {
           const newState = !physicalRestrictions
@@ -289,9 +275,17 @@ const ManualController: React.FC = () => {
         {physicalRestrictions ? 'Seguro' : 'Sin restricciones'}
       </Button>
 
+      {/* Reset Button - Only show when emergency is/was activated */}
+      {isEmergencyStopped && (
+        <Button variant="secondary" onClick={handleReset}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Reset
+        </Button>
+      )}
+
       {/* Emergency Button */}
       <Button
-        size="sm"
+        className="grow-1"
         variant={'destructive'}
         onClick={handleEmergencyToggle}
         disabled={isEmergencyStopped}
@@ -299,14 +293,6 @@ const ManualController: React.FC = () => {
         <AlertTriangle className="mr-2 h-4 w-4" />
         Emergencia
       </Button>
-
-      {/* Reset Button - Only show when emergency is/was activated */}
-      {isEmergencyStopped && (
-        <Button size="sm" variant="secondary" onClick={handleReset}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Reset
-        </Button>
-      )}
     </div>
   )
 }

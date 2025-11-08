@@ -187,10 +187,10 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
           <MachineModel systemStatus={systemStatus} />
 
           {/* Elevator position and sensor indicators */}
-          <ElevatorIndicators modelPosition={[-2.1, 0.55, -2.1]} modelScale={15} />
+          <ElevatorIndicators modelPosition={[-1.5, 0.55, -2.1]} modelScale={15} />
 
           {/* 3D Floating Cards */}
-          <FloatingCards modelPosition={[-2.1, 0.55, -2.1]} modelScale={15} />
+          <FloatingCards modelPosition={[-1.5, 0.55, -2.1]} modelScale={15} />
         </Suspense>
       </Canvas>
 

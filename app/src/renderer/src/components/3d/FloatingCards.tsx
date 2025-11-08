@@ -25,7 +25,12 @@ export const FloatingCards: React.FC<FloatingCardsProps> = (props) => {
   return (
     <>
       {/* Weight Card */}
-      <Html position={weightCardPos} center distanceFactor={8} style={{ pointerEvents: 'none' }}>
+      <Html
+        position={weightCardPos}
+        center
+        distanceFactor={8}
+        style={{ pointerEvents: 'none', zIndex: 10 }}
+      >
         <Card className="border-primary/20 bg-background/70 w-36 border-2 shadow-xl backdrop-blur-md">
           <CardHeader>
             <CardTitle className="text-muted-foreground font-medium">Peso Actual</CardTitle>

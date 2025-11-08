@@ -8,6 +8,7 @@ import { Layout } from './components/Layout'
 import { LeftSidebar } from './components/LeftSidebar'
 import { RightPanel } from './components/RightPanel'
 import { Toaster } from './components/ui/toaster'
+import { useTheme } from './hooks/useTheme'
 import { useSerialConnection } from './serial'
 import { useConnectionStore } from './store/connectionStore'
 import { useControllerStateStore } from './store/controllerStateStore'
@@ -18,6 +19,9 @@ import { useUIStore } from './store/uiStore'
 import { startElevatorSimulation } from './debug/elevatorSimulation'
 
 function App(): React.JSX.Element {
+  // Initialize theme
+  useTheme()
+
   const { ports, selectedPort, setPorts, setSelectedPort } = useConnectionStore()
   const { machineState, pillCount, currentWeight, sensorReadings, hardwareStatus } =
     useControllerStateStore()

@@ -68,10 +68,10 @@ export const ProcessStepper: React.FC = () => {
                 <div
                   className={`flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300 ${
                     isActive
-                      ? 'from-primary to-primary/80 shadow-primary/30 scale-125 bg-gradient-to-br text-black shadow-lg'
+                      ? 'from-primary to-primary/80 shadow-primary/30 scale-125 bg-gradient-to-br text-primary-foreground shadow-lg'
                       : isPast
-                        ? 'bg-primary text-black'
-                        : 'bg-muted text-white'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground'
                   } `}
                 >
                   {state.icon}

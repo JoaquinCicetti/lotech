@@ -4,24 +4,24 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: 0 0% 9%;
-  --foreground: 0 0% 95%;
-  --card: 0 0% 9%;
-  --card-foreground: 0 0% 95%;
-  --popover: 0 0% 9%;
-  --popover-foreground: 0 0% 95%;
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
   --primary: 204 90% 37%;
-  --primary-foreground: 0 0% 95%;
-  --secondary: 0 0% 18%;
-  --secondary-foreground: 0 0% 95%;
-  --muted: 0 0% 18%;
-  --muted-foreground: 0 0% 60%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 210 40% 94%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 94%;
+  --muted-foreground: 215 16% 47%;
   --accent: 204 90% 50%;
-  --accent-foreground: 0 0% 95%;
+  --accent-foreground: 222 47% 11%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 18%;
-  --input: 0 0% 18%;
+  --border: 214 32% 88%;
+  --input: 214 32% 91%;
   --ring: 204 90% 37%;
   --radius: 0.5rem;
 }
@@ -81,9 +81,31 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Light theme - soft gradient for glass/crystal effect */
+  :root:not(.dark) body {
+    background: linear-gradient(135deg,
+      hsl(210, 50%, 97%) 0%,
+      hsl(215, 60%, 95%) 25%,
+      hsl(205, 55%, 96%) 50%,
+      hsl(215, 60%, 95%) 75%,
+      hsl(210, 50%, 97%) 100%);
+    background-attachment: fixed;
+  }
+
+  /* Keep dark theme solid */
+  .dark body {
+    background: hsl(0, 0%, 9%);
+  }
+
+  /* Glass morphism for light theme overlays */
+  :root:not(.dark) [class*="backdrop-blur"] {
+    background-color: rgba(255, 255, 255, 0.7);
+    border-color: rgba(214, 232, 244, 0.5);
+  }
 }
 
-/* Set dark mode as default */
+/* Color scheme will be set dynamically */
 html {
-  color-scheme: dark;
+  color-scheme: light dark;
 }

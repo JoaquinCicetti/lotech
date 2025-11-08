@@ -27,10 +27,10 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
   const sphereRef = useRef<THREE.Mesh>(null)
   const lightRef = useRef<THREE.PointLight>(null)
 
-  // Track current sphere position for smooth animation
-  const spherePositionRef = useRef(0)
+  // Track sphere Y position with lerp (same as elevator mesh)
+  const sphereYRef = useRef(0)
 
-  // Calculate elevator position in 3D space
+  // Calculate elevator position in 3D space (this changes gradually with sensor data)
   const elevatorY = useMemo(() => {
     if (proximityDistance > 0) {
       return calculateElevatorPosition({
@@ -47,25 +47,26 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
   const activeColor = new THREE.Color(THREE_COLORS.indicators.active)
   const dimColor = new THREE.Color(THREE_COLORS.indicators.inactive)
 
-  // Animate indicator sphere with smooth lerp
+  // Animate indicator sphere - use SAME lerp as elevator (speed: 6)
   useFrame((_, delta) => {
     // Use actual hardware sensor readings
     const isAtBottom = sensorReadings.posBaja
     const isAtTop = sensorReadings.posAlta
     const atLimit = isAtTop || isAtBottom
 
-    // Update sphere position with smooth lerp
+    // Update sphere position with SAME lerp as elevator mesh
     if (sphereRef.current) {
       const targetY = baseY + elevatorY / 65
 
-      spherePositionRef.current = smoothLerp({
-        current: spherePositionRef.current,
+      // Apply same lerp speed as AnimationController (speed: 6)
+      sphereYRef.current = smoothLerp({
+        current: sphereYRef.current,
         target: targetY,
         delta,
-        speed: 6, // Match elevator speed
+        speed: 6, // MUST match AnimationController elevator speed
       })
 
-      sphereRef.current.position.y = spherePositionRef.current
+      sphereRef.current.position.y = sphereYRef.current
 
       // Update sphere color and glow based on position
       const material = sphereRef.current.material as THREE.MeshStandardMaterial
@@ -93,11 +94,13 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
   const bottomY = baseY
   const topY = baseY + elevatorRange
 
-  // Card position - offset to the right like a popover
-  const popoverOffsetX = 0.25
+  // Popover offset
+  const popoverOffset = 0.4
+
+  // Card position - follows lerped sphere position
   const cardPosition: [number, number, number] = [
-    indicatorX + popoverOffsetX,
-    spherePositionRef.current,
+    indicatorX,
+    sphereYRef.current + popoverOffset,
     indicatorZ,
   ]
 
@@ -120,10 +123,10 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
             args={[
               new Float32Array([
                 indicatorX + 0.06,
-                spherePositionRef.current,
+                sphereYRef.current,
                 indicatorZ,
-                indicatorX + popoverOffsetX - 0.08,
-                spherePositionRef.current,
+                indicatorX + popoverOffset - 0.08,
+                sphereYRef.current,
                 indicatorZ,
               ]),
               3,
@@ -134,10 +137,15 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
       </line>
 
       {/* Popover card - compact display next to sphere */}
-      <Html position={cardPosition} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
-        <div className="bg-background/90 border-border flex items-center gap-1.5 rounded-md border px-2 py-1 shadow-md backdrop-blur-sm">
-          <span className="font-mono text-sm font-semibold">{proximityDistance}</span>
-          <span className="text-muted-foreground text-xs">mm</span>
+      <Html
+        position={cardPosition}
+        center
+        distanceFactor={10}
+        style={{ pointerEvents: 'none', zIndex: 10 }}
+      >
+        <div className="bg-background/80 border-border flex items-center gap-1.5 rounded-md border px-2 py-1 shadow-md backdrop-blur-sm">
+          <span className="font-mono text-2xl font-semibold">{proximityDistance}</span>
+          <span className="text-muted-foreground text-xl">mm</span>
         </div>
       </Html>
 
