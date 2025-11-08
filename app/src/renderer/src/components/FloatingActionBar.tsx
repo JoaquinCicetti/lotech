@@ -12,7 +12,7 @@ import { useControllerStateStore } from '@renderer/store/controllerStateStore'
 import { usePillTrackingStore } from '@renderer/store/pillTrackingStore'
 import { useUIStore } from '@renderer/store/uiStore'
 import { AppMode } from '@renderer/types'
-import { AlertTriangle, Pause, Play, RefreshCw, Shield, ShieldOff } from 'lucide-react'
+import { AlertTriangle, Download, FileText, Pause, Play, RefreshCw, Shield, ShieldOff } from 'lucide-react'
 import React, { useState } from 'react'
 import { toast } from 'sonner'
 import { LotNumberDialog } from './LotNumberDialog'
@@ -22,7 +22,7 @@ export const FloatingActionBar: React.FC = () => {
   const { currentMode } = useUIStore()
 
   return (
-    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 transform gap-2 rounded-lg border bg-black/30 p-2 shadow-lg backdrop-blur-md">
+    <div className="fixed bottom-2 left-1/2 z-50 -translate-x-1/2 transform gap-2 rounded-lg border bg-black/30 p-2 shadow-lg backdrop-blur-md">
       <ProcessStepper />
       {currentMode === AppMode.AUTO ? <AutoController /> : <ManualController />}
     </div>
@@ -38,7 +38,7 @@ const AutoController: React.FC = () => {
     setRunning,
     setPaused,
   } = useControllerStateStore()
-  const { startNewCycle, isTracking, currentCycle, endCycle } = usePillTrackingStore()
+  const { startNewCycle, isTracking, currentCycle, endCycle, exportCycleData } = usePillTrackingStore()
   const [showLotDialog, setShowLotDialog] = useState(false)
 
   const handlePlayPauseToggle = () => {
@@ -106,6 +106,58 @@ const AutoController: React.FC = () => {
     toast.success('Sistema reiniciado')
   }
 
+  const handleExportCycle = async () => {
+    if (!currentCycle) {
+      toast.error('No hay datos de ciclo para exportar')
+      return
+    }
+
+    const csvContent = exportCycleData(currentCycle)
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+    const filename = `lotech_${currentCycle.lotNumber}_${timestamp}.csv`
+
+    try {
+      const result = await window.file.saveDialog({
+        content: csvContent,
+        defaultFilename: filename,
+      })
+
+      if (result.success) {
+        toast.success(`Datos del ciclo guardados en ${result.path}`)
+      } else if (!result.canceled) {
+        toast.error('Error al guardar el archivo')
+      }
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error('Error al exportar datos del ciclo')
+    }
+  }
+
+  const handleEndCycle = async () => {
+    const completedCycle = endCycle()
+    if (completedCycle) {
+      const csvContent = exportCycleData(completedCycle)
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+      const filename = `lotech_${completedCycle.lotNumber}_${timestamp}.csv`
+
+      try {
+        const result = await window.file.saveDialog({
+          content: csvContent,
+          defaultFilename: filename,
+        })
+
+        if (result.success) {
+          toast.success(`Ciclo finalizado y datos guardados en ${result.path}`)
+        } else {
+          toast.warning('Ciclo finalizado pero los datos no se guardaron')
+        }
+      } catch (error) {
+        console.error('Export error:', error)
+        toast.error('Ciclo finalizado pero fallo al guardar datos')
+      }
+    }
+  }
+
   // Simplified AUTO mode controls
   return (
     <>
@@ -115,49 +167,62 @@ const AutoController: React.FC = () => {
         onConfirm={handleLotConfirm}
       />
       <div className="flex gap-2">
+        {/* Export/Finalize - Only when tracking */}
+        {isTracking && currentCycle && (
+          <>
+            <Button onClick={handleExportCycle} variant="outline" size="sm">
+              <Download className="mr-2 h-4 w-4" />
+              Exportar
+            </Button>
+            <Button onClick={handleEndCycle} variant="destructive" size="sm">
+              <FileText className="mr-2 h-4 w-4" />
+              Finalizar
+            </Button>
+            <div className="bg-border mx-2 w-px" />
+          </>
+        )}
+
         {/* Single Play/Pause Button */}
         <Button
-          size="lg"
+          size="sm"
           variant={isRunning && !isPaused ? 'default' : 'secondary'}
           onClick={handlePlayPauseToggle}
           disabled={isEmergencyStopped}
-          className="min-w-[120px]"
+          className="min-w-[100px]"
         >
           {!isRunning ? (
             <>
-              <Play className="mr-2 h-5 w-5" />
+              <Play className="mr-2 h-4 w-4" />
               Iniciar
             </>
           ) : isPaused ? (
             <>
-              <Play className="mr-2 h-5 w-5" />
+              <Play className="mr-2 h-4 w-4" />
               Reanudar
             </>
           ) : (
             <>
-              <Pause className="mr-2 h-5 w-5" />
+              <Pause className="mr-2 h-4 w-4" />
               Pausar
             </>
           )}
         </Button>
 
-        <div className="bg-border mx-2 w-px" />
-
         {/* Emergency Button */}
         <Button
-          size="lg"
+          size="sm"
           variant={isEmergencyStopped ? 'destructive' : 'outline'}
           onClick={handleEmergencyToggle}
           disabled={isEmergencyStopped}
         >
-          <AlertTriangle className="mr-2 h-5 w-5" />
+          <AlertTriangle className="mr-2 h-4 w-4" />
           Emergencia
         </Button>
 
         {/* Reset Button - Only show when emergency is/was activated */}
         {isEmergencyStopped && (
-          <Button size="lg" variant="secondary" onClick={handleReset}>
-            <RefreshCw className="mr-2 h-5 w-5" />
+          <Button size="sm" variant="secondary" onClick={handleReset}>
+            <RefreshCw className="mr-2 h-4 w-4" />
             Reset
           </Button>
         )}
@@ -200,10 +265,9 @@ const ManualController: React.FC = () => {
   // Simplified MANUAL mode - only Emergency and Reset when needed
   return (
     <div className="flex gap-2">
-      {/* Reset Button - Only show when emergency is/was activated */}
-
+      {/* Safety Toggle */}
       <Button
-        size="lg"
+        size="sm"
         variant={physicalRestrictions ? 'default' : 'destructive'}
         onClick={() => {
           const newState = !physicalRestrictions
@@ -214,7 +278,7 @@ const ManualController: React.FC = () => {
             disableRestrictions()
           }
         }}
-        className="flex-1 gap-2"
+        className="gap-2"
         title={
           physicalRestrictions
             ? 'Safety restrictions are ON - motors stop at sensor limits'
@@ -225,23 +289,24 @@ const ManualController: React.FC = () => {
         {physicalRestrictions ? 'Seguro' : 'Sin restricciones'}
       </Button>
 
-      {isEmergencyStopped && (
-        <Button size="lg" variant="secondary" onClick={handleReset}>
-          <RefreshCw className="mr-2 h-5 w-5" />
-          Reset
-        </Button>
-      )}
-
       {/* Emergency Button */}
       <Button
-        size="lg"
+        size="sm"
         variant={'destructive'}
         onClick={handleEmergencyToggle}
         disabled={isEmergencyStopped}
       >
-        <AlertTriangle className="mr-2 h-5 w-5" />
+        <AlertTriangle className="mr-2 h-4 w-4" />
         Emergencia
       </Button>
+
+      {/* Reset Button - Only show when emergency is/was activated */}
+      {isEmergencyStopped && (
+        <Button size="sm" variant="secondary" onClick={handleReset}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Reset
+        </Button>
+      )}
     </div>
   )
 }

@@ -66,22 +66,21 @@ export function smoothLerp(params: LerpParams): number {
 export function calculateElevatorPosition(params: ElevatorCalculationParams): number {
   const { proximityDistance, minProximity, maxProximity, maxHeight } = params
 
-  // VL53L0X sensor mounted at TOP:
-  // - minProximity (~100mm) = elevator AT TOP (close to sensor) = maxHeight
-  // - maxProximity (~300mm) = elevator AT BOTTOM (far from sensor) = 0
-  // Linear interpolation between these values
+  // Auto-detect sensor orientation: top position is the smaller distance value
+  const topDistance = Math.min(minProximity, maxProximity)
+  const bottomDistance = Math.max(minProximity, maxProximity)
 
   // Clamp to boundaries
-  if (proximityDistance <= minProximity) {
+  if (proximityDistance <= topDistance) {
     return maxHeight // At or above top
   }
-  if (proximityDistance >= maxProximity) {
+  if (proximityDistance >= bottomDistance) {
     return 0 // At or below bottom
   }
 
   // Linear interpolation: as distance increases, height decreases
-  // ratio: 0 when at maxProximity (bottom), 1 when at minProximity (top)
-  const ratio = (maxProximity - proximityDistance) / (maxProximity - minProximity)
+  // ratio: 0 when at bottom (far), 1 when at top (close)
+  const ratio = (bottomDistance - proximityDistance) / (bottomDistance - topDistance)
 
   return ratio * maxHeight
 }

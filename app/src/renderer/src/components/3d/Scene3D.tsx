@@ -6,6 +6,7 @@ import { CatmullRomCurve3, MathUtils, Vector3 } from 'three'
 import { SystemStatus } from '../../types'
 import { CameraController } from './CameraController'
 import { ElevatorIndicators } from './ElevatorIndicators'
+import { FloatingCards } from './FloatingCards'
 import { Lighting } from './Lighting'
 import { MachineModel } from './MachineModel'
 
@@ -186,7 +187,10 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
           <MachineModel systemStatus={systemStatus} />
 
           {/* Elevator position and sensor indicators */}
-          <ElevatorIndicators modelPosition={[-2.1, 0.6, -2.1]} modelScale={15} />
+          <ElevatorIndicators modelPosition={[-2.1, 0.55, -2.1]} modelScale={15} />
+
+          {/* 3D Floating Cards */}
+          <FloatingCards modelPosition={[-2.1, 0.55, -2.1]} modelScale={15} />
         </Suspense>
       </Canvas>
 

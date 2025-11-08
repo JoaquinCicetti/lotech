@@ -9,32 +9,27 @@ export const ElevatorIndicator: React.FC = () => {
   const { proximity } = useSettingsStore()
 
   // Calculate elevator position (0 = bottom, 100 = top)
-  // VL53L0X sensor mounted at TOP:
-  // - Small distance (≤minProximity) = elevator at TOP (100%)
-  // - Large distance (≥maxProximity) = elevator at BOTTOM (0%)
-
-  // Get the actual configured thresholds
-  const minDist = proximity.minProximity // Top position threshold (~100mm)
-  const maxDist = proximity.maxProximity // Bottom position threshold (~300mm)
+  // Auto-detect sensor orientation: top position is the smaller distance value
+  const topDist = Math.min(proximity.minProximity, proximity.maxProximity)
+  const bottomDist = Math.max(proximity.minProximity, proximity.maxProximity)
   const currentDist = sensorReadings.proximityDistance
 
   // Calculate position with precise mapping
-  // minDist (top) = 100%, maxDist (bottom) = 0%
   const elevatorPosition = React.useMemo(() => {
     let position = 0
-    if (currentDist <= minDist) {
+    if (currentDist <= topDist) {
       position = 100 // At or above top
-    } else if (currentDist >= maxDist) {
+    } else if (currentDist >= bottomDist) {
       position = 0 // At or below bottom
     } else {
-      // Linear interpolation between min and max
-      // (maxDist - currentDist) / (maxDist - minDist) gives us a value between 0 and 1
+      // Linear interpolation between top and bottom
+      // (bottomDist - currentDist) / (bottomDist - topDist) gives us a value between 0 and 1
       // Multiply by 100 to get percentage
-      position = ((maxDist - currentDist) / (maxDist - minDist)) * 100
+      position = ((bottomDist - currentDist) / (bottomDist - topDist)) * 100
     }
 
     return position
-  }, [currentDist, minDist, maxDist])
+  }, [currentDist, topDist, bottomDist])
 
   // Determine if elevator is at positions
   const isAtTop = sensorReadings.posAlta

@@ -38,9 +38,9 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
   }
 
   return (
-    <div className="flex h-full flex-col p-1">
+    <div className="flex h-full flex-col p-1 pt-20">
       {/* Connection Card - Always at top */}
-      <Card className="mb-2">
+      <Card className="bg-card/0 mb-2">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">
             {isConnected ? (

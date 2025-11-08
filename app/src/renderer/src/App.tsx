@@ -14,6 +14,9 @@ import { useControllerStateStore } from './store/controllerStateStore'
 import { usePillTrackingStore } from './store/pillTrackingStore'
 import { useUIStore } from './store/uiStore'
 
+// DEBUG: Uncomment to simulate elevator movement without hardware
+import { startElevatorSimulation } from './debug/elevatorSimulation'
+
 function App(): React.JSX.Element {
   const { ports, selectedPort, setPorts, setSelectedPort } = useConnectionStore()
   const { machineState, pillCount, currentWeight, sensorReadings, hardwareStatus } =
@@ -22,6 +25,9 @@ function App(): React.JSX.Element {
   const { connect, disconnect, sendCommand, isConnected, connectionError } = useSerialConnection()
   const { recoverFromStorage } = usePillTrackingStore()
 
+  useEffect(() => {
+    startElevatorSimulation()
+  }, [])
   // Load ports on mount and check for recovered data
   useEffect(() => {
     window.serial.list().then(setPorts)
@@ -60,7 +66,7 @@ function App(): React.JSX.Element {
     <>
       <Layout
         leftSidebar={<LeftSidebar onConnect={connect} onDisconnect={disconnect} />}
-        rightSidebar={<RightPanel />}
+        rightSidebar={<RightPanel onSendCommand={sendCommand} />}
         showLeftSidebar={showSettings}
         showRightSidebar={showConsole}
         onToggleLeftSidebar={() => setShowSettings(!showSettings)}

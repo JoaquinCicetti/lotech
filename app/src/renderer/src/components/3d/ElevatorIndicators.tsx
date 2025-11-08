@@ -1,10 +1,11 @@
+import { Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { THREE_COLORS } from '@renderer/constants/theme'
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
 import { useSettingsStore } from '@renderer/store/settingsStore'
 import React, { useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { calculateElevatorPosition } from './animation/animationUtils'
+import { calculateElevatorPosition, smoothLerp } from './animation/animationUtils'
 import { ELEVATOR_MAX_HEIGHT } from './animation/constants'
 
 interface ElevatorIndicatorsProps {
@@ -23,15 +24,15 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
   const proximity = useSettingsStore((state) => state.proximity)
 
   // Refs for the indicator objects
-  const positionIndicatorRef = useRef<THREE.Mesh>(null)
-  const topSensorRef = useRef<THREE.Mesh>(null)
-  const bottomSensorRef = useRef<THREE.Mesh>(null)
-  const topLightRef = useRef<THREE.PointLight>(null)
-  const bottomLightRef = useRef<THREE.PointLight>(null)
+  const sphereRef = useRef<THREE.Mesh>(null)
+  const lightRef = useRef<THREE.PointLight>(null)
+
+  // Track current sphere position for smooth animation
+  const spherePositionRef = useRef(0)
 
   // Calculate elevator position in 3D space
   const elevatorY = useMemo(() => {
-    if (proximityDistance > 0 && proximity.minProximity > 0 && proximity.maxProximity > 0) {
+    if (proximityDistance > 0) {
       return calculateElevatorPosition({
         proximityDistance,
         minProximity: proximity.minProximity,
@@ -45,67 +46,38 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
   // Colors for active/inactive states - using theme colors
   const activeColor = new THREE.Color(THREE_COLORS.indicators.active)
   const dimColor = new THREE.Color(THREE_COLORS.indicators.inactive)
-  const blackColor = new THREE.Color(0x000000) // no glow when off
 
-  // Animate indicator
-  useFrame(() => {
-    // Update position indicator to follow elevator
-    // Scale to match the indicator line range and add base offset
-    if (positionIndicatorRef.current) {
-      positionIndicatorRef.current.position.y = baseY + elevatorY / 34
-    }
-
-    // Use actual hardware sensor readings (same as 2D elevator card)
+  // Animate indicator sphere with smooth lerp
+  useFrame((_, delta) => {
+    // Use actual hardware sensor readings
     const isAtBottom = sensorReadings.posBaja
     const isAtTop = sensorReadings.posAlta
+    const atLimit = isAtTop || isAtBottom
 
-    // Debug logging (every 2 seconds)
-    if (positionIndicatorRef.current) {
-      const now = Date.now()
-      if (
-        !positionIndicatorRef.current.userData.lastLog ||
-        now - positionIndicatorRef.current.userData.lastLog > 2000
-      ) {
-        console.log(
-          '[INDICATORS] elevatorY:',
-          elevatorY.toFixed(2),
-          'posAlta:',
-          isAtTop,
-          'posBaja:',
-          isAtBottom,
-          'prox:',
-          proximityDistance
-        )
-        positionIndicatorRef.current.userData.lastLog = now
-      }
+    // Update sphere position with smooth lerp
+    if (sphereRef.current) {
+      const targetY = baseY + elevatorY / 65
+
+      spherePositionRef.current = smoothLerp({
+        current: spherePositionRef.current,
+        target: targetY,
+        delta,
+        speed: 6, // Match elevator speed
+      })
+
+      sphereRef.current.position.y = spherePositionRef.current
+
+      // Update sphere color and glow based on position
+      const material = sphereRef.current.material as THREE.MeshStandardMaterial
+      material.color.copy(atLimit ? activeColor : dimColor)
+      material.emissive.copy(atLimit ? activeColor : dimColor)
+      material.emissiveIntensity = atLimit ? 0.8 : 0.2
     }
 
-    // Update top sensor color
-    if (topSensorRef.current) {
-      const material = topSensorRef.current.material as THREE.MeshStandardMaterial
-      material.color.lerp(isAtTop ? activeColor : dimColor, 0.1)
-      material.emissive.lerp(isAtTop ? activeColor : blackColor, 0.1)
-      material.emissiveIntensity = isAtTop ? 0.5 : 0
-    }
-
-    // Update top light - only shine when active
-    if (topLightRef.current) {
-      topLightRef.current.intensity = isAtTop ? 1.0 : 0
-      topLightRef.current.color.lerp(activeColor, 0.1)
-    }
-
-    // Update bottom sensor color - instant, no lerp to avoid blinking
-    if (bottomSensorRef.current) {
-      const material = bottomSensorRef.current.material as THREE.MeshStandardMaterial
-      material.color.copy(isAtBottom ? activeColor : dimColor)
-      material.emissive.copy(isAtBottom ? activeColor : blackColor)
-      material.emissiveIntensity = isAtBottom ? 0.5 : 0
-    }
-
-    // Update bottom light - only shine when active, instant
-    if (bottomLightRef.current) {
-      bottomLightRef.current.intensity = isAtBottom ? 1.0 : 0
-      bottomLightRef.current.color.copy(activeColor)
+    // Update light - only shine when at limit
+    if (lightRef.current) {
+      lightRef.current.intensity = atLimit ? 2.0 : 0
+      lightRef.current.color.copy(activeColor)
     }
   })
 
@@ -117,43 +89,57 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
   // Top and bottom positions match the actual elevator range
   const baseY = modelPosition[1]
   // Divide by 30 to match actual elevator travel (empirically determined)
-  const elevatorRange = ELEVATOR_MAX_HEIGHT / 34
+  const elevatorRange = ELEVATOR_MAX_HEIGHT / 65
   const bottomY = baseY
   const topY = baseY + elevatorRange
 
+  // Card position - offset to the right like a popover
+  const popoverOffsetX = 0.25
+  const cardPosition: [number, number, number] = [
+    indicatorX + popoverOffsetX,
+    spherePositionRef.current,
+    indicatorZ,
+  ]
+
   return (
     <group>
-      {/* Position Indicator - follows elevator */}
-      <mesh
-        ref={positionIndicatorRef}
-        position={[indicatorX, 0, indicatorZ]}
-        rotation={[0, 0, Math.PI / 2]}
-      >
-        <coneGeometry args={[0.08, 0.15, 4]} />
-        <meshStandardMaterial
-          color={THREE_COLORS.indicators.position}
-          emissive={THREE_COLORS.indicators.position}
-          emissiveIntensity={0.6}
-        />
-      </mesh>
-
-      {/* Top Sensor Indicator */}
-      <group position={[indicatorX, topY, indicatorZ]}>
-        <mesh ref={topSensorRef}>
-          <sphereGeometry args={[0.1, 16, 16]} />
-          <meshStandardMaterial color={dimColor} emissive={blackColor} emissiveIntensity={0} />
+      {/* Moving sphere indicator - small sphere that follows elevator and glows at limits */}
+      <group position={[indicatorX, 0, indicatorZ]}>
+        <mesh ref={sphereRef}>
+          <sphereGeometry args={[0.06, 16, 16]} />
+          <meshStandardMaterial color={dimColor} emissive={dimColor} emissiveIntensity={0.2} />
         </mesh>
-        <pointLight ref={topLightRef} color={activeColor} intensity={0} />
+        <pointLight ref={lightRef} color={activeColor} intensity={0} />
       </group>
 
-      {/* Bottom Sensor Indicator */}
-      <group position={[indicatorX, bottomY, indicatorZ]}>
-        <mesh ref={bottomSensorRef}>
-          <sphereGeometry args={[0.1, 16, 16]} />
-          <meshStandardMaterial color={dimColor} emissive={blackColor} emissiveIntensity={0} />
-        </mesh>
-        <pointLight ref={bottomLightRef} color={activeColor} intensity={0} />
-      </group>
+      {/* Connecting line from sphere to popover */}
+      <line>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            args={[
+              new Float32Array([
+                indicatorX + 0.06,
+                spherePositionRef.current,
+                indicatorZ,
+                indicatorX + popoverOffsetX - 0.08,
+                spherePositionRef.current,
+                indicatorZ,
+              ]),
+              3,
+            ]}
+          />
+        </bufferGeometry>
+        <lineBasicMaterial color={THREE_COLORS.indicators.path} opacity={0.5} transparent />
+      </line>
+
+      {/* Popover card - compact display next to sphere */}
+      <Html position={cardPosition} center distanceFactor={10} style={{ pointerEvents: 'none' }}>
+        <div className="bg-background/90 border-border flex items-center gap-1.5 rounded-md border px-2 py-1 shadow-md backdrop-blur-sm">
+          <span className="font-mono text-sm font-semibold">{proximityDistance}</span>
+          <span className="text-muted-foreground text-xs">mm</span>
+        </div>
+      </Html>
 
       {/* Vertical line showing elevator travel path */}
       <line>
@@ -168,6 +154,18 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
         </bufferGeometry>
         <lineBasicMaterial color={THREE_COLORS.indicators.path} opacity={0.3} transparent />
       </line>
+
+      {/* Top marker */}
+      <mesh position={[indicatorX, topY, indicatorZ]}>
+        <boxGeometry args={[0.05, 0.02, 0.05]} />
+        <meshStandardMaterial color={THREE_COLORS.indicators.path} />
+      </mesh>
+
+      {/* Bottom marker */}
+      <mesh position={[indicatorX, bottomY, indicatorZ]}>
+        <boxGeometry args={[0.05, 0.02, 0.05]} />
+        <meshStandardMaterial color={THREE_COLORS.indicators.path} />
+      </mesh>
     </group>
   )
 }

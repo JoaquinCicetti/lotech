@@ -141,39 +141,24 @@ export const SettingsPanel: React.FC = () => {
   }
 
   return (
-    <Card>
+    <Card className="bg-card/0">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">Ajustes</CardTitle>
         <CardDescription>Configuración por componente de la máquina</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
+        <div className="space-y-12">
           {/* 1. ELEVATOR */}
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-medium">Elevador</h3>
+              <h3 className="text-lg font-medium">Elevador</h3>
               <ArrowsUpFromLine className="h-4 w-4" />
             </div>
 
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <Label className="text-xs">Velocidad:</Label>
-                  <span className="text-sm">{elevator.speed} pasos/s</span>
-                </div>
-                <Slider
-                  value={[elevator.speed]}
-                  onValueChange={([v]) => handleElevatorChange('speed', v)}
-                  min={elevator.minSpeed}
-                  max={elevator.maxSpeed}
-                  step={10}
-                  className="w-full"
-                />
-              </div>
-
+            <div className="space-y-3 pt-2">
               {/* Ciclo */}
               <div className="space-y-2 pt-2">
-                <Label className="text-xs font-semibold text-muted-foreground">Ciclo</Label>
+                <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
 
                 <div className="space-y-1">
                   <div className="flex justify-between">
@@ -204,11 +189,11 @@ export const SettingsPanel: React.FC = () => {
                 </div>
               </div>
 
-              <div className="border-t my-3" />
+              <div className="my-3 border-t" />
 
               {/* Configuración */}
               <div className="space-y-2">
-                <Label className="text-xs font-semibold text-muted-foreground">Configuración</Label>
+                <Label className="text-muted-foreground text-xs font-semibold">Configuración</Label>
 
                 <div className="space-y-1">
                   <div className="flex justify-between">
@@ -239,6 +224,20 @@ export const SettingsPanel: React.FC = () => {
                     className="w-full"
                   />
                 </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <Label className="text-xs">Velocidad:</Label>
+                    <span className="text-sm">{elevator.speed} pasos/s</span>
+                  </div>
+                  <Slider
+                    value={[elevator.speed]}
+                    onValueChange={([v]) => handleElevatorChange('speed', v)}
+                    min={elevator.minSpeed}
+                    max={elevator.maxSpeed}
+                    step={10}
+                    className="w-full"
+                  />
+                </div>
               </div>
 
               {/* Manual Controls - Only in Manual Mode */}
@@ -246,12 +245,7 @@ export const SettingsPanel: React.FC = () => {
                 <div className="space-y-1 pt-2">
                   <Label className="text-xs font-medium">Control Manual:</Label>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={testElevatorUp}
-                      className="flex-1"
-                    >
+                    <Button variant="outline" size="sm" onClick={testElevatorUp} className="flex-1">
                       <ArrowUp className="h-3 w-3" />
                       Subir
                     </Button>
@@ -283,14 +277,14 @@ export const SettingsPanel: React.FC = () => {
           {/* 2. DOSING WHEEL */}
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-medium">Rueda Dosificadora</h3>
+              <h3 className="text-lg font-medium">Rueda Dosificadora</h3>
               <LoaderPinwheel className="h-4 w-4" />
             </div>
 
             <div className="space-y-3">
               {/* Ciclo */}
               <div className="space-y-2 pt-2">
-                <Label className="text-xs font-semibold text-muted-foreground">Ciclo</Label>
+                <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
 
                 <div className="space-y-1">
                   <div className="flex justify-between">
@@ -307,11 +301,11 @@ export const SettingsPanel: React.FC = () => {
                 </div>
               </div>
 
-              <div className="border-t my-3" />
+              <div className="my-3 border-t" />
 
               {/* Configuración */}
               <div className="space-y-2">
-                <Label className="text-xs font-semibold text-muted-foreground">Configuración</Label>
+                <Label className="text-muted-foreground text-xs font-semibold">Configuración</Label>
 
                 <div className="space-y-1">
                   <div className="flex justify-between">
@@ -379,8 +373,7 @@ export const SettingsPanel: React.FC = () => {
                       onClick={dispenseOnePill}
                       className="flex-1"
                     >
-                      <RedoDot className="h-3 w-3" />
-                      1 Píldora
+                      <RedoDot className="h-3 w-3" />1 Píldora
                     </Button>
                     <Button
                       variant="destructive"
@@ -401,14 +394,14 @@ export const SettingsPanel: React.FC = () => {
           {/* 3. LOAD CELL */}
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-medium">Celda de Carga</h3>
+              <h3 className="text-lg font-medium">Celda de Carga</h3>
               <Scale className="h-4 w-4" />
             </div>
 
             <div className="space-y-3">
               {/* Ciclo */}
               <div className="space-y-2 pt-2">
-                <Label className="text-xs font-semibold text-muted-foreground">Ciclo</Label>
+                <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
 
                 <div className="space-y-1">
                   <div className="flex justify-between">
@@ -425,11 +418,11 @@ export const SettingsPanel: React.FC = () => {
                 </div>
               </div>
 
-              <div className="border-t my-3" />
+              <div className="my-3 border-t" />
 
               {/* Configuración */}
               <div className="space-y-2">
-                <Label className="text-xs font-semibold text-muted-foreground">Configuración</Label>
+                <Label className="text-muted-foreground text-xs font-semibold">Configuración</Label>
 
                 <div className="space-y-1">
                   <div className="flex justify-between">
@@ -467,21 +460,11 @@ export const SettingsPanel: React.FC = () => {
                 <div className="space-y-1 pt-2">
                   <Label className="text-xs font-medium">Control Manual:</Label>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={testLoadCell}
-                      className="flex-1"
-                    >
+                    <Button variant="outline" size="sm" onClick={testLoadCell} className="flex-1">
                       <Eye className="h-3 w-3" />
                       Test
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={tareLoadCell}
-                      className="flex-1"
-                    >
+                    <Button variant="outline" size="sm" onClick={tareLoadCell} className="flex-1">
                       <Scale className="h-3 w-3" />
                       Tarar
                     </Button>
@@ -496,14 +479,14 @@ export const SettingsPanel: React.FC = () => {
           {/* 4. TRANSFER SOLENOID */}
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-medium">Solenoide Transferencia</h3>
+              <h3 className="text-lg font-medium">Solenoide Transferencia</h3>
               <ArrowRightFromLine className="h-4 w-4" />
             </div>
 
             <div className="space-y-3">
               {/* Ciclo */}
               <div className="space-y-2 pt-2">
-                <Label className="text-xs font-semibold text-muted-foreground">Ciclo</Label>
+                <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
 
                 <div className="space-y-1">
                   <div className="flex justify-between">
@@ -520,11 +503,11 @@ export const SettingsPanel: React.FC = () => {
                 </div>
               </div>
 
-              <div className="border-t my-3" />
+              <div className="my-3 border-t" />
 
               {/* Protecciones */}
               <div className="space-y-2">
-                <Label className="text-xs font-semibold text-muted-foreground">Protecciones</Label>
+                <Label className="text-muted-foreground text-xs font-semibold">Protecciones</Label>
 
                 <div className="space-y-1">
                   <div className="flex justify-between">
@@ -576,14 +559,14 @@ export const SettingsPanel: React.FC = () => {
           {/* 5. MIXER/GRINDER */}
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-medium">Molinillo</h3>
+              <h3 className="text-lg font-medium">Molinillo</h3>
               <Blend className="h-4 w-4" />
             </div>
 
             <div className="space-y-3">
               {/* Ciclo */}
               <div className="space-y-2 pt-2">
-                <Label className="text-xs font-semibold text-muted-foreground">Ciclo</Label>
+                <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
 
                 <div className="space-y-1">
                   <div className="flex justify-between">
@@ -600,11 +583,11 @@ export const SettingsPanel: React.FC = () => {
                 </div>
               </div>
 
-              <div className="border-t my-3" />
+              <div className="my-3 border-t" />
 
               {/* Protecciones */}
               <div className="space-y-2">
-                <Label className="text-xs font-semibold text-muted-foreground">Protecciones</Label>
+                <Label className="text-muted-foreground text-xs font-semibold">Protecciones</Label>
 
                 <div className="space-y-1">
                   <div className="flex justify-between">
@@ -627,12 +610,7 @@ export const SettingsPanel: React.FC = () => {
                 <div className="space-y-1 pt-2">
                   <Label className="text-xs font-medium">Control Manual:</Label>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={testGrinderOn}
-                      className="flex-1"
-                    >
+                    <Button variant="outline" size="sm" onClick={testGrinderOn} className="flex-1">
                       <Play className="h-3 w-3" />
                       Encender
                     </Button>
@@ -656,14 +634,14 @@ export const SettingsPanel: React.FC = () => {
           {/* 6. CAPPER SOLENOID */}
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-medium">Solenoide Tapado</h3>
+              <h3 className="text-lg font-medium">Solenoide Tapado</h3>
               <CircleDot className="h-4 w-4" />
             </div>
 
             <div className="space-y-3">
               {/* Ciclo */}
               <div className="space-y-2 pt-2">
-                <Label className="text-xs font-semibold text-muted-foreground">Ciclo</Label>
+                <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
 
                 <div className="space-y-1">
                   <div className="flex justify-between">
@@ -680,11 +658,11 @@ export const SettingsPanel: React.FC = () => {
                 </div>
               </div>
 
-              <div className="border-t my-3" />
+              <div className="my-3 border-t" />
 
               {/* Protecciones */}
               <div className="space-y-2">
-                <Label className="text-xs font-semibold text-muted-foreground">Protecciones</Label>
+                <Label className="text-muted-foreground text-xs font-semibold">Protecciones</Label>
 
                 <div className="space-y-1">
                   <div className="flex justify-between">
@@ -707,12 +685,7 @@ export const SettingsPanel: React.FC = () => {
                 <div className="space-y-1 pt-2">
                   <Label className="text-xs font-medium">Control Manual:</Label>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={testCapPush}
-                      className="flex-1"
-                    >
+                    <Button variant="outline" size="sm" onClick={testCapPush} className="flex-1">
                       <Power className="h-3 w-3" />
                       Empujar
                     </Button>

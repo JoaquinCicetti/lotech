@@ -33,23 +33,13 @@ export const Layout: React.FC<LayoutProps> = (props) => {
   const { isConnected, selectedPort } = useConnectionStore()
 
   return (
-    <div className="bg-background relative flex h-screen overflow-hidden">
-      {/* Left Sidebar */}
-      <div
-        className={cn(
-          'border-border bg-card border-r transition-all duration-300',
-          showLeftSidebar ? 'w-80' : 'w-0'
-        )}
-      >
-        {showLeftSidebar && <div className="h-full overflow-y-auto">{leftSidebar}</div>}
-      </div>
-
-      {/* Main Content Area */}
-      <div className="relative flex-1 overflow-auto">
+    <div className="bg-background relative h-screen overflow-hidden">
+      {/* Main Content Area - Always Full Width */}
+      <div className="relative h-full w-full overflow-auto">
         {children}
 
         {/* Header Controls Bar */}
-        <div className="absolute top-4 right-4 left-4 z-40 flex items-center justify-between">
+        <div className="absolute top-4 right-4 left-4 z-[60] flex items-center justify-between">
           {/* Left Controls */}
           <div className="flex items-center gap-2">
             <Button
@@ -59,7 +49,6 @@ export const Layout: React.FC<LayoutProps> = (props) => {
               className="gap-1 shadow-lg"
             >
               <Settings2 className="h-4 w-4" />
-              <span className="hidden sm:inline">{showLeftSidebar ? '◀' : 'Configuración'}</span>
             </Button>
 
             {/* Connection Status */}
@@ -108,19 +97,28 @@ export const Layout: React.FC<LayoutProps> = (props) => {
             className="gap-1 shadow-lg"
           >
             <Terminal className="h-4 w-4" />
-            <span className="hidden sm:inline">{showRightSidebar ? '▶' : 'Status'}</span>
           </Button>
         </div>
       </div>
 
-      {/* Right Sidebar */}
+      {/* Left Sidebar Overlay */}
       <div
         className={cn(
-          'border-border bg-card border-l transition-all duration-300',
-          showRightSidebar ? 'w-120' : 'w-0'
+          'border-border bg-card/80 absolute top-0 left-0 z-50 h-full w-100 border-r shadow-2xl backdrop-blur-lg transition-transform duration-300',
+          showLeftSidebar ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        {showRightSidebar && <div className="h-full overflow-y-auto">{rightSidebar}</div>}
+        <div className="h-full overflow-y-auto">{leftSidebar}</div>
+      </div>
+
+      {/* Right Sidebar Overlay */}
+      <div
+        className={cn(
+          'border-border bg-card/80 absolute top-0 right-0 z-50 h-full w-100 border-l shadow-2xl backdrop-blur-lg transition-transform duration-300',
+          showRightSidebar ? 'translate-x-0' : 'translate-x-full'
+        )}
+      >
+        <div className="h-full overflow-y-auto">{rightSidebar}</div>
       </div>
     </div>
   )
