@@ -1,7 +1,8 @@
 import { Grid, Loader } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { SCENE_COLORS } from '@renderer/constants/theme'
-import React, { Suspense } from 'react'
+import React, { Suspense, useRef } from 'react'
+import * as THREE from 'three'
 import { CatmullRomCurve3, MathUtils, Vector3 } from 'three'
 import { SystemStatus } from '../../types'
 import { CameraController } from './CameraController'
@@ -138,9 +139,13 @@ export const CameraPathAnimator: React.FC<CameraPathAnimatorProps> = ({
 export const Scene3D: React.FC<Scene3DProps> = (props) => {
   const { systemStatus } = props
 
+  // Refs for elevator indicator - shared between AnimationController and ElevatorIndicators
+  const elevatorIndicatorRef = useRef<THREE.Mesh>(null)
+  const elevatorLightRef = useRef<THREE.PointLight>(null)
+
   return (
     <div
-      className="relative h-[100vh] w-full overflow-hidden rounded-lg"
+      className="relative z-10 h-[100vh] w-full overflow-hidden rounded-lg"
       style={{
         background: `linear-gradient(to bottom, ${SCENE_COLORS.background.gradient.from}, ${SCENE_COLORS.background.gradient.via}, ${SCENE_COLORS.background.gradient.to})`,
       }}
@@ -185,10 +190,19 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
 
           {/* Use SimpleMachine instead of MachineModel for now */}
           {/* <SimpleMachine systemStatus={systemStatus} /> */}
-          <MachineModel systemStatus={systemStatus} />
+          <MachineModel
+            systemStatus={systemStatus}
+            elevatorIndicatorRef={elevatorIndicatorRef}
+            elevatorLightRef={elevatorLightRef}
+          />
 
           {/* Elevator position and sensor indicators */}
-          <ElevatorIndicators modelPosition={[-3, 0.4, -1]} modelScale={15} />
+          <ElevatorIndicators
+            modelPosition={[-3, 0.4, -1]}
+            modelScale={15}
+            sphereRef={elevatorIndicatorRef}
+            lightRef={elevatorLightRef}
+          />
 
           {/* 3D Floating Cards */}
           <FloatingCards modelPosition={[-3, 0, 0]} modelScale={15} />

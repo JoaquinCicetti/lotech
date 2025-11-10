@@ -24,6 +24,17 @@ export const CameraController: React.FC<CameraControllerProps> = (props) => {
 
   // Update target when preset changes
   useEffect(() => {
+    // If switching to free mode, just enable controls and leave camera where it is
+    if (currentPreset === 'free') {
+      isTransitioningRef.current = false
+      setTransitioning(false)
+      if (orbitControlsRef.current) {
+        // Don't change anything - just enable the controls from current state
+        orbitControlsRef.current.enabled = true
+      }
+      return
+    }
+
     const preset = CAMERA_PRESETS[currentPreset]
     targetPosition.current.set(...preset.position)
     targetLookAt.current.set(...preset.target)
@@ -35,7 +46,7 @@ export const CameraController: React.FC<CameraControllerProps> = (props) => {
       setTransitioning(true)
 
       // Disable orbit controls during transition
-      if (orbitControlsRef.current && currentPreset !== 'free') {
+      if (orbitControlsRef.current) {
         orbitControlsRef.current.enabled = false
       }
     }
@@ -90,7 +101,6 @@ export const CameraController: React.FC<CameraControllerProps> = (props) => {
         maxDistance={20}
         minPolarAngle={Math.PI / 6}
         maxPolarAngle={Math.PI / 2}
-        target={CAMERA_PRESETS[currentPreset].target}
       />
     </>
   )

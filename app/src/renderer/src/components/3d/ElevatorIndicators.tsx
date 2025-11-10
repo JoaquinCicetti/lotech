@@ -2,10 +2,9 @@ import { Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { THREE_COLORS } from '@renderer/constants/theme'
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
-import { useSettingsStore } from '@renderer/store/settingsStore'
-import React, { useMemo, useRef } from 'react'
+import React, { useRef } from 'react'
 import * as THREE from 'three'
-import { calculateElevatorPosition, smoothLerp } from './animation/animationUtils'
+import { smoothLerp } from './animation/animationUtils'
 import { ELEVATOR_MAX_HEIGHT } from './animation/constants'
 
 interface ElevatorIndicatorsProps {
@@ -13,73 +12,33 @@ interface ElevatorIndicatorsProps {
   modelPosition: [number, number, number]
   /** Scale to match the machine model */
   modelScale: number
+  /** Refs for AnimationController to animate */
+  sphereRef: React.RefObject<THREE.Mesh | null>
+  lightRef: React.RefObject<THREE.PointLight | null>
 }
 
 export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => {
-  const { modelPosition, modelScale } = props
+  const { modelPosition, modelScale, sphereRef, lightRef } = props
 
   // Get sensor data
   const { sensorReadings } = useControllerStateStore()
   const proximityDistance = sensorReadings.proximityDistance
-  const proximity = useSettingsStore((state) => state.proximity)
 
-  // Refs for the indicator objects
-  const sphereRef = useRef<THREE.Mesh>(null)
-  const lightRef = useRef<THREE.PointLight>(null)
+  // Track smoothed proximity distance for display only
+  const smoothedProximityRef = useRef(0)
 
-  // Track sphere Y position with lerp (same as elevator mesh)
-  const sphereYRef = useRef(0)
-
-  // Calculate elevator position in 3D space (this changes gradually with sensor data)
-  const elevatorY = useMemo(() => {
-    if (proximityDistance > 0) {
-      return calculateElevatorPosition({
-        proximityDistance,
-        minProximity: proximity.minProximity,
-        maxProximity: proximity.maxProximity,
-        maxHeight: ELEVATOR_MAX_HEIGHT,
-      })
-    }
-    return 0
-  }, [proximityDistance, proximity.minProximity, proximity.maxProximity])
-
-  // Colors for active/inactive states - using theme colors
-  const activeColor = new THREE.Color(THREE_COLORS.indicators.active)
-  const dimColor = new THREE.Color(THREE_COLORS.indicators.inactive)
-
-  // Animate indicator sphere - use SAME lerp as elevator (speed: 6)
+  // Smooth the proximity distance number for display
   useFrame((_, delta) => {
-    // Use actual hardware sensor readings
-    const isAtBottom = sensorReadings.posBaja
-    const isAtTop = sensorReadings.posAlta
-    const atLimit = isAtTop || isAtBottom
+    // Clamp delta to prevent huge jumps when app regains focus
+    const clampedDelta = Math.min(delta, 0.1) // Max 100ms
 
-    // Update sphere position with SAME lerp as elevator mesh
-    if (sphereRef.current) {
-      const targetY = baseY + elevatorY / 65
-
-      // Apply same lerp speed as AnimationController (speed: 12)
-      sphereYRef.current = smoothLerp({
-        current: sphereYRef.current,
-        target: targetY,
-        delta,
-        speed: 12, // MUST match AnimationController elevator speed
-      })
-
-      sphereRef.current.position.y = sphereYRef.current
-
-      // Update sphere color and glow based on position
-      const material = sphereRef.current.material as THREE.MeshStandardMaterial
-      material.color.copy(atLimit ? activeColor : dimColor)
-      material.emissive.copy(atLimit ? activeColor : dimColor)
-      material.emissiveIntensity = atLimit ? 0.8 : 0.2
-    }
-
-    // Update light - only shine when at limit
-    if (lightRef.current) {
-      lightRef.current.intensity = atLimit ? 2.0 : 0
-      lightRef.current.color.copy(activeColor)
-    }
+    // Smooth the proximity distance number for display
+    smoothedProximityRef.current = smoothLerp({
+      current: smoothedProximityRef.current,
+      target: proximityDistance,
+      delta: clampedDelta,
+      speed: 1, // Match AnimationController elevator speed
+    })
   })
 
   // Calculate positions relative to the machine model
@@ -97,12 +56,9 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
   // Popover offset
   const popoverOffset = 0.4
 
-  // Card position - follows lerped sphere position
-  const cardPosition: [number, number, number] = [
-    indicatorX,
-    sphereYRef.current + popoverOffset,
-    indicatorZ,
-  ]
+  // Card position - follows sphere position (animated by AnimationController)
+  const cardY = sphereRef.current?.position.y ?? baseY
+  const cardPosition: [number, number, number] = [indicatorX, cardY + popoverOffset, indicatorZ]
 
   return (
     <group>
@@ -110,9 +66,13 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
       <group position={[indicatorX, 0, indicatorZ]}>
         <mesh ref={sphereRef}>
           <sphereGeometry args={[0.06, 16, 16]} />
-          <meshStandardMaterial color={dimColor} emissive={dimColor} emissiveIntensity={0.2} />
+          <meshStandardMaterial
+            color={THREE_COLORS.indicators.inactive}
+            emissive={THREE_COLORS.indicators.inactive}
+            emissiveIntensity={0.2}
+          />
         </mesh>
-        <pointLight ref={lightRef} color={activeColor} intensity={0} />
+        <pointLight ref={lightRef} color={THREE_COLORS.indicators.active} intensity={0} />
       </group>
 
       {/* Connecting line from sphere to popover */}
@@ -123,10 +83,10 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
             args={[
               new Float32Array([
                 indicatorX + 0.06,
-                sphereYRef.current,
+                cardY,
                 indicatorZ,
                 indicatorX + popoverOffset - 0.08,
-                sphereYRef.current,
+                cardY,
                 indicatorZ,
               ]),
               3,
@@ -144,7 +104,9 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
         style={{ pointerEvents: 'none', zIndex: 10 }}
       >
         <div className="bg-background/80 border-border flex items-center gap-1.5 rounded-md border px-2 py-1 shadow-md backdrop-blur-sm">
-          <span className="font-mono text-2xl font-semibold">{proximityDistance}</span>
+          <span className="font-mono text-2xl font-semibold">
+            {Math.round(smoothedProximityRef.current)}
+          </span>
           <span className="text-muted-foreground text-xl">mm</span>
         </div>
       </Html>

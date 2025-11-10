@@ -81,4 +81,6 @@ export interface AnimationRefs {
   capperRef: React.RefObject<THREE.Object3D | null>
   solenoidRef: React.RefObject<THREE.Object3D | null>
   loadCellRef: React.RefObject<THREE.Object3D | null>
+  elevatorIndicatorRef?: React.RefObject<THREE.Mesh | null>
+  elevatorLightRef?: React.RefObject<THREE.PointLight | null>
 }

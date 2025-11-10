@@ -32,7 +32,7 @@ export function startElevatorSimulation() {
     }
 
     // Move elevator
-    const stepSize = 1 // mm per step
+    const stepSize = 5 // mm per step
     if (direction === 'up') {
       currentProximity -= stepSize // Moving up = closer to sensor = lower distance
       if (currentProximity <= topDistance) {
@@ -63,7 +63,7 @@ export function startElevatorSimulation() {
         pastillasCargadas: true,
       },
     })
-  }, 50) // Update every 50ms
+  }, 800) // Update every 50ms
 }
 
 export function stopElevatorSimulation() {

@@ -13,6 +13,6 @@ export const DEFAULT_ANIMATION_CONFIG: AnimationConfig = {
   rotationSpeed: 0.1,
 }
 
-export const ELEVATOR_MAX_HEIGHT = 70
+export const ELEVATOR_MAX_HEIGHT = 75
 export const GRINDER_KNIFE_SPEED = 50
 export const WHEEL_ROTATION_SPEED = 3

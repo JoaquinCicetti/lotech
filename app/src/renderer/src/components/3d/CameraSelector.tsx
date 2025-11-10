@@ -25,14 +25,14 @@ const PRESETS: PresetConfig[] = [
   },
   {
     id: 'front',
-    label: 'Frontal',
-    icon: <Maximize className="h-4 w-4" />,
+    label: 'Lateral',
+    icon: <MoveHorizontal className="h-4 w-4" />,
     key: '3',
   },
   {
     id: 'side',
-    label: 'Lateral',
-    icon: <MoveHorizontal className="h-4 w-4" />,
+    label: 'Frontal',
+    icon: <Maximize className="h-4 w-4" />,
     key: '4',
   },
   {
@@ -49,6 +49,22 @@ export const CameraSelector: React.FC = () => {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
+      // Ignore if typing in input, textarea, or select
+      const target = e.target as HTMLElement
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT'
+      ) {
+        return
+      }
+
+      // Ignore if a dialog/modal is open
+      const hasOpenDialog = document.querySelector('[role="dialog"][data-state="open"]')
+      if (hasOpenDialog) {
+        return
+      }
+
       const preset = PRESETS.find((p) => p.key === e.key)
       if (preset) {
         setPreset(preset.id)

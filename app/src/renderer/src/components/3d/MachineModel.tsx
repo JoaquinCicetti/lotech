@@ -14,10 +14,12 @@ const MODEL_URL = new URL('../../assets/model.glb', import.meta.url).href
 
 interface MachineModelProps {
   systemStatus: SystemStatus
+  elevatorIndicatorRef?: React.RefObject<THREE.Mesh | null>
+  elevatorLightRef?: React.RefObject<THREE.PointLight | null>
 }
 
 export const MachineModel: React.FC<MachineModelProps> = (props) => {
-  const { systemStatus } = props
+  const { systemStatus, elevatorIndicatorRef, elevatorLightRef } = props
   const { scene, nodes } = useGLTF(MODEL_URL)
   const groupRef = useRef<Group>(null)
 
@@ -81,6 +83,8 @@ export const MachineModel: React.FC<MachineModelProps> = (props) => {
         capperRef={capperRef}
         solenoidRef={solenoidRef}
         loadCellRef={loadCellRef}
+        elevatorIndicatorRef={elevatorIndicatorRef}
+        elevatorLightRef={elevatorLightRef}
       />
     </group>
   )

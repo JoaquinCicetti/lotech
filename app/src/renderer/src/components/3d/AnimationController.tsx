@@ -1,9 +1,11 @@
 import { useFrame } from '@react-three/fiber'
+import { THREE_COLORS } from '@renderer/constants/theme'
 import { DosingStatus } from '@renderer/serial'
 import { useAppStore } from '@renderer/store/appStore'
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
 import { useSettingsStore } from '@renderer/store/settingsStore'
 import React, { useRef } from 'react'
+import * as THREE from 'three'
 import { MachineState, SystemStatus } from '../../types'
 import {
   applyPulseEffect,
@@ -46,6 +48,8 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
     capperRef,
     solenoidRef,
     loadCellRef,
+    elevatorIndicatorRef,
+    elevatorLightRef,
   } = props
 
   const animationState = useRef<AnimationState>({
@@ -79,6 +83,9 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
   useFrame((state, delta) => {
     const { state: currentState, hardware } = systemStatus
 
+    // Clamp delta to prevent huge jumps when app regains focus after being in background
+    const clampedDelta = Math.min(delta, 0.1) // Max 100ms
+
     // Create check params for animation decisions
     const checkParams: AnimationCheckParams = {
       systemStatus,
@@ -87,42 +94,17 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
     }
 
     // Calculate elevator position - DIRECT POSITION
-    const getElevatorPosition = (): number => {
-      // Only calculate if we have valid proximity data
-      if (proximityDistance > 0) {
-        const elevatorParams: ElevatorCalculationParams = {
-          proximityDistance,
-          minProximity: proximity.minProximity,
-          maxProximity: proximity.maxProximity,
-          maxHeight: ELEVATOR_MAX_HEIGHT,
-        }
+    // Only calculate if we have valid proximity data
 
-        const position = calculateElevatorPosition(elevatorParams)
-
-        // Debug every 500ms
-        const now = Date.now()
-        if (
-          !animationState.current.lastDebugLog ||
-          now - animationState.current.lastDebugLog > 500
-        ) {
-          console.log(
-            '[ANIM] prox:',
-            proximityDistance,
-            '→ elevY:',
-            position.toFixed(2),
-            '→ 3D y:',
-            (position / 34).toFixed(3)
-          )
-          animationState.current.lastDebugLog = now
-        }
-
-        return position
-      }
-      return 0
+    const elevatorParams: ElevatorCalculationParams = {
+      proximityDistance,
+      minProximity: proximity.minProximity,
+      maxProximity: proximity.maxProximity,
+      maxHeight: ELEVATOR_MAX_HEIGHT,
     }
 
     // Get target position
-    const targetPosition = getElevatorPosition()
+    const targetPosition = proximityDistance > 0 ? calculateElevatorPosition(elevatorParams) : 0
 
     // Initialize position on first valid data (skip lerp)
     if (
@@ -149,8 +131,8 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
     const lerpParams: LerpParams = {
       current: animationState.current.elevatorY,
       target: targetPosition,
-      delta,
-      speed: 12, // Unified speed for both elevator and container (increased for more responsive animation)
+      delta: clampedDelta,
+      speed: 1, // Unified speed for both elevator and container (increased for more responsive animation)
     }
     const newPosition = smoothLerp(lerpParams)
     animationState.current.elevatorY = newPosition
@@ -163,6 +145,7 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
         shouldPulse,
         elapsedTime: state.clock.elapsedTime,
       }
+
       applyPulseEffect(pulseParams)
       elevatorRef.current.position.y = newPosition
     }
@@ -171,6 +154,43 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
     if (containerRef.current) {
       applyPulseToChildren(containerRef.current, shouldPulse, state.clock.elapsedTime)
       containerRef.current.position.z = -newPosition
+    }
+
+    // Apply to elevator indicator sphere - uses SAME position as elevator
+    if (elevatorIndicatorRef?.current) {
+      const sensorReadings = useControllerStateStore.getState().sensorReadings
+      const isAtBottom = sensorReadings.posBaja
+      const isAtTop = sensorReadings.posAlta
+      const atLimit = isAtTop || isAtBottom
+
+      // Colors for active/inactive states
+      const activeColor = new THREE.Color(THREE_COLORS.indicators.active)
+      const dimColor = new THREE.Color(THREE_COLORS.indicators.inactive)
+
+      // Calculate indicator Y position from same elevator position
+      // Base Y offset and scale to match ElevatorIndicators positioning
+      const baseY = 0.4 // modelPosition[1] from Scene3D
+      const indicatorY = baseY + newPosition / 65
+
+      elevatorIndicatorRef.current.position.y = indicatorY
+
+      // Update sphere color and glow based on position
+      const material = elevatorIndicatorRef.current.material as THREE.MeshStandardMaterial
+      material.color.copy(atLimit ? activeColor : dimColor)
+      material.emissive.copy(atLimit ? activeColor : dimColor)
+      material.emissiveIntensity = atLimit ? 0.8 : 0.2
+    }
+
+    // Update indicator light
+    if (elevatorLightRef?.current) {
+      const sensorReadings = useControllerStateStore.getState().sensorReadings
+      const isAtBottom = sensorReadings.posBaja
+      const isAtTop = sensorReadings.posAlta
+      const atLimit = isAtTop || isAtBottom
+      const activeColor = new THREE.Color(THREE_COLORS.indicators.active)
+
+      elevatorLightRef.current.intensity = atLimit ? 2.0 : 0
+      elevatorLightRef.current.color.copy(activeColor)
     }
 
     // Animate dosing wheel
@@ -196,12 +216,12 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
           // Continuous forward rotation
           // Speed matches motor speed setting (default 2.0 rad/s)
           const motorSpeed = dosingSettings.motorSpeed || 1.0
-          animationState.current.wheelRotation += delta * motorSpeed
+          animationState.current.wheelRotation += clampedDelta * motorSpeed
           animationState.current.lastDosingState = DosingStatus.FWD
         } else if (dosingStatus === DosingStatus.BWD) {
           // Continuous backward rotation
           const motorSpeed = dosingSettings.motorSpeed || 1.0
-          animationState.current.wheelRotation -= delta * motorSpeed
+          animationState.current.wheelRotation -= clampedDelta * motorSpeed
           animationState.current.lastDosingState = DosingStatus.BWD
         } else if (dosingStatus === DosingStatus.STEP || dosingStatus === DosingStatus.ONE_PILL) {
           // Single step rotation for one pill
@@ -224,7 +244,7 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
             const lerpParams: LerpParams = {
               current: animationState.current.wheelRotation,
               target: animationState.current.wheelTargetRotation,
-              delta,
+              delta: clampedDelta,
               speed: 1.5, // Faster for single pill
             }
             animationState.current.wheelRotation = smoothLerp(lerpParams)
@@ -243,7 +263,7 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
           const lerpParams: LerpParams = {
             current: animationState.current.wheelRotation,
             target: targetRotation,
-            delta,
+            delta: clampedDelta,
             speed: WHEEL_ROTATION_SPEED,
           }
           animationState.current.wheelRotation = smoothLerp(lerpParams)
@@ -280,7 +300,7 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
       applyPulseEffect(pulseParams)
 
       if (shouldPulse) {
-        animationState.current.grinderKnifeRotation += delta * GRINDER_KNIFE_SPEED
+        animationState.current.grinderKnifeRotation += clampedDelta * GRINDER_KNIFE_SPEED
       }
 
       grinderKnifeRef.current.rotation.y = animationState.current.grinderKnifeRotation
