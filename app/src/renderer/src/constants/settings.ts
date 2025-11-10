@@ -54,6 +54,7 @@ export const DEFAULT_LED: LEDSettings = {
 
 export const DEFAULT_WEIGHT_FILTER: WeightFilterSettings = {
   targetWeight: 1.0, // Expected 1g pill
-  tolerance: 0.1, // ±0.1g variance
+  tolerance: 0.2, // ±0.2g variance
   zeroThreshold: 0.05, // Below 0.05g is considered zero
+  compressionFactor: 5, // Compress differences 5x towards target
 }

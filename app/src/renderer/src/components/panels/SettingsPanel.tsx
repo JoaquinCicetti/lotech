@@ -175,6 +175,9 @@ export const SettingsPanel: React.FC = () => {
                     step={100}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Tiempo límite para que el elevador llegue arriba
+                  </p>
                 </div>
 
                 <div className="space-y-1">
@@ -189,6 +192,9 @@ export const SettingsPanel: React.FC = () => {
                     step={100}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Tiempo límite para que el elevador llegue abajo
+                  </p>
                 </div>
               </div>
 
@@ -211,6 +217,9 @@ export const SettingsPanel: React.FC = () => {
                     step={1}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Distancia del sensor cuando el elevador está arriba
+                  </p>
                 </div>
 
                 <div className="space-y-1">
@@ -226,6 +235,9 @@ export const SettingsPanel: React.FC = () => {
                     step={1}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Distancia del sensor cuando el elevador está abajo
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <div className="flex justify-between">
@@ -240,6 +252,9 @@ export const SettingsPanel: React.FC = () => {
                     step={10}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Velocidad de movimiento del motor del elevador
+                  </p>
                 </div>
               </div>
 
@@ -301,6 +316,9 @@ export const SettingsPanel: React.FC = () => {
                     step={100}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Espera después de dosificar antes de continuar
+                  </p>
                 </div>
               </div>
 
@@ -323,6 +341,9 @@ export const SettingsPanel: React.FC = () => {
                     step={1}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Cantidad de compartimentos en la rueda
+                  </p>
                 </div>
 
                 <div className="space-y-1">
@@ -338,6 +359,9 @@ export const SettingsPanel: React.FC = () => {
                     step={1}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Cantidad de pastillas a procesar por ciclo
+                  </p>
                 </div>
 
                 <div className="space-y-1">
@@ -353,6 +377,9 @@ export const SettingsPanel: React.FC = () => {
                     step={0.01}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Velocidad de rotación del motor dosificador
+                  </p>
                 </div>
               </div>
 
@@ -418,6 +445,9 @@ export const SettingsPanel: React.FC = () => {
                     step={100}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Espera para que la lectura de peso se estabilice
+                  </p>
                 </div>
               </div>
 
@@ -440,6 +470,9 @@ export const SettingsPanel: React.FC = () => {
                     step={10}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Ajuste para convertir lecturas crudas a gramos
+                  </p>
                 </div>
 
                 <div className="space-y-1">
@@ -455,6 +488,9 @@ export const SettingsPanel: React.FC = () => {
                     step={0.001}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Ignora cambios de peso menores a este valor
+                  </p>
                 </div>
 
                 <div className="space-y-3">
@@ -474,6 +510,9 @@ export const SettingsPanel: React.FC = () => {
                         step={0.001}
                         className="w-full"
                       />
+                      <p className="text-muted-foreground text-[10px]">
+                        Peso esperado de cada pastilla
+                      </p>
                     </div>
 
                     <div className="space-y-1">
@@ -489,6 +528,9 @@ export const SettingsPanel: React.FC = () => {
                         step={0.001}
                         className="w-full"
                       />
+                      <p className="text-muted-foreground text-[10px]">
+                        Rango aceptable alrededor del peso objetivo
+                      </p>
                     </div>
 
                     <div className="space-y-1">
@@ -504,15 +546,39 @@ export const SettingsPanel: React.FC = () => {
                         step={0.001}
                         className="w-full"
                       />
+                      <p className="text-muted-foreground text-[10px]">
+                        Valores menores se consideran cero
+                      </p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <Label className="text-xs">Factor de compresión:</Label>
+                        <span className="text-sm">
+                          {weightFilter.compressionFactor.toFixed(1)}x
+                        </span>
+                      </div>
+                      <Slider
+                        value={[weightFilter.compressionFactor]}
+                        onValueChange={([v]) => updateWeightFilterStore('compressionFactor', v)}
+                        min={1}
+                        max={10}
+                        step={0.1}
+                        className="w-full"
+                      />
+                      <p className="text-muted-foreground text-[10px]">
+                        Comprime las lecturas hacia el objetivo (mayor = más compresión)
+                      </p>
                     </div>
 
                     <div className="bg-muted/50 mt-2 rounded-md p-2 text-xs">
                       <p className="text-muted-foreground">
                         El filtro se aplica solo en el cliente. Pesos menores a{' '}
                         <strong>{weightFilter.zeroThreshold.toFixed(3)}g</strong> se muestran como
-                        0. Pesos cerca de <strong>{weightFilter.targetWeight.toFixed(3)}g</strong>{' '}
-                        (±
-                        {weightFilter.tolerance.toFixed(3)}g) se estabilizan.
+                        0. Pesos dentro de <strong>{weightFilter.targetWeight.toFixed(3)}g</strong>{' '}
+                        (±{weightFilter.tolerance.toFixed(3)}g) se comprimen{' '}
+                        <strong>{weightFilter.compressionFactor.toFixed(1)}x</strong> hacia el
+                        objetivo.
                       </p>
                     </div>
                   </div>
@@ -564,6 +630,9 @@ export const SettingsPanel: React.FC = () => {
                     step={100}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Duración del empuje de transferencia
+                  </p>
                 </div>
               </div>
 
@@ -586,6 +655,9 @@ export const SettingsPanel: React.FC = () => {
                     step={500}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Límite de seguridad para evitar sobrecalentamiento
+                  </p>
                 </div>
               </div>
 
@@ -644,6 +716,9 @@ export const SettingsPanel: React.FC = () => {
                     step={100}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Duración del proceso de molienda
+                  </p>
                 </div>
               </div>
 
@@ -666,6 +741,9 @@ export const SettingsPanel: React.FC = () => {
                     step={1000}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Límite de seguridad para evitar sobrecalentamiento
+                  </p>
                 </div>
               </div>
 
@@ -719,6 +797,9 @@ export const SettingsPanel: React.FC = () => {
                     step={100}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Duración del empuje para colocar la tapa
+                  </p>
                 </div>
               </div>
 
@@ -741,6 +822,9 @@ export const SettingsPanel: React.FC = () => {
                     step={500}
                     className="w-full"
                   />
+                  <p className="text-muted-foreground text-[10px]">
+                    Límite de seguridad para evitar sobrecalentamiento
+                  </p>
                 </div>
               </div>
 

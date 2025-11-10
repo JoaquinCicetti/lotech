@@ -16,29 +16,39 @@ interface UseSerialConnectionReturn {
   connectionError: string | null
 }
 
-// Helper function to filter weight readings
+// Helper function to filter weight readings with compression
 function filterWeight(
   rawWeight: number,
   filterSettings: {
     targetWeight: number
     tolerance: number
     zeroThreshold: number
+    compressionFactor: number
   }
 ): number {
-  const { targetWeight, tolerance, zeroThreshold } = filterSettings
+  const { targetWeight, tolerance, zeroThreshold, compressionFactor } = filterSettings
 
   // If close to zero, return exactly zero
   if (Math.abs(rawWeight) < zeroThreshold) {
     return 0
   }
 
-  // If close to target weight (within tolerance), round to 3 decimals
+  // If close to target weight (within tolerance), apply compression towards target
   if (Math.abs(rawWeight - targetWeight) <= tolerance) {
-    return Math.round(rawWeight * 1000) / 1000
+    // Compress the difference towards target
+    // Formula: compressed = target - (target - rawWeight) / compressionFactor
+    // Example: target=1.0, raw=0.8, factor=5 → 1.0 - (1.0-0.8)/5 = 1.0 - 0.04 = 0.96
+    const difference = targetWeight - rawWeight
+    const compressedDifference = difference / compressionFactor
+    const compressedValue = targetWeight - compressedDifference
+
+    return Math.round(compressedValue * 1000) / 1000
   }
 
-  // Otherwise return raw value rounded to 3 decimals
-  return Math.round(rawWeight * 1000) / 1000
+  // Outside target range - clamp to nearest (0 or target)
+  const distanceToZero = Math.abs(rawWeight)
+  const distanceToTarget = Math.abs(rawWeight - targetWeight)
+  return distanceToZero < distanceToTarget ? 0 : targetWeight
 }
 
 export function useSerialConnection(): UseSerialConnectionReturn {

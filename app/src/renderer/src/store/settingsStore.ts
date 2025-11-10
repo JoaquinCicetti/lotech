@@ -63,7 +63,9 @@ export const useSettingsStore = create<SettingsStore>()(
       timeouts: DEFAULT_TIMEOUTS,
       loadCell: DEFAULT_LOADCELL,
       led: DEFAULT_LED,
-      weightFilter: DEFAULT_WEIGHT_FILTER,
+      weightFilter: {
+        ...DEFAULT_WEIGHT_FILTER,
+      },
 
       setDelays: (delays) => set({ delays }),
       setDosing: (dosing) => set({ dosing }),
@@ -139,6 +141,18 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: 'lotech-settings',
+      version: 1,
+      migrate: (persistedState: unknown) => {
+        const state = persistedState as Partial<SettingsStore>
+        // Ensure compressionFactor exists in weightFilter
+        if (state && state.weightFilter) {
+          state.weightFilter = {
+            ...DEFAULT_WEIGHT_FILTER,
+            ...state.weightFilter,
+          }
+        }
+        return state as SettingsStore
+      },
     }
   )
 )

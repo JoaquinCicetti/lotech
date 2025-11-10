@@ -57,6 +57,7 @@ export interface WeightFilterSettings {
   targetWeight: number // Expected pill weight (grams)
   tolerance: number // Acceptable variance (grams)
   zeroThreshold: number // Values below this are considered zero (grams)
+  compressionFactor: number // How much to compress readings towards target (1 = no compression, 5 = compress 5x)
 }
 
 export interface LEDColor {
