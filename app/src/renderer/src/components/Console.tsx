@@ -2,7 +2,9 @@ import { Send } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { SerialMessageParser } from '../serial'
 import { Button } from './ui/button'
+import { Checkbox } from './ui/checkbox'
 import { Input } from './ui/input'
+import { Label } from './ui/label'
 import { ScrollArea } from './ui/scroll-area'
 
 interface ConsoleProps {
@@ -42,12 +44,13 @@ export const Console: React.FC<ConsoleProps> = (props) => {
   const [command, setCommand] = useState('')
   const [commandHistory, setCommandHistory] = useState<string[]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
+  const [autoScroll, setAutoScroll] = useState(true)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-scroll to bottom when new data arrives
+  // Auto-scroll to bottom when new data arrives (only if enabled)
   useEffect(() => {
-    if (scrollAreaRef.current) {
+    if (autoScroll && scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector(
         '[data-radix-scroll-area-viewport]'
       )
@@ -55,7 +58,7 @@ export const Console: React.FC<ConsoleProps> = (props) => {
         scrollContainer.scrollTop = scrollContainer.scrollHeight
       }
     }
-  }, [serialData])
+  }, [serialData, autoScroll])
 
   const handleSendCommand = () => {
     if (command.trim() && onSendCommand) {
@@ -117,8 +120,20 @@ export const Console: React.FC<ConsoleProps> = (props) => {
               <Send className="h-3 w-3" />
             </Button>
           </div>
-          <div className="text-muted-foreground mt-1 text-xs">
-            Use ↑↓ para historial • Enter para enviar
+          <div className="mt-2 flex items-center justify-between">
+            <div className="text-muted-foreground text-xs">
+              Use ↑↓ para historial • Enter para enviar
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="auto-scroll"
+                checked={autoScroll}
+                onCheckedChange={(checked) => setAutoScroll(checked === true)}
+              />
+              <Label htmlFor="auto-scroll" className="text-muted-foreground cursor-pointer text-xs">
+                Auto-scroll
+              </Label>
+            </div>
           </div>
         </div>
       )}

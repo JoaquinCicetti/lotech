@@ -6,6 +6,7 @@ import {
   DEFAULT_LOADCELL,
   DEFAULT_PROXIMITY,
   DEFAULT_TIMEOUTS,
+  DEFAULT_WEIGHT_FILTER,
 } from '@renderer/constants/settings'
 import {
   DelaySettings,
@@ -16,6 +17,7 @@ import {
   LEDSettings,
   LoadCellSettings,
   ProximitySettings,
+  WeightFilterSettings,
 } from '@renderer/types'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -28,6 +30,7 @@ export interface SettingsStore {
   timeouts: HardwareTimeouts
   loadCell: LoadCellSettings
   led: LEDSettings
+  weightFilter: WeightFilterSettings
 
   setDelays: (delays: DelaySettings) => void
   setDosing: (dosing: DosingSettings) => void
@@ -36,12 +39,14 @@ export interface SettingsStore {
   setTimeouts: (timeouts: HardwareTimeouts) => void
   setLoadCell: (loadCell: LoadCellSettings) => void
   setLED: (led: LEDSettings) => void
+  setWeightFilter: (weightFilter: WeightFilterSettings) => void
   updateDelay: (key: keyof DelaySettings, value: number) => void
   updateDosing: (key: keyof DosingSettings, value: number) => void
   updateProximity: (key: keyof ProximitySettings, value: number) => void
   updateElevator: (key: keyof ElevatorSettings, value: number) => void
   updateTimeout: (key: keyof HardwareTimeouts, value: number) => void
   updateLoadCell: (key: keyof LoadCellSettings, value: number) => void
+  updateWeightFilter: (key: keyof WeightFilterSettings, value: number) => void
   updateLEDBrightness: (brightness: number) => void
   updateLEDColor: (index: number, color: LEDColor) => void
   setAllLEDColors: (color: LEDColor) => void
@@ -58,6 +63,7 @@ export const useSettingsStore = create<SettingsStore>()(
       timeouts: DEFAULT_TIMEOUTS,
       loadCell: DEFAULT_LOADCELL,
       led: DEFAULT_LED,
+      weightFilter: DEFAULT_WEIGHT_FILTER,
 
       setDelays: (delays) => set({ delays }),
       setDosing: (dosing) => set({ dosing }),
@@ -66,6 +72,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setTimeouts: (timeouts) => set({ timeouts }),
       setLoadCell: (loadCell) => set({ loadCell }),
       setLED: (led) => set({ led }),
+      setWeightFilter: (weightFilter) => set({ weightFilter }),
 
       updateDelay: (key, value) =>
         set((state) => ({
@@ -95,6 +102,11 @@ export const useSettingsStore = create<SettingsStore>()(
       updateLoadCell: (key, value) =>
         set((state) => ({
           loadCell: { ...state.loadCell, [key]: value },
+        })),
+
+      updateWeightFilter: (key, value) =>
+        set((state) => ({
+          weightFilter: { ...state.weightFilter, [key]: value },
         })),
 
       updateLEDBrightness: (brightness) =>

@@ -16,6 +16,28 @@ interface UseSerialConnectionReturn {
   connectionError: string | null
 }
 
+// Helper function to filter weight readings
+function filterWeight(rawWeight: number, filterSettings: {
+  targetWeight: number
+  tolerance: number
+  zeroThreshold: number
+}): number {
+  const { targetWeight, tolerance, zeroThreshold } = filterSettings
+
+  // If close to zero, return exactly zero
+  if (Math.abs(rawWeight) < zeroThreshold) {
+    return 0
+  }
+
+  // If close to target weight (within tolerance), round to 3 decimals
+  if (Math.abs(rawWeight - targetWeight) <= tolerance) {
+    return Math.round(rawWeight * 1000) / 1000
+  }
+
+  // Otherwise return raw value rounded to 3 decimals
+  return Math.round(rawWeight * 1000) / 1000
+}
+
 export function useSerialConnection(): UseSerialConnectionReturn {
   const {
     selectedPort,
@@ -273,6 +295,7 @@ export function useSerialConnection(): UseSerialConnectionReturn {
         console.log('About to parse line:', line)
         const currentStatus = useControllerStateStore.getState()
         const calibrationFactor = useSettingsStore.getState().loadCell.calibrationFactor
+        const weightFilterSettings = useSettingsStore.getState().weightFilter
         const statusUpdate = SerialMessageParser.parseMessage(
           line,
           {
@@ -286,6 +309,10 @@ export function useSerialConnection(): UseSerialConnectionReturn {
         )
 
         if (statusUpdate) {
+          // Apply weight filtering if weight is present
+          if (statusUpdate.weight !== undefined) {
+            statusUpdate.weight = filterWeight(statusUpdate.weight, weightFilterSettings)
+          }
           // Collect weight readings during weighing state
           const isWeighing = currentStatus.machineState === MachineState.PESAJE
           if (isWeighing && statusUpdate.weight !== undefined && statusUpdate.weight > 0) {

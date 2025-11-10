@@ -6,6 +6,7 @@ import {
   LEDSettings,
   LoadCellSettings,
   ProximitySettings,
+  WeightFilterSettings,
 } from '@renderer/types'
 
 export const DEFAULT_DELAYS: DelaySettings = {
@@ -49,4 +50,10 @@ export const DEFAULT_LOADCELL: LoadCellSettings = {
 export const DEFAULT_LED: LEDSettings = {
   brightness: 128, // Half brightness by default
   colors: Array.from({ length: 30 }, () => ({ r: 0, g: 0, b: 0 })), // All LEDs off by default
+}
+
+export const DEFAULT_WEIGHT_FILTER: WeightFilterSettings = {
+  targetWeight: 1.0, // Expected 1g pill
+  tolerance: 0.1, // ±0.1g variance
+  zeroThreshold: 0.05, // Below 0.05g is considered zero
 }

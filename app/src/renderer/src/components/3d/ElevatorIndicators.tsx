@@ -58,12 +58,12 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
     if (sphereRef.current) {
       const targetY = baseY + elevatorY / 65
 
-      // Apply same lerp speed as AnimationController (speed: 6)
+      // Apply same lerp speed as AnimationController (speed: 12)
       sphereYRef.current = smoothLerp({
         current: sphereYRef.current,
         target: targetY,
         delta,
-        speed: 6, // MUST match AnimationController elevator speed
+        speed: 12, // MUST match AnimationController elevator speed
       })
 
       sphereRef.current.position.y = sphereYRef.current

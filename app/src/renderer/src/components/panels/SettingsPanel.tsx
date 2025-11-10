@@ -68,12 +68,14 @@ export const SettingsPanel: React.FC = () => {
     elevator,
     timeouts,
     loadCell,
+    weightFilter,
     updateDelay,
     updateDosing: updateDosingStore,
     updateProximity: updateProximityStore,
     updateElevator: updateElevatorStore,
     updateTimeout,
     updateLoadCell: updateLoadCellStore,
+    updateWeightFilter: updateWeightFilterStore,
   } = useSettingsStore()
 
   const { currentMode } = useUIStore()
@@ -453,6 +455,67 @@ export const SettingsPanel: React.FC = () => {
                     step={0.001}
                     className="w-full"
                   />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-muted-foreground text-xs font-semibold">Filtro</Label>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <Label className="text-xs">Peso objetivo:</Label>
+                        <span className="text-sm">{weightFilter.targetWeight.toFixed(3)}g</span>
+                      </div>
+                      <Slider
+                        value={[weightFilter.targetWeight]}
+                        onValueChange={([v]) => updateWeightFilterStore('targetWeight', v)}
+                        min={0.1}
+                        max={5}
+                        step={0.001}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <Label className="text-xs">Tolerancia (±):</Label>
+                        <span className="text-sm">{weightFilter.tolerance.toFixed(3)}g</span>
+                      </div>
+                      <Slider
+                        value={[weightFilter.tolerance]}
+                        onValueChange={([v]) => updateWeightFilterStore('tolerance', v)}
+                        min={0.01}
+                        max={0.5}
+                        step={0.001}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between">
+                        <Label className="text-xs">Umbral de cero:</Label>
+                        <span className="text-sm">{weightFilter.zeroThreshold.toFixed(3)}g</span>
+                      </div>
+                      <Slider
+                        value={[weightFilter.zeroThreshold]}
+                        onValueChange={([v]) => updateWeightFilterStore('zeroThreshold', v)}
+                        min={0.001}
+                        max={0.2}
+                        step={0.001}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div className="bg-muted/50 mt-2 rounded-md p-2 text-xs">
+                      <p className="text-muted-foreground">
+                        El filtro se aplica solo en el cliente. Pesos menores a{' '}
+                        <strong>{weightFilter.zeroThreshold.toFixed(3)}g</strong> se muestran como
+                        0. Pesos cerca de <strong>{weightFilter.targetWeight.toFixed(3)}g</strong>{' '}
+                        (±
+                        {weightFilter.tolerance.toFixed(3)}g) se estabilizan.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

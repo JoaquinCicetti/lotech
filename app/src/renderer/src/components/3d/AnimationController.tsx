@@ -150,7 +150,7 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
       current: animationState.current.elevatorY,
       target: targetPosition,
       delta,
-      speed: 6, // Unified speed for both elevator and container
+      speed: 12, // Unified speed for both elevator and container (increased for more responsive animation)
     }
     const newPosition = smoothLerp(lerpParams)
     animationState.current.elevatorY = newPosition

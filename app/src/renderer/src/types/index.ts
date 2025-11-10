@@ -53,6 +53,12 @@ export interface LoadCellSettings {
   deadband: number // Noise filter - ignore weight changes smaller than this (grams)
 }
 
+export interface WeightFilterSettings {
+  targetWeight: number // Expected pill weight (grams)
+  tolerance: number // Acceptable variance (grams)
+  zeroThreshold: number // Values below this are considered zero (grams)
+}
+
 export interface LEDColor {
   r: number // Red (0-255)
   g: number // Green (0-255)
