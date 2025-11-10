@@ -99,7 +99,9 @@ export const LEDStripVisualization: React.FC<LEDStripVisualizationProps> = (prop
             </mesh>
 
             {/* Point light emanating from LED */}
-            {isOn && <pointLight args={[ledColor, brightnessFactor, 0.3, 1]} castShadow={false} />}
+            {isOn && (
+              <pointLight args={[ledColor, brightnessFactor * 2, 0.3, 1]} castShadow={false} />
+            )}
           </group>
         )
       })}

@@ -70,7 +70,7 @@ export const ProcessStepper: React.FC = () => {
                     isActive
                       ? 'from-primary to-primary/80 shadow-primary/30 text-primary-foreground scale-125 bg-gradient-to-br shadow-lg'
                       : isPast
-                        ? 'bg-primary text-primary-foreground'
+                        ? 'bg-primary/60 text-primary-foreground'
                         : 'bg-muted text-muted-foreground'
                   } `}
                 >

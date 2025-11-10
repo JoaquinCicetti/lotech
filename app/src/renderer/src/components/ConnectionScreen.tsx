@@ -167,10 +167,7 @@ export const ConnectionScreen: React.FC<ConnectionScreenProps> = (props) => {
                     />
                   </g>
                   <g>
-                    <path
-                      className="cls-7"
-                      d="M82.1,65.06h8.55v48.55h48.48v8.55h-57.03v-57.11Z"
-                    />
+                    <path className="cls-7" d="M82.1,65.06h8.55v48.55h48.48v8.55h-57.03v-57.11Z" />
                     <path
                       className="cls-7"
                       d="M205.02,84.78v27.09c0,.95.79,1.74,1.74,1.74h17.11v8.55h-17.11c-5.7,0-10.3-4.59-10.3-10.3v-50.69h8.55v15.05h18.85v8.55h-18.85Z"

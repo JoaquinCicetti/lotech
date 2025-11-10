@@ -141,8 +141,8 @@ export const LEDControlPanel: React.FC = () => {
 
       {/* Color Picker */}
       <div className="space-y-2">
-        <Label className="text-xs">Color Selector</Label>
-        <div className="flex gap-2">
+        <Label className="text-xs">Color</Label>
+        <div className="flex items-center gap-2">
           <input
             type="color"
             value={colorToHex(currentColor)}
@@ -179,7 +179,9 @@ export const LEDControlPanel: React.FC = () => {
                 color:
                   preset.color.r + preset.color.g + preset.color.b > 384 ? '#000000' : '#ffffff',
                 borderColor:
-                  preset.color.r + preset.color.g + preset.color.b === 0 ? '#666666' : 'transparent',
+                  preset.color.r + preset.color.g + preset.color.b === 0
+                    ? '#666666'
+                    : 'transparent',
               }}
             >
               {preset.name}
@@ -218,7 +220,7 @@ export const LEDControlPanel: React.FC = () => {
                 key={index}
                 onClick={() => toggleLEDSelection(index)}
                 className={`relative h-10 w-full cursor-pointer rounded border-2 transition-all ${
-                  isSelected ? 'border-primary scale-105 ring-2 ring-primary/50' : 'border-border'
+                  isSelected ? 'border-primary ring-primary/50 scale-105 ring-2' : 'border-border'
                 }`}
                 style={{
                   backgroundColor: `rgb(${color.r}, ${color.g}, ${color.b})`,
@@ -239,7 +241,7 @@ export const LEDControlPanel: React.FC = () => {
                   </div>
                 )}
                 <span
-                  className="absolute bottom-0 right-0 px-1 text-[8px] font-bold opacity-50"
+                  className="absolute right-0 bottom-0 px-1 text-[8px] font-bold opacity-50"
                   style={{
                     color: color.r + color.g + color.b > 384 ? '#000000' : '#ffffff',
                   }}

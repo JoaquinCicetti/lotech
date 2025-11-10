@@ -4,15 +4,15 @@ export interface SerialPortInfo {
 }
 
 export enum MachineState {
-  INICIO = '0_INICIO',
-  ASCENSOR = '1_ASCENSOR',
-  DOSIFICACION = '2_DOSIFICACION',
-  PESAJE = '3_PESAJE',
-  TRASPASO = '4_TRASPASO',
-  MOLIENDA = '5_MOLIENDA',
-  DESCARGA = '6_DESCARGA',
-  CIERRE = '7_CIERRE',
-  RETIRO = '8_RETIRO',
+  INICIO = 'INICIO',
+  ASCENSOR = 'ASCENSOR',
+  DOSIFICACION = 'DOSIF',
+  PESAJE = 'PESAJE',
+  TRASPASO = 'TRASPASO',
+  MOLIENDA = 'MOLIENDA',
+  DESCARGA = 'DESCARGA',
+  CIERRE = 'CIERRE',
+  RETIRO = 'RETIRO',
 }
 
 export interface ProximitySettings {
