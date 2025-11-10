@@ -7,28 +7,28 @@ export interface CameraPosition {
   target: [number, number, number]
 }
 
-// Machine is now centered at origin
-const MACHINE_CENTER: [number, number, number] = [0, 1.5, 0]
+// Machine is now on the gaming table
+const MACHINE_CENTER: [number, number, number] = [1, 7.8, -7.5]
 
 export const CAMERA_PRESETS: Record<CameraPreset, CameraPosition> = {
   free: {
-    position: [10, 8, 10], // Far diagonal view
+    position: [11, 14, 2], // Far diagonal view
     target: MACHINE_CENTER,
   },
   isometric: {
-    position: [8, 6, 8], // Default isometric view
-    target: MACHINE_CENTER,
-  },
-  front: {
-    position: [0, 3, -12], // Looking from front (negative Z, opposite side)
+    position: [8, 11, -15], // Isometric view from top right
     target: MACHINE_CENTER,
   },
   side: {
-    position: [12, 3, 0], // Looking from right side (positive X)
+    position: [1, 9, -19], // Shows lateral view (this is what "Lateral" button uses)
+    target: MACHINE_CENTER,
+  },
+  front: {
+    position: [10, 10, -6.5], // Shows frontal view (this is what "Frontal" button uses)
     target: MACHINE_CENTER,
   },
   top: {
-    position: [0, 15, 0], // Bird's eye view (directly above)
+    position: [1, 20, -7.5], // Bird's eye view (directly above)
     target: MACHINE_CENTER,
   },
 }

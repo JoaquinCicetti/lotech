@@ -168,9 +168,8 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
       const dimColor = new THREE.Color(THREE_COLORS.indicators.inactive)
 
       // Calculate indicator Y position from same elevator position
-      // Base Y offset and scale to match ElevatorIndicators positioning
-      const baseY = 0.4 // modelPosition[1] from Scene3D
-      const indicatorY = baseY + newPosition / 65
+      // Position is relative to the sphere's parent group (which is already at baseY)
+      const indicatorY = newPosition / 65
 
       elevatorIndicatorRef.current.position.y = indicatorY
 
@@ -178,19 +177,11 @@ export const AnimationController: React.FC<AnimationControllerProps> = (props) =
       const material = elevatorIndicatorRef.current.material as THREE.MeshStandardMaterial
       material.color.copy(atLimit ? activeColor : dimColor)
       material.emissive.copy(atLimit ? activeColor : dimColor)
-      material.emissiveIntensity = atLimit ? 0.8 : 0.2
-    }
+      material.emissiveIntensity = atLimit ? 1 : 0.5
 
-    // Update indicator light
-    if (elevatorLightRef?.current) {
-      const sensorReadings = useControllerStateStore.getState().sensorReadings
-      const isAtBottom = sensorReadings.posBaja
-      const isAtTop = sensorReadings.posAlta
-      const atLimit = isAtTop || isAtBottom
-      const activeColor = new THREE.Color(THREE_COLORS.indicators.active)
-
-      elevatorLightRef.current.intensity = atLimit ? 2.0 : 0
-      elevatorLightRef.current.color.copy(activeColor)
+      if (elevatorLightRef?.current) {
+        elevatorLightRef.current.intensity = atLimit ? 0.1 : 0
+      }
     }
 
     // Animate dosing wheel

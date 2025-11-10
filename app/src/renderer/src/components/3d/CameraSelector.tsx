@@ -24,13 +24,13 @@ const PRESETS: PresetConfig[] = [
     key: '2',
   },
   {
-    id: 'front',
+    id: 'side',
     label: 'Lateral',
     icon: <MoveHorizontal className="h-4 w-4" />,
     key: '3',
   },
   {
-    id: 'side',
+    id: 'front',
     label: 'Frontal',
     icon: <Maximize className="h-4 w-4" />,
     key: '4',

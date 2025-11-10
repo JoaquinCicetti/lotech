@@ -71,7 +71,12 @@ export const LEDStripVisualization: React.FC<LEDStripVisualizationProps> = (prop
       {/* Wire/tube representing the LED strip */}
       <mesh>
         <primitive object={wireGeometry} attach="geometry" />
-        <meshStandardMaterial color="#333333" emissive="#111111" roughness={0.5} metalness={0.8} />
+        <meshStandardMaterial
+          color="#333333"
+          emissive={'#111111'}
+          roughness={0.5}
+          metalness={0.8}
+        />
       </mesh>
 
       {/* Individual LED lights */}
@@ -86,21 +91,21 @@ export const LEDStripVisualization: React.FC<LEDStripVisualizationProps> = (prop
 
         return (
           <group key={index} position={pos}>
-            {/* LED bulb (small sphere) */}
+            {/* LED bulb (small sphere) - with emissive glow */}
             <mesh>
-              <sphereGeometry args={[0.015, 8, 8]} />
-              <meshStandardMaterial
-                color={ledColor}
-                emissive={ledColor}
-                emissiveIntensity={isOn ? brightnessFactor * 2 : 0}
-                roughness={0.3}
-                metalness={0.1}
-              />
+              <sphereGeometry args={[0.03, 8, 8]} />
+              <meshStandardMaterial color={isOn ? ledColor : new THREE.Color(0.1, 0.1, 0.1)} />
             </mesh>
 
-            {/* Point light emanating from LED */}
-            {isOn && (
-              <pointLight args={[ledColor, brightnessFactor * 2, 0.3, 1]} castShadow={false} />
+            {/* Spotlight to illuminate machine - only every 3rd LED, pointed up at 45° */}
+            {isOn && index % 3 === 0 && (
+              <spotLight
+                color={ledColor}
+                intensity={brightnessFactor * 0.5}
+                angle={Math.PI}
+                penumbra={0.01}
+                position={[0, 0, 0]}
+              />
             )}
           </group>
         )

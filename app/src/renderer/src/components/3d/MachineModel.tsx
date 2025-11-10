@@ -16,10 +16,11 @@ interface MachineModelProps {
   systemStatus: SystemStatus
   elevatorIndicatorRef?: React.RefObject<THREE.Mesh | null>
   elevatorLightRef?: React.RefObject<THREE.PointLight | null>
+  position?: [number, number, number]
 }
 
 export const MachineModel: React.FC<MachineModelProps> = (props) => {
-  const { systemStatus, elevatorIndicatorRef, elevatorLightRef } = props
+  const { systemStatus, elevatorIndicatorRef, elevatorLightRef, position = [0, 1, 0] } = props
   const { scene, nodes } = useGLTF(MODEL_URL)
   const groupRef = useRef<Group>(null)
 
@@ -71,7 +72,7 @@ export const MachineModel: React.FC<MachineModelProps> = (props) => {
   }, [nodes, sensorReadings.proximityDistance, proximity.minProximity, proximity.maxProximity])
 
   return (
-    <group ref={groupRef} position={[0, 0, 0]}>
+    <group ref={groupRef} position={position}>
       <primitive object={scene} scale={[15, 15, 15]} />
       <AnimationController
         systemStatus={systemStatus}
