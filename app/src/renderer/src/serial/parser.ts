@@ -56,7 +56,7 @@ export class SerialMessageParser {
 
     // WEIGHT: Weight reading (can be RAW, mg or g)
     if (cleanLine.startsWith(CommandPrefix.WEIGHT)) {
-      let weightStr = cleanLine.substring(CommandPrefix.WEIGHT.length).trim()
+      const weightStr = cleanLine.substring(CommandPrefix.WEIGHT.length).trim()
 
       // Check format
       let weight = 0

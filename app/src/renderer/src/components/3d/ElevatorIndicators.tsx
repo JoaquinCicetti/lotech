@@ -84,7 +84,7 @@ export const ElevatorIndicators: React.FC<ElevatorIndicatorsProps> = (props) => 
 
   // Calculate positions relative to the machine model
   // Offset to the side of the elevator so indicators are visible
-  const indicatorX = modelPosition[0] + 0.3 * modelScale
+  const indicatorX = modelPosition[0] + 0.2 * modelScale
   const indicatorZ = modelPosition[2]
 
   // Top and bottom positions match the actual elevator range

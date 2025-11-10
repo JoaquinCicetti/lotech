@@ -1,10 +1,9 @@
-import { setAutoMode, setManualMode } from '@renderer/serial/serialCommands'
 import { useConnectionStore } from '@renderer/store/connectionStore'
-import { useUIStore } from '@renderer/store/uiStore'
-import { AppMode } from '@renderer/types'
-import { Hand, Settings2, Terminal, Wifi, WifiOff, Zap } from 'lucide-react'
+import { Settings2, Terminal, Wifi, WifiOff } from 'lucide-react'
 import React from 'react'
 import { cn } from '../lib/utils'
+import { CameraSelector } from './3d/CameraSelector'
+import { ModeSelector } from './ModeSelector'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 
@@ -29,7 +28,6 @@ export const Layout: React.FC<LayoutProps> = (props) => {
     onToggleRightSidebar,
   } = props
 
-  const { currentMode, setMode } = useUIStore()
   const { isConnected, selectedPort } = useConnectionStore()
 
   return (
@@ -57,35 +55,10 @@ export const Layout: React.FC<LayoutProps> = (props) => {
             </Badge>
           </div>
 
-          {/* Center Controls - Mode Switcher */}
-          <div className="flex items-center space-x-6">
-            <div className="flex gap-1">
-              <Button
-                onClick={() => {
-                  setMode(AppMode.MANUAL)
-                  setManualMode()
-                }}
-                variant={currentMode === AppMode.MANUAL ? 'destructive' : 'secondary'}
-                size="sm"
-                className={cn('gap-2', currentMode === AppMode.MANUAL && 'shadow-sm')}
-              >
-                <Hand className="h-4 w-4" />
-                Manual
-              </Button>
-              <div className="bg-border w-px" />
-              <Button
-                onClick={() => {
-                  setMode(AppMode.AUTO)
-                  setAutoMode()
-                }}
-                variant={currentMode === AppMode.AUTO ? 'default' : 'secondary'}
-                size="sm"
-                className={cn('gap-2', currentMode === AppMode.AUTO && 'shadow-sm')}
-              >
-                <Zap className="h-4 w-4" />
-                Auto
-              </Button>
-            </div>
+          {/* Center Controls - Mode Switcher and Camera Selector */}
+          <div className="flex items-center gap-4">
+            <ModeSelector />
+            <CameraSelector />
           </div>
 
           {/* Right Controls */}
