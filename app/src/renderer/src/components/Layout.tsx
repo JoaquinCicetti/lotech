@@ -37,9 +37,9 @@ export const Layout: React.FC<LayoutProps> = (props) => {
         {children}
 
         {/* Header Controls Bar */}
-        <div className="absolute top-4 right-4 left-4 z-[60] flex items-center justify-between">
+        <div className="absolute top-4 right-4 left-4 z-[60]">
           {/* Left Controls */}
-          <div className="flex items-center gap-2">
+          <div className="absolute left-0 flex items-center gap-2">
             <Button
               onClick={onToggleLeftSidebar}
               variant={showLeftSidebar ? 'ghost' : 'secondary'}
@@ -56,7 +56,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
           </div>
 
           {/* Center Controls - Mode Switcher and Camera Selector */}
-          <div className="flex items-center gap-4">
+          <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-4">
             <ModeSelector />
             <CameraSelector />
           </div>
@@ -66,7 +66,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
             onClick={onToggleRightSidebar}
             variant={showRightSidebar ? 'ghost' : 'secondary'}
             size="sm"
-            className="gap-1 shadow-lg"
+            className="absolute right-0 gap-1 shadow-lg"
           >
             <Terminal className="h-4 w-4" />
           </Button>

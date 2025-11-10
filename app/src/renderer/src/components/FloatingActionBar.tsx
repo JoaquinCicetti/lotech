@@ -11,7 +11,7 @@ import {
 import { useControllerStateStore } from '@renderer/store/controllerStateStore'
 import { usePillTrackingStore } from '@renderer/store/pillTrackingStore'
 import { useUIStore } from '@renderer/store/uiStore'
-import { AppMode } from '@renderer/types'
+import { AppMode, MachineState } from '@renderer/types'
 import {
   AlertTriangle,
   Download,
@@ -46,10 +46,14 @@ const AutoController: React.FC = () => {
     setEmergencyStopped,
     setRunning,
     setPaused,
+    machineState,
   } = useControllerStateStore()
   const { startNewCycle, isTracking, currentCycle, endCycle, exportCycleData } =
     usePillTrackingStore()
   const [showLotDialog, setShowLotDialog] = useState(false)
+
+  // Check if cycle is complete (on RETIRO state and not running)
+  const isCycleComplete = machineState === MachineState.RETIRO && !isRunning
 
   const handlePlayPauseToggle = () => {
     if (isEmergencyStopped) {
@@ -203,11 +207,15 @@ const AutoController: React.FC = () => {
             )}
           </Button>
 
-          {/* Reset Button - Only show when emergency is/was activated */}
-          {isEmergencyStopped && (
-            <Button variant="secondary" onClick={handleReset}>
+          {/* Reset Button - Show when emergency is activated OR cycle is complete */}
+          {(isEmergencyStopped || isCycleComplete) && (
+            <Button
+              variant={isCycleComplete ? 'default' : 'secondary'}
+              onClick={handleReset}
+              className={isCycleComplete ? 'animate-pulse' : ''}
+            >
               <RefreshCw className="mr-2 h-4 w-4" />
-              Reset
+              {isCycleComplete ? 'Reiniciar Ciclo' : 'Reset'}
             </Button>
           )}
 

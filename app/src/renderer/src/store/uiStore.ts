@@ -30,7 +30,7 @@ export interface UIStore {
 export const useUIStore = create<UIStore>((set) => ({
   currentMode: AppMode.MANUAL,
   showConsole: false,
-  showSettings: true,
+  showSettings: false,
   activeModal: null,
   notifications: [],
 

@@ -4,6 +4,7 @@ import { SCENE_COLORS } from '@renderer/constants/theme'
 import React, { Suspense, useRef } from 'react'
 import * as THREE from 'three'
 import { SystemStatus } from '../../types'
+import { Background360 } from './Background360'
 import { CameraController } from './CameraController'
 import { ElevatorIndicators } from './ElevatorIndicators'
 import { FloatingCards } from './FloatingCards'
@@ -27,7 +28,7 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
     <div
       className="relative z-10 h-[100vh] w-full overflow-hidden rounded-lg"
       style={{
-        background: `linear-gradient(to bottom, ${SCENE_COLORS.background.gradient.from}, ${SCENE_COLORS.background.gradient.via}, ${SCENE_COLORS.background.gradient.to})`,
+        background: SCENE_COLORS.background.gradient.from, // Simple fallback color
       }}
     >
       <Canvas
@@ -37,14 +38,11 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
         <Suspense fallback={null}>
           <CameraController autoRotate={false} />
 
+          {/* 360 Background */}
+          <Background360 />
+
           {/* Lighting */}
           <Lighting />
-
-          {/* Ground plane - simplified for performance */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
-            <planeGeometry args={[30, 30]} />
-            <meshBasicMaterial color={SCENE_COLORS.ground.base} />
-          </mesh>
 
           {/* Gaming Setup Table */}
           <GamingSetup position={[-4.5, -14.6, 4.5]} scale={7} />
@@ -67,7 +65,7 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
           />
 
           {/* 3D Floating Cards */}
-          <FloatingCards modelPosition={[-3, 6.5, -6.5]} modelScale={15} />
+          <FloatingCards modelPosition={[-2.5, 6.5, -6.5]} modelScale={15} />
 
           {/* LED Strip around machine */}
           <LEDStripVisualization modelPosition={[-2.05, 6.55, -6.5]} modelScale={15} />

@@ -7,7 +7,7 @@ export const Lighting: React.FC = () => {
   return (
     <>
       {/* Dim ambient lighting for darker scene */}
-      <ambientLight intensity={0.2} color="#ffffff" />
+      <ambientLight intensity={0.15} color="#ffffff" />
 
       {/* Main spotlight focused on machine */}
       <spotLight
@@ -20,13 +20,13 @@ export const Lighting: React.FC = () => {
 
       {/* Accent lights around machine */}
       <pointLight
-        position={[machinePosition[0] + 3, machinePosition[1] + 2, machinePosition[2] + 2]}
-        args={['#ffffff', 1, 6, 0.5]}
+        position={[machinePosition[0] + 2, machinePosition[1] + 2, machinePosition[2] + 2]}
+        args={['#ffffff', 1.5, 6, 0.5]}
       />
 
       <pointLight
         position={[machinePosition[0] + 2, machinePosition[1] + 2, machinePosition[2] - 4]}
-        args={['#ffffff', 1, 6, 0.5]}
+        args={['#ffffff', 1.5, 6, 0.5]}
       />
 
       <pointLight
@@ -35,9 +35,10 @@ export const Lighting: React.FC = () => {
       />
 
       {/* Table lamp lights - positioned to illuminate machine from sides/below */}
-      {/* <pointLight position={[-3, 2, -6.5]} args={['#fff8e1', 5.0, 20, 1]} /> */}
+      <pointLight position={[-3, 2, -6.5]} args={['#fff8e1', 5.0, 20, 1]} />
+
       {/* <pointLight position={[3, 2, -6.5]} args={['#fff8e1', 4.5, 18, 1]} /> */}
-      <pointLight position={[0, 1, -4]} args={['#ffffff', 4.0, 15, 1]} />
+      {/* <pointLight position={[0, 1, -4]} args={['#ffffff', 4.0, 15, 1]} /> */}
     </>
   )
 }
