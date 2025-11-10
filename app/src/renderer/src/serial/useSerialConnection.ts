@@ -16,6 +16,10 @@ interface UseSerialConnectionReturn {
   connectionError: string | null
 }
 
+// Weight smoothing buffer (last N readings)
+const weightReadingsBuffer: number[] = []
+const SMOOTHING_WINDOW = 5 // Number of readings to average
+
 // Helper function to filter weight readings
 function filterWeight(
   rawWeight: number,
@@ -29,16 +33,28 @@ function filterWeight(
 
   // If close to zero, return exactly zero
   if (Math.abs(rawWeight) < zeroThreshold) {
+    weightReadingsBuffer.length = 0 // Clear buffer
     return 0
   }
 
-  // If close to target weight (within tolerance), round to 3 decimals
+  // If close to target weight (within tolerance), use smoothed average
   if (Math.abs(rawWeight - targetWeight) <= tolerance) {
-    return Math.round(rawWeight * 1000) / 1000
+    // Add to buffer
+    weightReadingsBuffer.push(rawWeight)
+    if (weightReadingsBuffer.length > SMOOTHING_WINDOW) {
+      weightReadingsBuffer.shift() // Remove oldest
+    }
+
+    // Calculate average
+    const avg = weightReadingsBuffer.reduce((sum, w) => sum + w, 0) / weightReadingsBuffer.length
+    return Math.round(avg * 1000) / 1000
   }
 
-  // Otherwise return raw value rounded to 3 decimals
-  return Math.round(rawWeight * 1000) / 1000
+  // Outside target range - clamp to nearest (0 or target)
+  weightReadingsBuffer.length = 0 // Clear buffer
+  const distanceToZero = Math.abs(rawWeight)
+  const distanceToTarget = Math.abs(rawWeight - targetWeight)
+  return distanceToZero < distanceToTarget ? 0 : targetWeight
 }
 
 export function useSerialConnection(): UseSerialConnectionReturn {
