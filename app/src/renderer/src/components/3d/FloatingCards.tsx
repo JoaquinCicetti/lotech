@@ -15,11 +15,11 @@ export const FloatingCards: React.FC<FloatingCardsProps> = (props) => {
 
   const { sensorReadings } = useControllerStateStore()
 
-  // Weight card position - fixed position
+  // Weight card position - fixed position relative to model center
   const weightCardPos: [number, number, number] = [
-    modelPosition[0] + 0.3 * modelScale,
-    modelPosition[1] + 0.3 * modelScale,
-    modelPosition[2] + 0.2 * modelScale,
+    modelPosition[0] + 0.2 * modelScale,
+    modelPosition[1] + 0.337 * modelScale,
+    modelPosition[2] + 0.06 * modelScale,
   ]
 
   return (

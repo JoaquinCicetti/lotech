@@ -160,7 +160,7 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
           <fog attach="fog" args={[SCENE_COLORS.background.fog, 10, 35]} />
 
           {/* Ground plane */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.5, 0]}>
             <planeGeometry args={[30, 30]} />
             <meshStandardMaterial
               color={SCENE_COLORS.ground.base}
@@ -180,7 +180,7 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
             sectionColor={SCENE_COLORS.ground.grid.section}
             fadeDistance={25}
             fadeStrength={1}
-            position={[0, 0.01, 0]}
+            position={[0, -0.49, 0]}
           />
 
           {/* Use SimpleMachine instead of MachineModel for now */}
@@ -188,13 +188,13 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
           <MachineModel systemStatus={systemStatus} />
 
           {/* Elevator position and sensor indicators */}
-          <ElevatorIndicators modelPosition={[-1.5, 0.55, -2.1]} modelScale={15} />
+          <ElevatorIndicators modelPosition={[-3, 0.4, -1]} modelScale={15} />
 
           {/* 3D Floating Cards */}
-          <FloatingCards modelPosition={[-1.5, 0.55, -2.1]} modelScale={15} />
+          <FloatingCards modelPosition={[-3, 0, 0]} modelScale={15} />
 
           {/* LED Strip around machine */}
-          <LEDStripVisualization modelPosition={[-1.5, 0, -2.1]} modelScale={15} />
+          <LEDStripVisualization modelPosition={[-3, -0.2, 0.95]} modelScale={15} />
         </Suspense>
       </Canvas>
 

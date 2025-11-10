@@ -15,9 +15,9 @@ export const LEDStripVisualization: React.FC<LEDStripVisualizationProps> = (prop
 
   // Create a path around the machine perimeter (rectangular loop)
   const stripPath = useMemo(() => {
-    const baseX = modelPosition[0] + 0.26 * modelScale // Slightly above ground
-    const baseY = modelPosition[1] + 0.02 * modelScale // Slightly above ground
-    const baseZ = modelPosition[2] + 0.16 * modelScale // Slightly above ground
+    const baseX = modelPosition[0] + 0.16 * modelScale
+    const baseY = modelPosition[1] + 0.02 * modelScale
+    const baseZ = modelPosition[2] + 0.02 * modelScale
 
     // Machine dimensions (approximate)
     const width = 0.22 * modelScale

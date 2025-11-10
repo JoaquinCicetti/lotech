@@ -17,11 +17,14 @@ interface UseSerialConnectionReturn {
 }
 
 // Helper function to filter weight readings
-function filterWeight(rawWeight: number, filterSettings: {
-  targetWeight: number
-  tolerance: number
-  zeroThreshold: number
-}): number {
+function filterWeight(
+  rawWeight: number,
+  filterSettings: {
+    targetWeight: number
+    tolerance: number
+    zeroThreshold: number
+  }
+): number {
   const { targetWeight, tolerance, zeroThreshold } = filterSettings
 
   // If close to zero, return exactly zero
