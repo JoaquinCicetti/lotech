@@ -228,7 +228,8 @@ export function useSerialConnection(): UseSerialConnectionReturn {
         // Only update if we got valid values, don't overwrite with 0
         const currentDosing = useSettingsStore.getState().dosing
         const newDosing = {
-          wheelDivisions: dosing.divisions ?? currentDosing.wheelDivisions,
+          // Divide wheelDivisions by 2 when receiving from device (device stores 2x the UI value)
+          wheelDivisions: dosing.divisions ? dosing.divisions / 2 : currentDosing.wheelDivisions,
           lotSize: dosing.lot_size ?? currentDosing.lotSize,
           motorSpeed: dosing.motor_speed ? dosing.motor_speed / 400 : currentDosing.motorSpeed, // Convert steps/sec to rad/sec (approx)
         }

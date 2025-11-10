@@ -113,9 +113,11 @@ export const updateDelays = (delays: DelaySettings) => {
 }
 
 export const updateDosing = (wheelDivisions: number, lotSize: number, motorSpeed?: number) => {
+  // Multiply wheelDivisions by 2 before sending to device (UI shows half the actual value)
+  const actualDivisions = wheelDivisions * 2
   // Convert rad/s to steps/s if motorSpeed provided
   const speedSteps = motorSpeed ? Math.round(motorSpeed * 400) : undefined
-  return sendSerial(SettingsCommands.buildDosingCommand(wheelDivisions, lotSize, speedSteps))
+  return sendSerial(SettingsCommands.buildDosingCommand(actualDivisions, lotSize, speedSteps))
 }
 
 export const updateProximity = (min: number, max: number) =>
