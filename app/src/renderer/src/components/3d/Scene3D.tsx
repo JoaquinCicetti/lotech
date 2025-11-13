@@ -33,7 +33,7 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
       }}
     >
       <Canvas
-        camera={{ fov: 50, position: [8, 11, -15] }}
+        camera={{ fov: 50, position: [9, 11, -15] }}
         gl={{
           antialias: false,
           powerPreference: 'high-performance',

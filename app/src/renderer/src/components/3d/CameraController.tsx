@@ -15,32 +15,30 @@ export const CameraController: React.FC<CameraControllerProps> = (props) => {
   const { currentPreset, setTransitioning } = useCameraStore()
   const orbitControlsRef = useRef<OrbitControlsImpl>(null)
 
-  // Initialize with isometric preset target
-  const preset = CAMERA_PRESETS.isometric
+  // Initialize refs with current preset
   const currentPosition = useRef(new THREE.Vector3())
-  const currentTarget = useRef(new THREE.Vector3(...preset.target))
+  const currentTarget = useRef(new THREE.Vector3())
   const targetPosition = useRef(new THREE.Vector3())
-  const targetLookAt = useRef(new THREE.Vector3(...preset.target))
+  const targetLookAt = useRef(new THREE.Vector3())
   const isTransitioningRef = useRef(false)
-  const isFirstMount = useRef(true)
+  const hasInitialized = useRef(false)
 
-  // Set camera position immediately on mount - use useEffect to ensure ref is available
+  // Initialize camera position once OrbitControls is ready
   useEffect(() => {
-    if (isFirstMount.current && orbitControlsRef.current) {
-      isFirstMount.current = false
+    if (!hasInitialized.current && orbitControlsRef.current) {
+      hasInitialized.current = true
       const preset = CAMERA_PRESETS[currentPreset]
       camera.position.set(...preset.position)
       currentTarget.current.set(...preset.target)
-      // Set OrbitControls target and update - this will automatically orient the camera
       orbitControlsRef.current.target.set(...preset.target)
       orbitControlsRef.current.update()
     }
-  }, [camera, currentPreset])
+  }, [camera, currentPreset, orbitControlsRef.current])
 
-  // Update target when preset changes
+  // Update target when preset changes (after initialization)
   useEffect(() => {
-    if (isFirstMount.current) {
-      return // Skip on first mount, handled by useLayoutEffect
+    if (!hasInitialized.current) {
+      return // Skip until initialized
     }
 
     // If switching to free mode, just enable controls and leave camera where it is
@@ -107,7 +105,7 @@ export const CameraController: React.FC<CameraControllerProps> = (props) => {
 
   return (
     <>
-      <PerspectiveCamera makeDefault position={[8, 11, -15]} fov={50} near={0.1} far={1000} />
+      <PerspectiveCamera makeDefault position={[9, 11, -15]} fov={50} near={0.1} far={1000} />
       <OrbitControls
         ref={orbitControlsRef}
         target={[2, 7.8, -7.5]}
