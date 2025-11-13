@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@renderer/components/ui/card'
+import { Collapsible } from '@renderer/components/ui/collapsible'
 import { Label } from '@renderer/components/ui/label'
 import { debounce } from '@renderer/lib/utils'
 import {
@@ -47,6 +41,7 @@ import {
   Blend,
   CircleDot,
   Eye,
+  Lightbulb,
   LoaderPinwheel,
   Play,
   Power,
@@ -144,719 +139,629 @@ export const SettingsPanel: React.FC = () => {
   }
 
   return (
-    <Card className="bg-card/0">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">Ajustes</CardTitle>
-        <CardDescription>Configuración por componente de la máquina</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-12">
-          {/* 1. ELEVATOR */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-lg font-medium">Elevador</h3>
-              <ArrowsUpFromLine className="h-4 w-4" />
+    <div className="bg-card/30 border-border rounded-lg border">
+      <div className="border-border border-b px-3 py-2">
+        <h2 className="text-sm font-semibold">Configuración</h2>
+        <p className="text-muted-foreground text-[10px]">Ajustes por componente</p>
+      </div>
+      <div className="divide-border/50 divide-y">
+        {/* 1. ELEVATOR */}
+        <Collapsible title="Elevador" icon={<ArrowsUpFromLine className="h-4 w-4" />}>
+          {/* Ciclo */}
+          <div className="space-y-2 pt-2">
+            <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Tiempo máx. subida:</Label>
+                <span className="text-sm">{delays.elevUp}ms</span>
+              </div>
+              <Slider
+                value={[delays.elevUp]}
+                onValueChange={([v]) => handleDelayChange('elevUp', v)}
+                max={20_000}
+                step={100}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Tiempo límite para que el elevador llegue arriba
+              </p>
             </div>
 
-            <div className="space-y-3 pt-2">
-              {/* Ciclo */}
-              <div className="space-y-2 pt-2">
-                <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Tiempo máx. subida:</Label>
-                    <span className="text-sm">{delays.elevUp}ms</span>
-                  </div>
-                  <Slider
-                    value={[delays.elevUp]}
-                    onValueChange={([v]) => handleDelayChange('elevUp', v)}
-                    max={20_000}
-                    step={100}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Tiempo límite para que el elevador llegue arriba
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Tiempo máx. bajada:</Label>
-                    <span className="text-sm">{delays.elevDown}ms</span>
-                  </div>
-                  <Slider
-                    value={[delays.elevDown]}
-                    onValueChange={([v]) => handleDelayChange('elevDown', v)}
-                    max={20_000}
-                    step={100}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Tiempo límite para que el elevador llegue abajo
-                  </p>
-                </div>
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Tiempo máx. bajada:</Label>
+                <span className="text-sm">{delays.elevDown}ms</span>
               </div>
-
-              <div className="my-3 border-t" />
-
-              {/* Configuración */}
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs font-semibold">Configuración</Label>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Posición superior (sensor):</Label>
-                    <span className="text-sm">{proximity.maxProximity}mm</span>
-                  </div>
-                  <Slider
-                    value={[proximity.maxProximity]}
-                    onValueChange={([v]) => handleProximityChange('maxProximity', v)}
-                    min={50}
-                    max={120}
-                    step={1}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Distancia del sensor cuando el elevador está arriba
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Posición inferior (sensor):</Label>
-                    <span className="text-sm">{proximity.minProximity}mm</span>
-                  </div>
-                  <Slider
-                    value={[proximity.minProximity]}
-                    onValueChange={([v]) => handleProximityChange('minProximity', v)}
-                    min={120}
-                    max={200}
-                    step={1}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Distancia del sensor cuando el elevador está abajo
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Velocidad:</Label>
-                    <span className="text-sm">{elevator.speed} pasos/s</span>
-                  </div>
-                  <Slider
-                    value={[elevator.speed]}
-                    onValueChange={([v]) => handleElevatorChange('speed', v)}
-                    min={elevator.minSpeed}
-                    max={elevator.maxSpeed}
-                    step={10}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Velocidad de movimiento del motor del elevador
-                  </p>
-                </div>
-              </div>
-
-              {/* Manual Controls - Only in Manual Mode */}
-              {isManualMode && (
-                <div className="space-y-1 pt-2">
-                  <Label className="text-xs font-medium">Control Manual:</Label>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={testElevatorUp} className="flex-1">
-                      <ArrowUp className="h-3 w-3" />
-                      Subir
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={testElevatorDown}
-                      className="flex-1"
-                    >
-                      <ArrowDown className="h-3 w-3" />
-                      Bajar
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={testElevatorStop}
-                      className="flex-1"
-                    >
-                      <Square className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <Slider
+                value={[delays.elevDown]}
+                onValueChange={([v]) => handleDelayChange('elevDown', v)}
+                max={20_000}
+                step={100}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Tiempo límite para que el elevador llegue abajo
+              </p>
             </div>
           </div>
 
-          <div className="border-t" />
+          <div className="my-3 border-t" />
 
-          {/* 2. DOSING WHEEL */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-lg font-medium">Rueda Dosificadora</h3>
-              <LoaderPinwheel className="h-4 w-4" />
+          {/* Configuración */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground text-xs font-semibold">Configuración</Label>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Posición superior (sensor):</Label>
+                <span className="text-sm">{proximity.maxProximity}mm</span>
+              </div>
+              <Slider
+                value={[proximity.maxProximity]}
+                onValueChange={([v]) => handleProximityChange('maxProximity', v)}
+                min={50}
+                max={120}
+                step={1}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Distancia del sensor cuando el elevador está arriba
+              </p>
             </div>
 
-            <div className="space-y-3">
-              {/* Ciclo */}
-              <div className="space-y-2 pt-2">
-                <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Tiempo estabilización:</Label>
-                    <span className="text-sm">{delays.settle}ms</span>
-                  </div>
-                  <Slider
-                    value={[delays.settle]}
-                    onValueChange={([v]) => handleDelayChange('settle', v)}
-                    max={10_000}
-                    step={100}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Espera después de dosificar antes de continuar
-                  </p>
-                </div>
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Posición inferior (sensor):</Label>
+                <span className="text-sm">{proximity.minProximity}mm</span>
               </div>
-
-              <div className="my-3 border-t" />
-
-              {/* Configuración */}
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs font-semibold">Configuración</Label>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Divisiones de Rueda:</Label>
-                    <span className="text-sm">{dosing.wheelDivisions}</span>
-                  </div>
-                  <Slider
-                    value={[dosing.wheelDivisions]}
-                    onValueChange={([v]) => handleDosingChange('wheelDivisions', v)}
-                    min={1}
-                    max={64}
-                    step={1}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Cantidad de compartimentos en la rueda
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Tamaño de Lote:</Label>
-                    <span className="text-sm">{dosing.lotSize}</span>
-                  </div>
-                  <Slider
-                    value={[dosing.lotSize]}
-                    onValueChange={([v]) => handleDosingChange('lotSize', v)}
-                    min={1}
-                    max={64}
-                    step={1}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Cantidad de pastillas a procesar por ciclo
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Velocidad Motor:</Label>
-                    <span className="text-sm">{dosing.motorSpeed?.toFixed(1) || '-'} rad/s</span>
-                  </div>
-                  <Slider
-                    value={[dosing.motorSpeed || 0]}
-                    onValueChange={([v]) => handleDosingChange('motorSpeed', v)}
-                    min={0.01}
-                    max={4}
-                    step={0.01}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Velocidad de rotación del motor dosificador
-                  </p>
-                </div>
+              <Slider
+                value={[proximity.minProximity]}
+                onValueChange={([v]) => handleProximityChange('minProximity', v)}
+                min={120}
+                max={200}
+                step={1}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Distancia del sensor cuando el elevador está abajo
+              </p>
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Velocidad:</Label>
+                <span className="text-sm">{elevator.speed} pasos/s</span>
               </div>
-
-              {/* Manual Controls - Only in Manual Mode */}
-              {isManualMode && (
-                <div className="space-y-1 pt-2">
-                  <Label className="text-xs font-medium">Control Manual:</Label>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={testDosingForward}
-                      className="flex-1"
-                    >
-                      <Play className="h-3 w-3" />
-                      Girar
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={dispenseOnePill}
-                      className="flex-1"
-                    >
-                      <RedoDot className="h-3 w-3" />1 Píldora
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={testDosingStop}
-                      className="flex-1"
-                    >
-                      <Square className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <Slider
+                value={[elevator.speed]}
+                onValueChange={([v]) => handleElevatorChange('speed', v)}
+                min={elevator.minSpeed}
+                max={elevator.maxSpeed}
+                step={10}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Velocidad de movimiento del motor del elevador
+              </p>
             </div>
           </div>
 
-          <div className="border-t" />
+          {/* Manual Controls - Only in Manual Mode */}
+          {isManualMode && (
+            <div className="space-y-1 pt-2">
+              <Label className="text-xs font-medium">Control Manual:</Label>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={testElevatorUp} className="flex-1">
+                  <ArrowUp className="h-3 w-3" />
+                  Subir
+                </Button>
+                <Button variant="outline" size="sm" onClick={testElevatorDown} className="flex-1">
+                  <ArrowDown className="h-3 w-3" />
+                  Bajar
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={testElevatorStop}
+                  className="flex-1"
+                >
+                  <Square className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </Collapsible>
 
-          {/* 3. LOAD CELL */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-lg font-medium">Celda de Carga</h3>
-              <Scale className="h-4 w-4" />
+        {/* 2. DOSING WHEEL */}
+        <Collapsible title="Rueda Dosificadora" icon={<LoaderPinwheel className="h-4 w-4" />}>
+          {/* Ciclo */}
+          <div className="space-y-2 pt-2">
+            <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Tiempo estabilización:</Label>
+                <span className="text-sm">{delays.settle}ms</span>
+              </div>
+              <Slider
+                value={[delays.settle]}
+                onValueChange={([v]) => handleDelayChange('settle', v)}
+                max={10_000}
+                step={100}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Espera después de dosificar antes de continuar
+              </p>
+            </div>
+          </div>
+
+          <div className="my-3 border-t" />
+
+          {/* Configuración */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground text-xs font-semibold">Configuración</Label>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Divisiones de Rueda:</Label>
+                <span className="text-sm">{dosing.wheelDivisions}</span>
+              </div>
+              <Slider
+                value={[dosing.wheelDivisions]}
+                onValueChange={([v]) => handleDosingChange('wheelDivisions', v)}
+                min={1}
+                max={64}
+                step={1}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Cantidad de compartimentos en la rueda
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Tamaño de Lote:</Label>
+                <span className="text-sm">{dosing.lotSize}</span>
+              </div>
+              <Slider
+                value={[dosing.lotSize]}
+                onValueChange={([v]) => handleDosingChange('lotSize', v)}
+                min={1}
+                max={64}
+                step={1}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Cantidad de pastillas a procesar por ciclo
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Velocidad Motor:</Label>
+                <span className="text-sm">{dosing.motorSpeed?.toFixed(1) || '-'} rad/s</span>
+              </div>
+              <Slider
+                value={[dosing.motorSpeed || 0]}
+                onValueChange={([v]) => handleDosingChange('motorSpeed', v)}
+                min={0.01}
+                max={4}
+                step={0.01}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Velocidad de rotación del motor dosificador
+              </p>
+            </div>
+          </div>
+
+          {/* Manual Controls - Only in Manual Mode */}
+          {isManualMode && (
+            <div className="space-y-1 pt-2">
+              <Label className="text-xs font-medium">Control Manual:</Label>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={testDosingForward} className="flex-1">
+                  <Play className="h-3 w-3" />
+                  Girar
+                </Button>
+                <Button variant="outline" size="sm" onClick={dispenseOnePill} className="flex-1">
+                  <RedoDot className="h-3 w-3" />1 Píldora
+                </Button>
+                <Button variant="destructive" size="sm" onClick={testDosingStop} className="flex-1">
+                  <Square className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </Collapsible>
+
+        {/* 3. LOAD CELL */}
+        <Collapsible title="Celda de Carga" icon={<Scale className="h-4 w-4" />}>
+          {/* Ciclo */}
+          <div className="space-y-2 pt-2">
+            <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Tiempo estabilización peso:</Label>
+                <span className="text-sm">{delays.weight}ms</span>
+              </div>
+              <Slider
+                value={[delays.weight]}
+                onValueChange={([v]) => handleDelayChange('weight', v)}
+                max={10_000}
+                step={100}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Espera para que la lectura de peso se estabilice
+              </p>
+            </div>
+          </div>
+
+          <div className="my-3 border-t" />
+
+          {/* Configuración */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground text-xs font-semibold">Configuración</Label>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Factor de calibración:</Label>
+                <span className="text-sm">{loadCell.calibrationFactor.toFixed(1)}</span>
+              </div>
+              <Slider
+                value={[loadCell.calibrationFactor]}
+                onValueChange={([v]) => handleLoadCellChange('calibrationFactor', v)}
+                min={100}
+                max={10000}
+                step={10}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Ajuste para convertir lecturas crudas a gramos
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Filtro de ruido (deadband):</Label>
+                <span className="text-sm">{loadCell.deadband.toFixed(3)}g</span>
+              </div>
+              <Slider
+                value={[loadCell.deadband]}
+                onValueChange={([v]) => handleLoadCellChange('deadband', v)}
+                min={0.001}
+                max={1}
+                step={0.001}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Ignora cambios de peso menores a este valor
+              </p>
             </div>
 
             <div className="space-y-3">
-              {/* Ciclo */}
               <div className="space-y-2 pt-2">
-                <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
+                <Label className="text-muted-foreground text-xs font-semibold">Filtro</Label>
 
                 <div className="space-y-1">
                   <div className="flex justify-between">
-                    <Label className="text-xs">Tiempo estabilización peso:</Label>
-                    <span className="text-sm">{delays.weight}ms</span>
+                    <Label className="text-xs">Peso objetivo:</Label>
+                    <span className="text-sm">{weightFilter.targetWeight.toFixed(3)}g</span>
                   </div>
                   <Slider
-                    value={[delays.weight]}
-                    onValueChange={([v]) => handleDelayChange('weight', v)}
-                    max={10_000}
-                    step={100}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Espera para que la lectura de peso se estabilice
-                  </p>
-                </div>
-              </div>
-
-              <div className="my-3 border-t" />
-
-              {/* Configuración */}
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs font-semibold">Configuración</Label>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Factor de calibración:</Label>
-                    <span className="text-sm">{loadCell.calibrationFactor.toFixed(1)}</span>
-                  </div>
-                  <Slider
-                    value={[loadCell.calibrationFactor]}
-                    onValueChange={([v]) => handleLoadCellChange('calibrationFactor', v)}
-                    min={100}
-                    max={10000}
-                    step={10}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Ajuste para convertir lecturas crudas a gramos
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Filtro de ruido (deadband):</Label>
-                    <span className="text-sm">{loadCell.deadband.toFixed(3)}g</span>
-                  </div>
-                  <Slider
-                    value={[loadCell.deadband]}
-                    onValueChange={([v]) => handleLoadCellChange('deadband', v)}
-                    min={0.001}
-                    max={1}
+                    value={[weightFilter.targetWeight]}
+                    onValueChange={([v]) => updateWeightFilterStore('targetWeight', v)}
+                    min={0.1}
+                    max={5}
                     step={0.001}
                     className="w-full"
                   />
                   <p className="text-muted-foreground text-[10px]">
-                    Ignora cambios de peso menores a este valor
+                    Peso esperado de cada pastilla
                   </p>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="space-y-2 pt-2">
-                    <Label className="text-muted-foreground text-xs font-semibold">Filtro</Label>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <Label className="text-xs">Peso objetivo:</Label>
-                        <span className="text-sm">{weightFilter.targetWeight.toFixed(3)}g</span>
-                      </div>
-                      <Slider
-                        value={[weightFilter.targetWeight]}
-                        onValueChange={([v]) => updateWeightFilterStore('targetWeight', v)}
-                        min={0.1}
-                        max={5}
-                        step={0.001}
-                        className="w-full"
-                      />
-                      <p className="text-muted-foreground text-[10px]">
-                        Peso esperado de cada pastilla
-                      </p>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <Label className="text-xs">Tolerancia (±):</Label>
-                        <span className="text-sm">{weightFilter.tolerance.toFixed(3)}g</span>
-                      </div>
-                      <Slider
-                        value={[weightFilter.tolerance]}
-                        onValueChange={([v]) => updateWeightFilterStore('tolerance', v)}
-                        min={0.01}
-                        max={0.5}
-                        step={0.001}
-                        className="w-full"
-                      />
-                      <p className="text-muted-foreground text-[10px]">
-                        Rango aceptable alrededor del peso objetivo
-                      </p>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <Label className="text-xs">Umbral de cero:</Label>
-                        <span className="text-sm">{weightFilter.zeroThreshold.toFixed(3)}g</span>
-                      </div>
-                      <Slider
-                        value={[weightFilter.zeroThreshold]}
-                        onValueChange={([v]) => updateWeightFilterStore('zeroThreshold', v)}
-                        min={0.001}
-                        max={0.2}
-                        step={0.001}
-                        className="w-full"
-                      />
-                      <p className="text-muted-foreground text-[10px]">
-                        Valores menores se consideran cero
-                      </p>
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex justify-between">
-                        <Label className="text-xs">Factor de compresión:</Label>
-                        <span className="text-sm">
-                          {weightFilter.compressionFactor.toFixed(1)}x
-                        </span>
-                      </div>
-                      <Slider
-                        value={[weightFilter.compressionFactor]}
-                        onValueChange={([v]) => updateWeightFilterStore('compressionFactor', v)}
-                        min={1}
-                        max={10}
-                        step={0.1}
-                        className="w-full"
-                      />
-                      <p className="text-muted-foreground text-[10px]">
-                        Comprime las lecturas hacia el objetivo (mayor = más compresión)
-                      </p>
-                    </div>
-
-                    <div className="bg-muted/50 mt-2 rounded-md p-2 text-xs">
-                      <p className="text-muted-foreground">
-                        El filtro se aplica solo en el cliente. Pesos menores a{' '}
-                        <strong>{weightFilter.zeroThreshold.toFixed(3)}g</strong> se muestran como
-                        0. Pesos dentro de <strong>{weightFilter.targetWeight.toFixed(3)}g</strong>{' '}
-                        (±{weightFilter.tolerance.toFixed(3)}g) se comprimen{' '}
-                        <strong>{weightFilter.compressionFactor.toFixed(1)}x</strong> hacia el
-                        objetivo.
-                      </p>
-                    </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <Label className="text-xs">Tolerancia (±):</Label>
+                    <span className="text-sm">{weightFilter.tolerance.toFixed(3)}g</span>
                   </div>
+                  <Slider
+                    value={[weightFilter.tolerance]}
+                    onValueChange={([v]) => updateWeightFilterStore('tolerance', v)}
+                    min={0.01}
+                    max={0.5}
+                    step={0.001}
+                    className="w-full"
+                  />
+                  <p className="text-muted-foreground text-[10px]">
+                    Rango aceptable alrededor del peso objetivo
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <Label className="text-xs">Umbral de cero:</Label>
+                    <span className="text-sm">{weightFilter.zeroThreshold.toFixed(3)}g</span>
+                  </div>
+                  <Slider
+                    value={[weightFilter.zeroThreshold]}
+                    onValueChange={([v]) => updateWeightFilterStore('zeroThreshold', v)}
+                    min={0.001}
+                    max={0.2}
+                    step={0.001}
+                    className="w-full"
+                  />
+                  <p className="text-muted-foreground text-[10px]">
+                    Valores menores se consideran cero
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between">
+                    <Label className="text-xs">Factor de compresión:</Label>
+                    <span className="text-sm">{weightFilter.compressionFactor.toFixed(1)}x</span>
+                  </div>
+                  <Slider
+                    value={[weightFilter.compressionFactor]}
+                    onValueChange={([v]) => updateWeightFilterStore('compressionFactor', v)}
+                    min={1}
+                    max={10}
+                    step={0.1}
+                    className="w-full"
+                  />
+                  <p className="text-muted-foreground text-[10px]">
+                    Comprime las lecturas hacia el objetivo (mayor = más compresión)
+                  </p>
+                </div>
+
+                <div className="bg-muted/50 mt-2 rounded-md p-2 text-xs">
+                  <p className="text-muted-foreground">
+                    El filtro se aplica solo en el cliente. Pesos menores a{' '}
+                    <strong>{weightFilter.zeroThreshold.toFixed(3)}g</strong> se muestran como 0.
+                    Pesos dentro de <strong>{weightFilter.targetWeight.toFixed(3)}g</strong> (±
+                    {weightFilter.tolerance.toFixed(3)}g) se comprimen{' '}
+                    <strong>{weightFilter.compressionFactor.toFixed(1)}x</strong> hacia el objetivo.
+                  </p>
                 </div>
               </div>
-
-              {/* Manual Controls - Only in Manual Mode */}
-              {isManualMode && (
-                <div className="space-y-1 pt-2">
-                  <Label className="text-xs font-medium">Control Manual:</Label>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={testLoadCell} className="flex-1">
-                      <Eye className="h-3 w-3" />
-                      Test
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={tareLoadCell} className="flex-1">
-                      <Scale className="h-3 w-3" />
-                      Tarar
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
-          <div className="border-t" />
-
-          {/* 4. TRANSFER SOLENOID */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-lg font-medium">Solenoide Transferencia</h3>
-              <ArrowRightFromLine className="h-4 w-4" />
+          {/* Manual Controls - Only in Manual Mode */}
+          {isManualMode && (
+            <div className="space-y-1 pt-2">
+              <Label className="text-xs font-medium">Control Manual:</Label>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={testLoadCell} className="flex-1">
+                  <Eye className="h-3 w-3" />
+                  Test
+                </Button>
+                <Button variant="outline" size="sm" onClick={tareLoadCell} className="flex-1">
+                  <Scale className="h-3 w-3" />
+                  Tarar
+                </Button>
+              </div>
             </div>
+          )}
+        </Collapsible>
 
-            <div className="space-y-3">
-              {/* Ciclo */}
-              <div className="space-y-2 pt-2">
-                <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
+        {/* 4. TRANSFER SOLENOID */}
+        <Collapsible
+          title="Solenoide Transferencia"
+          icon={<ArrowRightFromLine className="h-4 w-4" />}
+        >
+          {/* Ciclo */}
+          <div className="space-y-2 pt-2">
+            <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
 
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Tiempo de empuje:</Label>
-                    <span className="text-sm">{delays.transfer}ms</span>
-                  </div>
-                  <Slider
-                    value={[delays.transfer]}
-                    onValueChange={([v]) => handleDelayChange('transfer', v)}
-                    max={10_000}
-                    step={100}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Duración del empuje de transferencia
-                  </p>
-                </div>
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Tiempo de empuje:</Label>
+                <span className="text-sm">{delays.transfer}ms</span>
               </div>
-
-              <div className="my-3 border-t" />
-
-              {/* Protecciones */}
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs font-semibold">Protecciones</Label>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Tiempo máximo operación:</Label>
-                    <span className="text-sm">{timeouts.transferMax}ms</span>
-                  </div>
-                  <Slider
-                    value={[timeouts.transferMax]}
-                    onValueChange={([v]) => handleTimeoutChange('transferMax', v)}
-                    min={1000}
-                    max={30_000}
-                    step={500}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Límite de seguridad para evitar sobrecalentamiento
-                  </p>
-                </div>
-              </div>
-
-              {/* Manual Controls - Only in Manual Mode */}
-              {isManualMode && (
-                <div className="space-y-1 pt-2">
-                  <Label className="text-xs font-medium">Control Manual:</Label>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={testTransferOpen}
-                      className="flex-1"
-                    >
-                      <Power className="h-3 w-3" />
-                      Abrir
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={testTransferClose}
-                      className="flex-1"
-                    >
-                      <PowerOff className="h-3 w-3" />
-                      Cerrar
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <Slider
+                value={[delays.transfer]}
+                onValueChange={([v]) => handleDelayChange('transfer', v)}
+                max={10_000}
+                step={100}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Duración del empuje de transferencia
+              </p>
             </div>
           </div>
 
-          <div className="border-t" />
+          <div className="my-3 border-t" />
 
-          {/* 5. MIXER/GRINDER */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-lg font-medium">Molinillo</h3>
-              <Blend className="h-4 w-4" />
-            </div>
+          {/* Protecciones */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground text-xs font-semibold">Protecciones</Label>
 
-            <div className="space-y-3">
-              {/* Ciclo */}
-              <div className="space-y-2 pt-2">
-                <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Tiempo de molienda:</Label>
-                    <span className="text-sm">{delays.grind}ms</span>
-                  </div>
-                  <Slider
-                    value={[delays.grind]}
-                    onValueChange={([v]) => handleDelayChange('grind', v)}
-                    max={10_000}
-                    step={100}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Duración del proceso de molienda
-                  </p>
-                </div>
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Tiempo máximo operación:</Label>
+                <span className="text-sm">{timeouts.transferMax}ms</span>
               </div>
-
-              <div className="my-3 border-t" />
-
-              {/* Protecciones */}
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs font-semibold">Protecciones</Label>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Tiempo máximo operación:</Label>
-                    <span className="text-sm">{timeouts.grinderMax}ms</span>
-                  </div>
-                  <Slider
-                    value={[timeouts.grinderMax]}
-                    onValueChange={([v]) => handleTimeoutChange('grinderMax', v)}
-                    min={1_000}
-                    max={120_000}
-                    step={1000}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Límite de seguridad para evitar sobrecalentamiento
-                  </p>
-                </div>
-              </div>
-
-              {/* Manual Controls - Only in Manual Mode */}
-              {isManualMode && (
-                <div className="space-y-1 pt-2">
-                  <Label className="text-xs font-medium">Control Manual:</Label>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={testGrinderOn} className="flex-1">
-                      <Play className="h-3 w-3" />
-                      Encender
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={testGrinderOff}
-                      className="flex-1"
-                    >
-                      <Square className="h-3 w-3" />
-                      Apagar
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <Slider
+                value={[timeouts.transferMax]}
+                onValueChange={([v]) => handleTimeoutChange('transferMax', v)}
+                min={1000}
+                max={30_000}
+                step={500}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Límite de seguridad para evitar sobrecalentamiento
+              </p>
             </div>
           </div>
 
-          <div className="border-t" />
-
-          {/* 6. CAPPER SOLENOID */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-lg font-medium">Solenoide Tapado</h3>
-              <CircleDot className="h-4 w-4" />
+          {/* Manual Controls - Only in Manual Mode */}
+          {isManualMode && (
+            <div className="space-y-1 pt-2">
+              <Label className="text-xs font-medium">Control Manual:</Label>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={testTransferOpen} className="flex-1">
+                  <Power className="h-3 w-3" />
+                  Abrir
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={testTransferClose}
+                  className="flex-1"
+                >
+                  <PowerOff className="h-3 w-3" />
+                  Cerrar
+                </Button>
+              </div>
             </div>
+          )}
+        </Collapsible>
 
-            <div className="space-y-3">
-              {/* Ciclo */}
-              <div className="space-y-2 pt-2">
-                <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
+        {/* 5. MIXER/GRINDER */}
+        <Collapsible title="Molinillo" icon={<Blend className="h-4 w-4" />}>
+          {/* Ciclo */}
+          <div className="space-y-2 pt-2">
+            <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
 
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Tiempo de empuje:</Label>
-                    <span className="text-sm">{delays.cap}ms</span>
-                  </div>
-                  <Slider
-                    value={[delays.cap]}
-                    onValueChange={([v]) => handleDelayChange('cap', v)}
-                    max={10_000}
-                    step={100}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Duración del empuje para colocar la tapa
-                  </p>
-                </div>
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Tiempo de molienda:</Label>
+                <span className="text-sm">{delays.grind}ms</span>
               </div>
-
-              <div className="my-3 border-t" />
-
-              {/* Protecciones */}
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs font-semibold">Protecciones</Label>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <Label className="text-xs">Tiempo máximo operación:</Label>
-                    <span className="text-sm">{timeouts.capMax}ms</span>
-                  </div>
-                  <Slider
-                    value={[timeouts.capMax]}
-                    onValueChange={([v]) => handleTimeoutChange('capMax', v)}
-                    min={1000}
-                    max={30_000}
-                    step={500}
-                    className="w-full"
-                  />
-                  <p className="text-muted-foreground text-[10px]">
-                    Límite de seguridad para evitar sobrecalentamiento
-                  </p>
-                </div>
-              </div>
-
-              {/* Manual Controls - Only in Manual Mode */}
-              {isManualMode && (
-                <div className="space-y-1 pt-2">
-                  <Label className="text-xs font-medium">Control Manual:</Label>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={testCapPush} className="flex-1">
-                      <Power className="h-3 w-3" />
-                      Empujar
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={testCapRetract}
-                      className="flex-1"
-                    >
-                      <PowerOff className="h-3 w-3" />
-                      Retraer
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <Slider
+                value={[delays.grind]}
+                onValueChange={([v]) => handleDelayChange('grind', v)}
+                max={10_000}
+                step={100}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">Duración del proceso de molienda</p>
             </div>
           </div>
-          <div className="border-t" />
 
-          {/* 7. LEDs */}
+          <div className="my-3 border-t" />
+
+          {/* Protecciones */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground text-xs font-semibold">Protecciones</Label>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Tiempo máximo operación:</Label>
+                <span className="text-sm">{timeouts.grinderMax}ms</span>
+              </div>
+              <Slider
+                value={[timeouts.grinderMax]}
+                onValueChange={([v]) => handleTimeoutChange('grinderMax', v)}
+                min={1_000}
+                max={120_000}
+                step={1000}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Límite de seguridad para evitar sobrecalentamiento
+              </p>
+            </div>
+          </div>
+
+          {/* Manual Controls - Only in Manual Mode */}
+          {isManualMode && (
+            <div className="space-y-1 pt-2">
+              <Label className="text-xs font-medium">Control Manual:</Label>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={testGrinderOn} className="flex-1">
+                  <Play className="h-3 w-3" />
+                  Encender
+                </Button>
+                <Button variant="destructive" size="sm" onClick={testGrinderOff} className="flex-1">
+                  <Square className="h-3 w-3" />
+                  Apagar
+                </Button>
+              </div>
+            </div>
+          )}
+        </Collapsible>
+
+        {/* 6. CAPPER SOLENOID */}
+        <Collapsible title="Solenoide Tapado" icon={<CircleDot className="h-4 w-4" />}>
+          {/* Ciclo */}
+          <div className="space-y-2 pt-2">
+            <Label className="text-muted-foreground text-xs font-semibold">Ciclo</Label>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Tiempo de empuje:</Label>
+                <span className="text-sm">{delays.cap}ms</span>
+              </div>
+              <Slider
+                value={[delays.cap]}
+                onValueChange={([v]) => handleDelayChange('cap', v)}
+                max={10_000}
+                step={100}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Duración del empuje para colocar la tapa
+              </p>
+            </div>
+          </div>
+
+          <div className="my-3 border-t" />
+
+          {/* Protecciones */}
+          <div className="space-y-2">
+            <Label className="text-muted-foreground text-xs font-semibold">Protecciones</Label>
+
+            <div className="space-y-1">
+              <div className="flex justify-between">
+                <Label className="text-xs">Tiempo máximo operación:</Label>
+                <span className="text-sm">{timeouts.capMax}ms</span>
+              </div>
+              <Slider
+                value={[timeouts.capMax]}
+                onValueChange={([v]) => handleTimeoutChange('capMax', v)}
+                min={1000}
+                max={30_000}
+                step={500}
+                className="w-full"
+              />
+              <p className="text-muted-foreground text-[10px]">
+                Límite de seguridad para evitar sobrecalentamiento
+              </p>
+            </div>
+          </div>
+
+          {/* Manual Controls - Only in Manual Mode */}
+          {isManualMode && (
+            <div className="space-y-1 pt-2">
+              <Label className="text-xs font-medium">Control Manual:</Label>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={testCapPush} className="flex-1">
+                  <Power className="h-3 w-3" />
+                  Empujar
+                </Button>
+                <Button variant="destructive" size="sm" onClick={testCapRetract} className="flex-1">
+                  <PowerOff className="h-3 w-3" />
+                  Retraer
+                </Button>
+              </div>
+            </div>
+          )}
+        </Collapsible>
+
+        {/* 7. LEDs */}
+        <Collapsible title="LEDs" icon={<Lightbulb className="h-4 w-4" />}>
           <LEDControlPanel />
-        </div>
-      </CardContent>
-    </Card>
+        </Collapsible>
+      </div>
+    </div>
   )
 }

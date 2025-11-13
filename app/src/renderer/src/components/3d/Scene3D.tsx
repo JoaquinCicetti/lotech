@@ -15,10 +15,11 @@ import { MachineModel } from './MachineModel'
 
 interface Scene3DProps {
   systemStatus: SystemStatus
+  isConnected?: boolean
 }
 
 export const Scene3D: React.FC<Scene3DProps> = (props) => {
-  const { systemStatus } = props
+  const { systemStatus, isConnected = false } = props
 
   // Refs for elevator indicator - shared between AnimationController and ElevatorIndicators
   const elevatorIndicatorRef = useRef<THREE.Mesh>(null)
@@ -33,7 +34,15 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
     >
       <Canvas
         camera={{ fov: 50, position: [8, 6, 8] }}
-        gl={{ antialias: false, powerPreference: 'high-performance' }}
+        gl={{
+          antialias: false,
+          powerPreference: 'high-performance',
+          alpha: false,
+          stencil: false,
+          depth: true,
+        }}
+        dpr={[1, 1.5]} // Limit pixel ratio for performance
+        performance={{ min: 0.5 }} // Auto-adjust on low FPS
       >
         <Suspense fallback={null}>
           <CameraController autoRotate={false} />
@@ -42,7 +51,7 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
           <Background360 />
 
           {/* Lighting */}
-          <Lighting />
+          <Lighting isConnected={isConnected} />
 
           {/* Gaming Setup Table */}
           <GamingSetup position={[-4.5, -14.6, 4.5]} scale={7} />

@@ -10,7 +10,7 @@ import {
 } from '@renderer/serial/serialCommands'
 import { useSettingsStore } from '@renderer/store/settingsStore'
 import { LEDColor } from '@renderer/types'
-import { Check, Lightbulb } from 'lucide-react'
+import { Check } from 'lucide-react'
 import React, { useState } from 'react'
 import { Button } from '../ui/button'
 
@@ -115,11 +115,6 @@ export const LEDControlPanel: React.FC = () => {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-lg font-medium">LEDs</h3>
-        <Lightbulb className="h-4 w-4" />
-      </div>
-
       {/* Brightness slider */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
