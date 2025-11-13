@@ -8,7 +8,7 @@ export interface CameraPosition {
 }
 
 // Machine is now on the gaming table
-const MACHINE_CENTER: [number, number, number] = [1, 7.8, -7.5]
+const MACHINE_CENTER: [number, number, number] = [2, 7.8, -7.5]
 
 export const CAMERA_PRESETS: Record<CameraPreset, CameraPosition> = {
   free: {

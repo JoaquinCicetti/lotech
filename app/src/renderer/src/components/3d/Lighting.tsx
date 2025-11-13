@@ -7,8 +7,8 @@ interface LightingProps {
 }
 
 export const Lighting: React.FC<LightingProps> = ({ isConnected = false }) => {
-  // Machine is at [1, 6.8, -7.5]
-  const machinePosition: [number, number, number] = [1, 6.8, -7.5]
+  // Machine is at [2, 6.8, -7.5]
+  const machinePosition: [number, number, number] = [2, 6.8, -7.5]
 
   // Refs for animated lights
   const ambientRef = useRef<THREE.AmbientLight>(null)
@@ -26,60 +26,7 @@ export const Lighting: React.FC<LightingProps> = ({ isConnected = false }) => {
   const [targetPoint3, setTargetPoint3] = useState(0)
   const [targetTableLamp, setTargetTableLamp] = useState(0)
 
-  // Flicker effect state
-  const [isFlickering, setIsFlickering] = useState(false)
   const [hasStartedUp, setHasStartedUp] = useState(false)
-  const flickerTimerRef = useRef<NodeJS.Timeout[]>([])
-
-  // Flicker sequence - simulates real bulb startup
-  const triggerFlicker = () => {
-    setIsFlickering(true)
-
-    // Clear any existing timers
-    flickerTimerRef.current.forEach((timer) => clearTimeout(timer))
-    flickerTimerRef.current = []
-
-    // Final full brightness targets
-    const fullAmbient = 0.15
-    const fullSpot = 20
-    const fullPoint1 = 1.5
-    const fullPoint2 = 1.5
-    const fullPoint3 = 0.1
-    const fullTableLamp = 5.0
-
-    // Flicker pattern: [time in ms, intensity multiplier] - reduced for performance
-    const flickerPattern = [
-      [0, 0.4],
-      // [80, 0.7],
-      // [160, 0.5],
-      // [240, 1.0],
-      [320, 0.85],
-    ]
-
-    flickerPattern.forEach(([delay, multiplier]) => {
-      const timer = setTimeout(() => {
-        setTargetAmbient(fullAmbient * multiplier)
-        setTargetSpot(fullSpot * multiplier)
-        setTargetPoint1(fullPoint1 * multiplier)
-        setTargetPoint2(fullPoint2 * multiplier)
-        setTargetPoint3(fullPoint3 * multiplier)
-        setTargetTableLamp(fullTableLamp * multiplier)
-      }, delay)
-      flickerTimerRef.current.push(timer)
-    })
-
-    // Final settle to full brightness
-    const finalTimer = setTimeout(() => {
-      setTargetAmbient(fullAmbient)
-      setTargetSpot(fullSpot)
-      setTargetPoint1(fullPoint1)
-      setTargetPoint2(fullPoint2)
-      setTargetPoint3(fullPoint3)
-      setTargetTableLamp(fullTableLamp)
-      setIsFlickering(false)
-    }, 500)
-    flickerTimerRef.current.push(finalTimer)
-  }
 
   // Startup animation - turn lights on once when component mounts
   useEffect(() => {
@@ -104,8 +51,15 @@ export const Lighting: React.FC<LightingProps> = ({ isConnected = false }) => {
     if (!hasStartedUp) return // Wait for startup to complete
 
     if (isConnected) {
-      triggerFlicker()
+      // Connected state - full brightness
+      setTargetAmbient(0.15)
+      setTargetSpot(20)
+      setTargetPoint1(1.5)
+      setTargetPoint2(1.5)
+      setTargetPoint3(0.1)
+      setTargetTableLamp(5.0)
     } else {
+      // Disconnected state - dim lights
       setTargetAmbient(0.05)
       setTargetSpot(8)
       setTargetPoint1(0.5)
@@ -113,17 +67,12 @@ export const Lighting: React.FC<LightingProps> = ({ isConnected = false }) => {
       setTargetPoint3(0.03)
       setTargetTableLamp(2.0)
     }
-
-    // Cleanup timers on unmount
-    return () => {
-      flickerTimerRef.current.forEach((timer) => clearTimeout(timer))
-    }
   }, [isConnected, hasStartedUp])
 
   // Animate light intensities smoothly
   useFrame((_, delta) => {
-    // Faster lerp during flicker for snappy response, slower for smooth transitions
-    const lerpFactor = Math.min(delta * (isFlickering ? 4.0 : 1.2), 1)
+    // Fast lerp for quick transitions
+    const lerpFactor = Math.min(delta * 5.0, 1)
 
     if (ambientRef.current) {
       ambientRef.current.intensity = THREE.MathUtils.lerp(
@@ -202,14 +151,14 @@ export const Lighting: React.FC<LightingProps> = ({ isConnected = false }) => {
         args={['#ffffff', 0, 6, 0.5]}
       />
 
-      <pointLight
+      {/* <pointLight
         ref={point3Ref}
         position={[machinePosition[0] - 0.4, machinePosition[1] + 1.5, machinePosition[2] + 2]}
         args={['#ffffff', 0, 5, 0.5]}
-      />
+      /> */}
 
       {/* Table lamp lights - positioned to illuminate machine from sides/below */}
-      <pointLight ref={tableLampRef} position={[-3, 2, -6.5]} args={['#fff8e1', 0, 20, 1]} />
+      {/* <pointLight ref={tableLampRef} position={[-3, 2, -6.5]} args={['#fff8e1', 0, 20, 1]} /> */}
 
       {/* <pointLight position={[3, 2, -6.5]} args={['#fff8e1', 4.5, 18, 1]} /> */}
       {/* <pointLight position={[0, 1, -4]} args={['#ffffff', 4.0, 15, 1]} /> */}

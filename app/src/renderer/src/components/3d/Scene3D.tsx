@@ -62,22 +62,22 @@ export const Scene3D: React.FC<Scene3DProps> = (props) => {
             systemStatus={systemStatus}
             elevatorIndicatorRef={elevatorIndicatorRef}
             elevatorLightRef={elevatorLightRef}
-            position={[1, 6.8, -7.5]}
+            position={[2, 6.8, -7.5]}
           />
 
           {/* Elevator position and sensor indicators */}
           <ElevatorIndicators
-            modelPosition={[-2, 7.17, -8.5]}
+            modelPosition={[-1, 7.17, -8.5]}
             modelScale={15}
             sphereRef={elevatorIndicatorRef}
             lightRef={elevatorLightRef}
           />
 
           {/* 3D Floating Cards */}
-          <FloatingCards modelPosition={[-2.5, 6.5, -6.5]} modelScale={15} />
+          <FloatingCards modelPosition={[-1.5, 6.5, -6.5]} modelScale={15} />
 
           {/* LED Strip around machine */}
-          <LEDStripVisualization modelPosition={[-2.05, 6.55, -6.5]} modelScale={15} />
+          <LEDStripVisualization modelPosition={[-1.05, 6.55, -6.5]} modelScale={15} />
         </Suspense>
       </Canvas>
 
