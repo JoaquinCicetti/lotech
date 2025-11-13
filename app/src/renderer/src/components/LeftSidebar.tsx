@@ -1,6 +1,4 @@
 import { Button } from '@renderer/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@renderer/components/ui/card'
-
 import {
   Select,
   SelectContent,
@@ -43,59 +41,58 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
 
   return (
     <div className="flex h-full flex-col p-1 pt-20">
-      {/* Connection Card - Always at top */}
-      <Card className="bg-card/0 mb-2">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            {isConnected ? (
-              <Wifi className="h-4 w-4 text-green-500" />
-            ) : (
-              <WifiOff className="h-4 w-4" />
-            )}
-            Conexión
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex gap-2">
-            <Select value={selectedPort} onValueChange={setSelectedPort} disabled={isConnected}>
-              <SelectTrigger className="h-8 flex-1 text-xs">
-                <SelectValue placeholder="Seleccionar puerto..." />
-              </SelectTrigger>
-              <SelectContent>
-                {ports.map((port) => (
-                  <SelectItem key={port.path} value={port.path}>
-                    {port.friendlyName || port.path}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={handleRefreshPorts}
-              disabled={isConnected || isRefreshing}
-              className="h-8 w-8"
-            >
-              <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </Button>
-          </div>
+      {/* Settings - Always visible, scrollable */}
+      <div className="flex-1 overflow-y-auto">
+        <SettingsPanel />
+      </div>
 
-          {connectionError && <div className="text-destructive text-xs">{connectionError}</div>}
+      {/* Connection Footer - Above theme switcher */}
+      <div className="border-border space-y-2 border-t pt-3 pb-2">
+        <div className="flex items-center gap-2 px-2">
+          {isConnected ? (
+            <Wifi className="h-4 w-4 text-green-500" />
+          ) : (
+            <WifiOff className="text-muted-foreground h-4 w-4" />
+          )}
+          <span className="text-sm font-medium">{isConnected ? 'Conectado' : 'Desconectado'}</span>
+        </div>
 
+        <div className="flex gap-2 px-2">
+          <Select value={selectedPort} onValueChange={setSelectedPort} disabled={isConnected}>
+            <SelectTrigger className="h-9 flex-1">
+              <SelectValue placeholder="Puerto..." />
+            </SelectTrigger>
+            <SelectContent>
+              {ports.map((port) => (
+                <SelectItem key={port.path} value={port.path}>
+                  {port.friendlyName || port.path}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
-            className="h-8 w-full text-xs"
+            size="icon"
+            variant="outline"
+            onClick={handleRefreshPorts}
+            disabled={isConnected || isRefreshing}
+            className="h-9 w-9"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+
+        {connectionError && <div className="text-destructive px-2 text-xs">{connectionError}</div>}
+
+        <div className="px-2">
+          <Button
+            className="h-10 w-full"
             variant={isConnected ? 'destructive' : 'default'}
             onClick={isConnected ? onDisconnect : onConnect}
             disabled={!selectedPort && !isConnected}
           >
             {isConnected ? 'Desconectar' : 'Conectar'}
           </Button>
-        </CardContent>
-      </Card>
-
-      {/* Settings - Always visible, scrollable */}
-      <div className="flex-1 space-y-4 overflow-y-auto">
-        <SettingsPanel />
+        </div>
       </div>
 
       {/* Theme Toggle Footer */}
@@ -103,19 +100,19 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = (props) => {
         <Button
           onClick={toggleTheme}
           variant="outline"
-          size="sm"
-          className="w-full gap-2"
+          size="lg"
+          className="h-11 w-full gap-2"
           title={`Cambiar a tema ${theme === 'dark' ? 'claro' : 'oscuro'}`}
         >
           {theme === 'dark' ? (
             <>
-              <Sun className="h-4 w-4" />
-              Cambiar a modo claro
+              <Sun className="h-5 w-5" />
+              Modo Claro
             </>
           ) : (
             <>
-              <Moon className="h-4 w-4" />
-              Cambiar a modo oscuro
+              <Moon className="h-5 w-5" />
+              Modo Oscuro
             </>
           )}
         </Button>

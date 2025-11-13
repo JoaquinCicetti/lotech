@@ -42,7 +42,7 @@ interface CameraStore {
 }
 
 export const useCameraStore = create<CameraStore>((set) => ({
-  currentPreset: 'isometric',
+  currentPreset: 'free',
   isTransitioning: false,
 
   setPreset: (preset) => set({ currentPreset: preset }),

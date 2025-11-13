@@ -15,15 +15,34 @@ export const CameraController: React.FC<CameraControllerProps> = (props) => {
   const { currentPreset, setTransitioning } = useCameraStore()
   const orbitControlsRef = useRef<OrbitControlsImpl>(null)
 
-  // Track current camera position for smooth transitions
+  // Initialize with isometric preset target
+  const preset = CAMERA_PRESETS.isometric
   const currentPosition = useRef(new THREE.Vector3())
-  const currentTarget = useRef(new THREE.Vector3())
+  const currentTarget = useRef(new THREE.Vector3(...preset.target))
   const targetPosition = useRef(new THREE.Vector3())
-  const targetLookAt = useRef(new THREE.Vector3())
+  const targetLookAt = useRef(new THREE.Vector3(...preset.target))
   const isTransitioningRef = useRef(false)
+  const isFirstMount = useRef(true)
+
+  // Set camera position immediately on mount - use useEffect to ensure ref is available
+  useEffect(() => {
+    if (isFirstMount.current && orbitControlsRef.current) {
+      isFirstMount.current = false
+      const preset = CAMERA_PRESETS[currentPreset]
+      camera.position.set(...preset.position)
+      currentTarget.current.set(...preset.target)
+      // Set OrbitControls target and update - this will automatically orient the camera
+      orbitControlsRef.current.target.set(...preset.target)
+      orbitControlsRef.current.update()
+    }
+  }, [camera, currentPreset])
 
   // Update target when preset changes
   useEffect(() => {
+    if (isFirstMount.current) {
+      return // Skip on first mount, handled by useLayoutEffect
+    }
+
     // If switching to free mode, just enable controls and leave camera where it is
     if (currentPreset === 'free') {
       isTransitioningRef.current = false
@@ -88,9 +107,10 @@ export const CameraController: React.FC<CameraControllerProps> = (props) => {
 
   return (
     <>
-      <PerspectiveCamera makeDefault position={[8, 6, 8]} fov={60} near={0.1} far={1000} />
+      <PerspectiveCamera makeDefault position={[8, 11, -15]} fov={50} near={0.1} far={1000} />
       <OrbitControls
         ref={orbitControlsRef}
+        target={[1, 7.8, -7.5]}
         enablePan={true}
         enableZoom={true}
         enableRotate={true}

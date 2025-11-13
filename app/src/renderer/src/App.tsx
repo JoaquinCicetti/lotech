@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { toast } from 'sonner'
-import { ConnectionScreen } from './components/ConnectionScreen'
+import { ConnectionOverlay } from './components/ConnectionOverlay'
 import { Dashboard3D } from './components/Dashboard3D'
 import { EmergencyStopOverlay } from './components/EmergencyStopOverlay'
 import { FloatingActionBar } from './components/FloatingActionBar'
@@ -10,6 +10,7 @@ import { RightPanel } from './components/RightPanel'
 import { Toaster } from './components/ui/toaster'
 import { useTheme } from './hooks/useTheme'
 import { useSerialConnection } from './serial'
+import { useCameraStore } from './store/cameraStore'
 import { useConnectionStore } from './store/connectionStore'
 import { useControllerStateStore } from './store/controllerStateStore'
 import { usePillTrackingStore } from './store/pillTrackingStore'
@@ -28,6 +29,29 @@ function App(): React.JSX.Element {
   const { showSettings, setShowSettings, showConsole, setShowConsole } = useUIStore()
   const { connect, disconnect, sendCommand, isConnected, connectionError } = useSerialConnection()
   const { recoverFromStorage } = usePillTrackingStore()
+  const { setPreset } = useCameraStore()
+
+  // Wrap disconnect to close sidebar
+  const handleDisconnect = async () => {
+    await disconnect()
+    setShowSettings(false)
+  }
+
+  // Auto-close sidebar when disconnected
+  useEffect(() => {
+    if (!isConnected && showSettings) {
+      setShowSettings(false)
+    }
+  }, [isConnected, showSettings, setShowSettings])
+
+  // Animate camera to isometric when connecting, back to free when disconnecting
+  useEffect(() => {
+    if (isConnected) {
+      setPreset('isometric')
+    } else {
+      setPreset('free')
+    }
+  }, [isConnected, setPreset])
 
   // useEffect(() => {
   //   startElevatorSimulation()
@@ -52,45 +76,55 @@ function App(): React.JSX.Element {
     setTimeout(checkRecoveredData, 100)
   }, [setPorts, recoverFromStorage])
 
-  // Show connection screen if not connected
-  if (!isConnected) {
-    return (
-      <ConnectionScreen
-        ports={ports}
-        selected={selectedPort}
-        onSelectPort={setSelectedPort}
-        onConnect={connect}
-        error={connectionError}
-      />
-    )
-  }
-
-  // Main application UI
+  // Main application UI - Always show scene
   return (
     <>
       <Layout
-        leftSidebar={<LeftSidebar onConnect={connect} onDisconnect={disconnect} />}
+        leftSidebar={<LeftSidebar onConnect={connect} onDisconnect={handleDisconnect} />}
         rightSidebar={<RightPanel onSendCommand={sendCommand} />}
         showLeftSidebar={showSettings}
         showRightSidebar={showConsole}
         onToggleLeftSidebar={() => setShowSettings(!showSettings)}
         onToggleRightSidebar={() => setShowConsole(!showConsole)}
+        isConnected={isConnected}
       >
         <div className="h-full items-center overflow-auto">
-          <Dashboard3D
-            systemStatus={{
-              state: machineState,
-              pillCount: pillCount,
-              weight: currentWeight,
-              sensors: sensorReadings,
-              hardware: hardwareStatus,
+          <div
+            className="h-full transition-all duration-700 ease-out"
+            style={{
+              filter: isConnected ? 'blur(0px) brightness(1)' : 'blur(8px) brightness(0.65)',
+              willChange: 'filter',
+              transform: 'translateZ(0)',
             }}
-            onSendCommand={sendCommand}
-          />
+          >
+            <Dashboard3D
+              systemStatus={{
+                state: machineState,
+                pillCount: pillCount,
+                weight: currentWeight,
+                sensors: sensorReadings,
+                hardware: hardwareStatus,
+              }}
+              onSendCommand={sendCommand}
+              isConnected={isConnected}
+            />
+          </div>
+
+          {/* Connection overlay when not connected */}
+          {!isConnected && (
+            <ConnectionOverlay
+              ports={ports}
+              selected={selectedPort}
+              onSelectPort={setSelectedPort}
+              onConnect={connect}
+              error={connectionError}
+              isConnected={isConnected}
+            />
+          )}
         </div>
       </Layout>
-      <FloatingActionBar />
-      <EmergencyStopOverlay />
+      {isConnected && <FloatingActionBar />}
+      {isConnected && <EmergencyStopOverlay />}
       <Toaster />
     </>
   )
