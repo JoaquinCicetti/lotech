@@ -639,7 +639,7 @@ export const SettingsPanel: React.FC = () => {
               <Slider
                 value={[delays.grind]}
                 onValueChange={([v]) => handleDelayChange('grind', v)}
-                max={10_000}
+                max={20_000}
                 step={100}
                 className="w-full"
               />
