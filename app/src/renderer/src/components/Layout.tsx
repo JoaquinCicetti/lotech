@@ -65,7 +65,7 @@ export const Layout: React.FC<LayoutProps> = (props) => {
             </div>
 
             {/* Center Controls - Mode Switcher and Camera Selector */}
-            <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-4">
+            <div className="absolute left-1/2 z-20 flex -translate-x-1/2 items-center gap-4">
               <ModeSelector />
               <CameraSelector />
             </div>

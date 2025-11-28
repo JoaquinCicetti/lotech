@@ -31,7 +31,7 @@ export const FloatingActionBar: React.FC = () => {
   const { currentMode } = useUIStore()
 
   return (
-    <div className="bg-background/80 fixed bottom-2 left-1/2 z-50 -translate-x-1/2 transform gap-2 rounded-lg border p-2 shadow-lg backdrop-blur-md">
+    <div className="bg-background/80 fixed bottom-2 left-1/2 z-40 -translate-x-1/2 transform gap-2 rounded-lg border p-2 shadow-lg backdrop-blur-md">
       <ProcessStepper />
       {currentMode === AppMode.AUTO ? <AutoController /> : <ManualController />}
     </div>

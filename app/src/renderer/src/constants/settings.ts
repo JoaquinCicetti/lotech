@@ -49,7 +49,7 @@ export const DEFAULT_LOADCELL: LoadCellSettings = {
 
 export const DEFAULT_LED: LEDSettings = {
   brightness: 128, // Half brightness by default
-  colors: Array.from({ length: 30 }, () => ({ r: 0, g: 0, b: 0 })), // All LEDs off by default
+  colors: Array.from({ length: 10 }, () => ({ r: 0, g: 0, b: 0 })), // All LEDs off by default
 }
 
 export const DEFAULT_WEIGHT_FILTER: WeightFilterSettings = {

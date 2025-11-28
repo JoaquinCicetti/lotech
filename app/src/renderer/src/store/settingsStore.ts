@@ -127,7 +127,7 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           led: {
             ...state.led,
-            colors: Array.from({ length: 30 }, () => ({ ...color })),
+            colors: Array.from({ length: 10 }, () => ({ ...color })),
           },
         })),
 
@@ -135,7 +135,7 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           led: {
             ...state.led,
-            colors: Array.from({ length: 30 }, () => ({ r: 0, g: 0, b: 0 })),
+            colors: Array.from({ length: 10 }, () => ({ r: 0, g: 0, b: 0 })),
           },
         })),
     }),

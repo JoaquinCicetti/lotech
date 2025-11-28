@@ -41,7 +41,7 @@ export const LEDControlPanel: React.FC = () => {
   }
 
   const selectAll = () => {
-    setSelectedLEDs(new Set(Array.from({ length: 30 }, (_, i) => i)))
+    setSelectedLEDs(new Set(Array.from({ length: 10 }, (_, i) => i)))
   }
 
   const clearSelection = () => {
@@ -189,7 +189,7 @@ export const LEDControlPanel: React.FC = () => {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-xs">
-            LEDs ({selectedLEDs.size > 0 ? `${selectedLEDs.size} seleccionados` : '30'})
+            LEDs ({selectedLEDs.size > 0 ? `${selectedLEDs.size} seleccionados` : '10'})
           </Label>
           <div className="flex gap-1">
             <Button size="sm" variant="ghost" onClick={selectAll} className="h-6 px-2 text-xs">
@@ -207,7 +207,7 @@ export const LEDControlPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-6 gap-1">
+        <div className="grid grid-cols-5 gap-1">
           {led.colors.map((color, index) => {
             const isSelected = selectedLEDs.has(index)
             return (
@@ -252,36 +252,26 @@ export const LEDControlPanel: React.FC = () => {
       {/* Group Selection Shortcuts */}
       <div className="space-y-2">
         <Label className="text-xs">Selección Rápida</Label>
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-2 gap-1">
           <Button
             size="sm"
             variant="outline"
             onClick={() => {
-              setSelectedLEDs(new Set(Array.from({ length: 10 }, (_, i) => i)))
+              setSelectedLEDs(new Set(Array.from({ length: 5 }, (_, i) => i)))
             }}
             className="h-7 text-xs"
           >
-            1-10
+            1-5
           </Button>
           <Button
             size="sm"
             variant="outline"
             onClick={() => {
-              setSelectedLEDs(new Set(Array.from({ length: 10 }, (_, i) => i + 10)))
+              setSelectedLEDs(new Set(Array.from({ length: 5 }, (_, i) => i + 5)))
             }}
             className="h-7 text-xs"
           >
-            11-20
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setSelectedLEDs(new Set(Array.from({ length: 10 }, (_, i) => i + 20)))
-            }}
-            className="h-7 text-xs"
-          >
-            21-30
+            6-10
           </Button>
         </div>
       </div>
